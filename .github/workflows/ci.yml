@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: The normalized spec matches spec/openapi.yaml
+        run: npm run normalize && git diff --exit-code spec/openapi.sdk.json
+      - run: npm ci
+        working-directory: typescript
+      - name: The generated code matches the spec
+        working-directory: typescript
+        run: npm run generate && git diff --exit-code src/generated
+      - run: npm run typecheck
+        working-directory: typescript
+      - run: npm test
+        working-directory: typescript
+      - run: npm run build
+        working-directory: typescript
