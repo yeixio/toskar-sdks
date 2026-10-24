@@ -43,6 +43,10 @@ jobs:
         with:
           python-version: "3.14"
       - if: steps.which.outputs.ref != ''
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - if: steps.which.outputs.ref != ''
         run: npm ci && (cd typescript && npm ci) && pip install -e "python[dev]"
       - if: steps.which.outputs.ref != ''
         name: Sync and regenerate
@@ -50,6 +54,7 @@ jobs:
           scripts/sync-spec.sh "${{ steps.which.outputs.ref }}"
           (cd typescript && npm run generate)
           (cd python && python scripts/generate.py)
+          (cd go && go generate ./...)
       - if: steps.which.outputs.ref != ''
         name: Open a PR
         run: |
@@ -59,7 +64,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add -A spec typescript/src/generated python/src/toskar/_generated
+          git add -A spec typescript/src/generated python/src/toskar/_generated go/api go/codes.go
           git commit -m "Sync the SDKs with Toskar Core $ref."
           git push -f origin "$branch"
           gh pr create --base main --head "$branch" --title "Sync the SDKs with Toskar Core $ref" \
