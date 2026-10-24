@@ -2,8 +2,18 @@
   "name": "toskar",
   "version": "0.1.0",
   "description": "The official TypeScript and JavaScript SDK for Toskar: local AI across your computers.",
+  "keywords": [
+    "toskar",
+    "ai",
+    "llm",
+    "local-ai",
+    "sdk"
+  ],
   "license": "Apache-2.0",
   "homepage": "https://toskar.ai/developers",
+  "bugs": {
+    "url": "https://github.com/yeixio/toskar-sdks/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yeixio/toskar-sdks.git",
@@ -24,7 +34,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18"
