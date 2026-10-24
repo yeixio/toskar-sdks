@@ -4,7 +4,7 @@ name: conformance
 # Toskar Core built from toskar-core: chat, streaming, events, files,
 # errors, and pairing with a pinned certificate. Core chats with a
 # scripted model, so no model is downloaded. Then Core's examples run with
-# these SDKs.
+# these SDKs, and the READMEs' snippets are checked.
 on:
   push:
     branches: [main]
