@@ -70,10 +70,27 @@ for await (const event of toskar.events({ signal: stop.signal })) {
 
 Safe requests (GET, HEAD, OPTIONS) that fail to connect, or that Toskar answers with 502, 503, or 504, are retried twice with backoff. A chat is never retried, since it could answer twice. Each request waits 60 seconds for its answer to start, and a streamed answer then runs for as long as it takes. Change these with `retries` and `timeoutMs`.
 
+## Pairing, as the Toskar apps do (Node)
+
+An app can pair as a device, with the code **Connect a device** shows on the computer, instead of using an API key. It then reaches its computer at home and, when the computer has access from anywhere, directly or through its relay, always pinned to the computer's own certificate ([how it works](https://github.com/yeixio/toskar-core/blob/main/docs/connecting.md)). It's in `toskar/node`, for Node 18 and later: a browser can't check a certificate itself, and Bun and Deno don't take Node's TLS hooks yet. Elsewhere, use an API key.
+
+```ts
+import { pair, Toskar, unwrap, type Device } from 'toskar/node'
+
+// On the computer's network, with the code it shows:
+const device: Device = await pair('192.168.1.20:7331', '123456', 'Kitchen tablet', async (short) => {
+  // Show short, such as 9B80-D9D9, and ask whether the computer shows the same.
+  return askThePerson(short)
+})
+// Save device, as a password is saved: its key and route are secrets.
+
+const toskar = new Toskar({ device })
+const models = unwrap(await toskar.api.GET('/api/v1/models'))
+console.log(toskar.path) // home, direct, or relay
+```
+
+Every connection checks the computer's certificate before anything is sent. A different certificate throws `PIN_MISMATCH`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `toskar.reconnect()` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
+
 ## Not yet
 
-- Pairing with a short code from Connect a device.
-- Pinning a computer's certificate over its local-network HTTPS.
-- Reaching it from anywhere through the relay, as the Toskar apps do.
-
-They're coming next (toskar-core#666). For now, use an API key on the home network, or this computer's loopback.
+Finding computers on the network (mDNS) is coming next (toskar-core#666). For now, pair with the computer's address, as shown in Connect a device.
