@@ -4400,7 +4400,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ModelFit"
+                    "$ref": "#/components/schemas/ModelsFit"
                   }
                 }
               }
@@ -11380,108 +11380,7 @@
             "format": "date-time"
           },
           "fit": {
-            "type": "object",
-            "description": "Describes how well a model fits a node's hardware.",
-            "required": [
-              "expected_memory_bytes",
-              "install_allowed",
-              "label",
-              "model_id"
-            ],
-            "properties": {
-              "model_id": {
-                "type": "string"
-              },
-              "node_id": {
-                "type": "string"
-              },
-              "node_name": {
-                "type": "string"
-              },
-              "label": {
-                "type": "string"
-              },
-              "expected_memory_bytes": {
-                "type": "integer",
-                "format": "int64"
-              },
-              "reason": {
-                "type": "string"
-              },
-              "est_tok_per_sec": {
-                "type": "number"
-              },
-              "tok_per_sec_measured": {
-                "type": "boolean"
-              },
-              "runtime_memory_low_bytes": {
-                "type": "integer",
-                "format": "int64",
-                "description": "`runtime_memory_low_bytes` and RuntimeMemoryHighBytes are a conservative range for weights, KV cache, and runtime buffers. They are not the file size alone."
-              },
-              "runtime_memory_high_bytes": {
-                "type": "integer",
-                "format": "int64"
-              },
-              "weight_bytes": {
-                "type": "integer",
-                "format": "int64"
-              },
-              "quantization": {
-                "type": "string"
-              },
-              "approximate": {
-                "type": "boolean"
-              },
-              "context_tokens": {
-                "type": "integer"
-              },
-              "total_memory_bytes": {
-                "type": "integer",
-                "format": "int64"
-              },
-              "available_memory_bytes": {
-                "type": "integer",
-                "format": "int64"
-              },
-              "memory_kind": {
-                "type": "string",
-                "description": "unified | system"
-              },
-              "headroom": {
-                "type": "number"
-              },
-              "install_allowed": {
-                "type": "boolean"
-              },
-              "runtime_warning": {
-                "type": "string"
-              },
-              "recommendations": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "gpu_note": {
-                "type": "string"
-              },
-              "known_to_run": {
-                "type": "boolean"
-              },
-              "short": {
-                "type": "string",
-                "description": "What a model is short of when that holds it back: \"shared\" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751)."
-              },
-              "need_bytes": {
-                "type": "integer",
-                "format": "int64"
-              },
-              "have_bytes": {
-                "type": "integer",
-                "format": "int64"
-              }
-            }
+            "$ref": "#/components/schemas/ModelFit"
           },
           "dynamic": {
             "type": "boolean",
@@ -14843,7 +14742,7 @@
           }
         }
       },
-      "ModelFit": {
+      "ModelsFit": {
         "type": "object",
         "description": "Returned by GET /models/fit.",
         "required": [
@@ -14865,137 +14764,13 @@
           "fits": {
             "type": "array",
             "items": {
-              "type": "object",
-              "description": "Describes how well a model fits a node's hardware.",
-              "required": [
-                "expected_memory_bytes",
-                "install_allowed",
-                "label",
-                "model_id"
-              ],
-              "properties": {
-                "model_id": {
-                  "type": "string"
-                },
-                "node_id": {
-                  "type": "string"
-                },
-                "node_name": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "expected_memory_bytes": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "reason": {
-                  "type": "string"
-                },
-                "est_tok_per_sec": {
-                  "type": "number"
-                },
-                "tok_per_sec_measured": {
-                  "type": "boolean"
-                },
-                "runtime_memory_low_bytes": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "`runtime_memory_low_bytes` and RuntimeMemoryHighBytes are a conservative range for weights, KV cache, and runtime buffers. They are not the file size alone."
-                },
-                "runtime_memory_high_bytes": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "weight_bytes": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "quantization": {
-                  "type": "string"
-                },
-                "approximate": {
-                  "type": "boolean"
-                },
-                "context_tokens": {
-                  "type": "integer"
-                },
-                "total_memory_bytes": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "available_memory_bytes": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "memory_kind": {
-                  "type": "string",
-                  "description": "unified | system"
-                },
-                "headroom": {
-                  "type": "number"
-                },
-                "install_allowed": {
-                  "type": "boolean"
-                },
-                "runtime_warning": {
-                  "type": "string"
-                },
-                "recommendations": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "gpu_note": {
-                  "type": "string"
-                },
-                "known_to_run": {
-                  "type": "boolean"
-                },
-                "short": {
-                  "type": "string",
-                  "description": "What a model is short of when that holds it back: \"shared\" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751)."
-                },
-                "need_bytes": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "have_bytes": {
-                  "type": "integer",
-                  "format": "int64"
-                }
-              }
+              "$ref": "#/components/schemas/ModelFit"
             }
           },
           "winners": {
             "type": "array",
             "items": {
-              "type": "object",
-              "description": "A recommendation badge for Discover.",
-              "required": [
-                "category",
-                "label",
-                "model_id"
-              ],
-              "properties": {
-                "category": {
-                  "type": "string",
-                  "description": "best_overall|fastest|best_quality|lowest_memory|coding|general|reasoning|vision"
-                },
-                "label": {
-                  "type": "string",
-                  "description": "human label e.g. \"Best coding\""
-                },
-                "model_id": {
-                  "type": "string"
-                },
-                "community_chosen": {
-                  "type": "boolean",
-                  "description": "True when community ratings from hardware like this computer's moved this model ahead of the curated first choice."
-                }
-              }
+              "$ref": "#/components/schemas/CategoryWinner"
             }
           }
         }
@@ -19076,6 +18851,136 @@
           },
           "yggdrasil": {
             "$ref": "#/components/schemas/ToskarExtension"
+          }
+        }
+      },
+      "ModelFit": {
+        "type": "object",
+        "description": "Describes how well a model fits a node's hardware.",
+        "required": [
+          "expected_memory_bytes",
+          "install_allowed",
+          "label",
+          "model_id"
+        ],
+        "properties": {
+          "model_id": {
+            "type": "string"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "node_name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "expected_memory_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "est_tok_per_sec": {
+            "type": "number"
+          },
+          "tok_per_sec_measured": {
+            "type": "boolean"
+          },
+          "runtime_memory_low_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "`runtime_memory_low_bytes` and RuntimeMemoryHighBytes are a conservative range for weights, KV cache, and runtime buffers. They are not the file size alone."
+          },
+          "runtime_memory_high_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "weight_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantization": {
+            "type": "string"
+          },
+          "approximate": {
+            "type": "boolean"
+          },
+          "context_tokens": {
+            "type": "integer"
+          },
+          "total_memory_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "available_memory_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "memory_kind": {
+            "type": "string",
+            "description": "unified | system"
+          },
+          "headroom": {
+            "type": "number"
+          },
+          "install_allowed": {
+            "type": "boolean"
+          },
+          "runtime_warning": {
+            "type": "string"
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "gpu_note": {
+            "type": "string"
+          },
+          "known_to_run": {
+            "type": "boolean"
+          },
+          "short": {
+            "type": "string",
+            "description": "What a model is short of when that holds it back: \"shared\" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751)."
+          },
+          "need_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "have_bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CategoryWinner": {
+        "type": "object",
+        "description": "A recommendation badge for Discover.",
+        "required": [
+          "category",
+          "label",
+          "model_id"
+        ],
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "best_overall|fastest|best_quality|lowest_memory|coding|general|reasoning|vision"
+          },
+          "label": {
+            "type": "string",
+            "description": "human label e.g. \"Best coding\""
+          },
+          "model_id": {
+            "type": "string"
+          },
+          "community_chosen": {
+            "type": "boolean",
+            "description": "True when community ratings from hardware like this computer's moved this model ahead of the curated first choice."
           }
         }
       }

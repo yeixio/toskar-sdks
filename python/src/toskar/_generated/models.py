@@ -528,52 +528,6 @@ class ModelInstalledOnItem(BaseModel):
     node_name: str
 
 
-class ModelFit(BaseModel):
-    """
-    Describes how well a model fits a node's hardware.
-    """
-
-    model_config = ConfigDict(
-        extra='allow',
-        populate_by_name=True,
-    )
-    model_id: str
-    node_id: str | None = None
-    node_name: str | None = None
-    label: str
-    expected_memory_bytes: int
-    reason: str | None = None
-    est_tok_per_sec: float | None = None
-    tok_per_sec_measured: bool | None = None
-    runtime_memory_low_bytes: int | None = None
-    """
-    `runtime_memory_low_bytes` and RuntimeMemoryHighBytes are a conservative range for weights, KV cache, and runtime buffers. They are not the file size alone.
-    """
-    runtime_memory_high_bytes: int | None = None
-    weight_bytes: int | None = None
-    quantization: str | None = None
-    approximate: bool | None = None
-    context_tokens: int | None = None
-    total_memory_bytes: int | None = None
-    available_memory_bytes: int | None = None
-    memory_kind: str | None = None
-    """
-    unified | system
-    """
-    headroom: float | None = None
-    install_allowed: bool
-    runtime_warning: str | None = None
-    recommendations: list[str] | None = None
-    gpu_note: str | None = None
-    known_to_run: bool | None = None
-    short: str | None = None
-    """
-    What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).
-    """
-    need_bytes: int | None = None
-    have_bytes: int | None = None
-
-
 class ModelLanguage(BaseModel):
     """
     How well a model writes a language (multilingual spec §13–14, §31). Levels are coarse on purpose: they don't imply precision the sources don't have. A language a model has no level for is unknown, and is left out.
@@ -598,67 +552,6 @@ class ModelLanguage(BaseModel):
     sources: list[str]
     """
     `sources` the level comes from: "model_card", "maintainer", "benchmark", "provider", "community", or "local_evaluation".
-    """
-
-
-class Model(BaseModel):
-    """
-    A catalog or installed model.
-    """
-
-    model_config = ConfigDict(
-        extra='allow',
-        populate_by_name=True,
-    )
-    id: str
-    display_name: str
-    summary: str | None = None
-    family: str | None = None
-    variant: str | None = None
-    parameters: str | None = None
-    """
-    e.g. "14B"
-    """
-    size_bytes: int | None = None
-    memory_needed_bytes: int | None = None
-    context: int | None = None
-    capabilities: ModelCapabilities
-    """
-    Describes model features.
-    """
-    source: ModelSource | None = None
-    """
-    Describes where a model artifact comes from.
-    """
-    purpose: list[str] | None = None
-    tags: list[str] | None = None
-    """
-    coding, general, reasoning, vision, fast, large
-    """
-    runtime: list[str] | None = None
-    recommended_roles: list[str] | None = None
-    installed: bool
-    installed_on: list[ModelInstalledOnItem] | None = None
-    status: str | None = None
-    """
-    available|downloading|installed|loading|running|stopping|error
-    """
-    last_used_at: AwareDatetime | None = None
-    fit: ModelFit | None = None
-    """
-    Describes how well a model fits a node's hardware.
-    """
-    dynamic: bool | None = None
-    """
-    installed from browse-all / URL
-    """
-    support_role: str | None = None
-    """
-    `support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models.
-    """
-    languages: list[ModelLanguage] | None = None
-    """
-    How well the model writes each language it has a level for (§13–14, §31), best first.
     """
 
 
@@ -2776,113 +2669,6 @@ class RecommendationRole(BaseModel):
     model_id: str
     node_id: str | None = None
     required: bool
-
-
-class Recommendation(BaseModel):
-    """
-    Explains a recommended model setup.
-    """
-
-    model_config = ConfigDict(
-        extra='allow',
-        populate_by_name=True,
-    )
-    purpose: str
-    roles: list[RecommendationRole]
-    models: list[Model]
-    reason: str
-    estimated_storage_bytes: int
-    estimated_vram_bytes: int
-    community_chosen: bool | None = None
-    """
-    True when community ratings moved the main model ahead of the curated first choice.
-    """
-
-
-class ModelFit1Fit(BaseModel):
-    """
-    Describes how well a model fits a node's hardware.
-    """
-
-    model_config = ConfigDict(
-        extra='allow',
-        populate_by_name=True,
-    )
-    model_id: str
-    node_id: str | None = None
-    node_name: str | None = None
-    label: str
-    expected_memory_bytes: int
-    reason: str | None = None
-    est_tok_per_sec: float | None = None
-    tok_per_sec_measured: bool | None = None
-    runtime_memory_low_bytes: int | None = None
-    """
-    `runtime_memory_low_bytes` and RuntimeMemoryHighBytes are a conservative range for weights, KV cache, and runtime buffers. They are not the file size alone.
-    """
-    runtime_memory_high_bytes: int | None = None
-    weight_bytes: int | None = None
-    quantization: str | None = None
-    approximate: bool | None = None
-    context_tokens: int | None = None
-    total_memory_bytes: int | None = None
-    available_memory_bytes: int | None = None
-    memory_kind: str | None = None
-    """
-    unified | system
-    """
-    headroom: float | None = None
-    install_allowed: bool
-    runtime_warning: str | None = None
-    recommendations: list[str] | None = None
-    gpu_note: str | None = None
-    known_to_run: bool | None = None
-    short: str | None = None
-    """
-    What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).
-    """
-    need_bytes: int | None = None
-    have_bytes: int | None = None
-
-
-class ModelFit1Winner(BaseModel):
-    """
-    A recommendation badge for Discover.
-    """
-
-    model_config = ConfigDict(
-        extra='allow',
-        populate_by_name=True,
-    )
-    category: str
-    """
-    best_overall|fastest|best_quality|lowest_memory|coding|general|reasoning|vision
-    """
-    label: str
-    """
-    human label e.g. "Best coding"
-    """
-    model_id: str
-    community_chosen: bool | None = None
-    """
-    True when community ratings from hardware like this computer's moved this model ahead of the curated first choice.
-    """
-
-
-class ModelFit1(BaseModel):
-    """
-    Returned by GET /models/fit.
-    """
-
-    model_config = ConfigDict(
-        extra='allow',
-        populate_by_name=True,
-    )
-    node_id: str | None = None
-    node_name: str | None = None
-    memory_bytes: int
-    fits: list[ModelFit1Fit]
-    winners: list[ModelFit1Winner]
 
 
 class BrowseModel(BaseModel):
@@ -5404,6 +5190,76 @@ class OpenAIChatCompletion(BaseModel):
     yggdrasil: ToskarExtension | None = None
 
 
+class ModelFit(BaseModel):
+    """
+    Describes how well a model fits a node's hardware.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    model_id: str
+    node_id: str | None = None
+    node_name: str | None = None
+    label: str
+    expected_memory_bytes: int
+    reason: str | None = None
+    est_tok_per_sec: float | None = None
+    tok_per_sec_measured: bool | None = None
+    runtime_memory_low_bytes: int | None = None
+    """
+    `runtime_memory_low_bytes` and RuntimeMemoryHighBytes are a conservative range for weights, KV cache, and runtime buffers. They are not the file size alone.
+    """
+    runtime_memory_high_bytes: int | None = None
+    weight_bytes: int | None = None
+    quantization: str | None = None
+    approximate: bool | None = None
+    context_tokens: int | None = None
+    total_memory_bytes: int | None = None
+    available_memory_bytes: int | None = None
+    memory_kind: str | None = None
+    """
+    unified | system
+    """
+    headroom: float | None = None
+    install_allowed: bool
+    runtime_warning: str | None = None
+    recommendations: list[str] | None = None
+    gpu_note: str | None = None
+    known_to_run: bool | None = None
+    short: str | None = None
+    """
+    What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).
+    """
+    need_bytes: int | None = None
+    have_bytes: int | None = None
+
+
+class CategoryWinner(BaseModel):
+    """
+    A recommendation badge for Discover.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    category: str
+    """
+    best_overall|fastest|best_quality|lowest_memory|coding|general|reasoning|vision
+    """
+    label: str
+    """
+    human label e.g. "Best coding"
+    """
+    model_id: str
+    community_chosen: bool | None = None
+    """
+    True when community ratings from hardware like this computer's moved this model ahead of the curated first choice.
+    """
+
+
 class ModelRating(BaseModel):
     """
     A person's rating of one model and what sharing it would send.
@@ -5477,6 +5333,64 @@ class VersionResponse(BaseModel):
     URL of the corresponding source for this build.
     """
     contract: ContractInfo
+
+
+class Model(BaseModel):
+    """
+    A catalog or installed model.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    id: str
+    display_name: str
+    summary: str | None = None
+    family: str | None = None
+    variant: str | None = None
+    parameters: str | None = None
+    """
+    e.g. "14B"
+    """
+    size_bytes: int | None = None
+    memory_needed_bytes: int | None = None
+    context: int | None = None
+    capabilities: ModelCapabilities
+    """
+    Describes model features.
+    """
+    source: ModelSource | None = None
+    """
+    Describes where a model artifact comes from.
+    """
+    purpose: list[str] | None = None
+    tags: list[str] | None = None
+    """
+    coding, general, reasoning, vision, fast, large
+    """
+    runtime: list[str] | None = None
+    recommended_roles: list[str] | None = None
+    installed: bool
+    installed_on: list[ModelInstalledOnItem] | None = None
+    status: str | None = None
+    """
+    available|downloading|installed|loading|running|stopping|error
+    """
+    last_used_at: AwareDatetime | None = None
+    fit: ModelFit | None = None
+    dynamic: bool | None = None
+    """
+    installed from browse-all / URL
+    """
+    support_role: str | None = None
+    """
+    `support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models.
+    """
+    languages: list[ModelLanguage] | None = None
+    """
+    How well the model writes each language it has a level for (§13–14, §31), best first.
+    """
 
 
 class Error(BaseModel):
@@ -5806,6 +5720,43 @@ class ChatDone(BaseModel):
         populate_by_name=True,
     )
     metrics: GenerationMetrics | None = None
+
+
+class Recommendation(BaseModel):
+    """
+    Explains a recommended model setup.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    purpose: str
+    roles: list[RecommendationRole]
+    models: list[Model]
+    reason: str
+    estimated_storage_bytes: int
+    estimated_vram_bytes: int
+    community_chosen: bool | None = None
+    """
+    True when community ratings moved the main model ahead of the curated first choice.
+    """
+
+
+class ModelsFit(BaseModel):
+    """
+    Returned by GET /models/fit.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    node_id: str | None = None
+    node_name: str | None = None
+    memory_bytes: int
+    fits: list[ModelFit]
+    winners: list[CategoryWinner]
 
 
 class URLPreview(BaseModel):

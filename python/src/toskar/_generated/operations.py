@@ -1022,10 +1022,10 @@ class Api:
             read="json",
         )
 
-    def models_fit(self) -> list[models.ModelFit]:
+    def models_fit(self) -> list[models.ModelsFit]:
         """How well each catalog model fits this computer"""
         return self._client._request(
-            "GET", f"/api/v1/models/fit", query={}, body=None, answer=list[models.ModelFit], read="json"
+            "GET", f"/api/v1/models/fit", query={}, body=None, answer=list[models.ModelsFit], read="json"
         )
 
     def import_model(
@@ -3561,10 +3561,10 @@ class AsyncApi:
             read="json",
         )
 
-    async def models_fit(self) -> list[models.ModelFit]:
+    async def models_fit(self) -> list[models.ModelsFit]:
         """How well each catalog model fits this computer"""
         return await self._client._request(
-            "GET", f"/api/v1/models/fit", query={}, body=None, answer=list[models.ModelFit], read="json"
+            "GET", f"/api/v1/models/fit", query={}, body=None, answer=list[models.ModelsFit], read="json"
         )
 
     async def import_model(
