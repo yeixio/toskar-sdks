@@ -25,6 +25,7 @@ from ._connect import (
     route_id,
     short_pin,
 )
+from ._discover import Computer, discover
 from ._errors import ToskarError
 from ._generated import models
 from ._generated.codes import CONTRACT_VERSION, ErrorCodes
@@ -33,6 +34,8 @@ from ._sse import ServerSentEvent, aread_events, read_events
 __all__ = [
     "CONTRACT_VERSION",
     "TOSKAR_RELAY",
+    "Computer",
+    "discover",
     "Device",
     "NotConfirmed",
     "PinMismatch",

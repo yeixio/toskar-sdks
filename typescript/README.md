@@ -91,6 +91,14 @@ console.log(toskar.path) // home, direct, or relay
 
 Every connection checks the computer's certificate before anything is sent. A different certificate throws `PIN_MISMATCH`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `toskar.reconnect()` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
 
-## Not yet
+## Find computers on the network
 
-Finding computers on the network (mDNS) is coming next (toskar-core#666). For now, pair with the computer's address, as shown in Connect a device.
+Computers running Toskar announce themselves on the home network (mDNS, `_localai._tcp`). In Node, `discover` lists them, so a person can pick one instead of typing an address. It uses the optional dependency `bonjour-service`; browsers can't browse mDNS.
+
+```ts
+import { discover } from 'toskar/node'
+
+for (const c of await discover(3000)) console.log(c.name, c.address)
+```
+
+Pair with `c.address`. When `c.onNetwork` is false, the computer answers only on itself: tell the person to turn on Connect a device there, rather than that it's unreachable. A computer can advertise addresses this device can't reach, such as a container network's; `address` is the first one that answers, and `addresses` has them all.

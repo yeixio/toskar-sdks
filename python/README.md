@@ -103,6 +103,19 @@ print(toskar.path)  # home, direct, or relay
 
 `apair` and `AsyncToskar(device=...)` do the same for asyncio. Every connection checks the computer's certificate in the TLS handshake, before anything is sent. A different certificate raises `PinMismatch`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `toskar.reconnect()` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
 
-## Not yet
+## Find computers on the network
 
-Finding computers on the network (mDNS) is coming next (toskar-core#666). For now, pair with the computer's address, as shown in Connect a device.
+Computers running Toskar announce themselves on the home network (mDNS, `_localai._tcp`). `discover` lists them, so a person can pick one instead of typing an address. It needs the `discovery` extra (zeroconf, LGPL-2.1, imported only when you call it):
+
+```sh
+pip install "toskar[discovery]"
+```
+
+```python
+from toskar import discover
+
+for c in discover(timeout=3.0):
+    print(c.name, c.address)
+```
+
+Pair with `c.address`. When `c.on_network` is false, the computer answers only on itself: tell the person to turn on Connect a device there, rather than that it's unreachable. A computer can advertise addresses this device can't reach, such as a container network's; `address` is the first one that answers, and `addresses` has them all.
