@@ -54,8 +54,9 @@ jobs:
         run: |
           scripts/sync-spec.sh "${{ steps.which.outputs.ref }}"
           (cd typescript && npm run generate)
-          (cd python && python scripts/generate.py)
+          (cd python && python scripts/generate.py && python scripts/reference.py)
           (cd go && go generate ./...)
+          (cd typescript && npm run reference)
       - if: steps.which.outputs.ref != ''
         name: Open a PR
         run: |
@@ -65,7 +66,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add -A spec typescript/src/generated python/src/toskar/_generated go/api go/codes.go
+          git add -A spec typescript/src/generated python/src/toskar/_generated go/api go/codes.go reference
           git commit -m "Sync the SDKs with Toskar Core $ref."
           git push -f origin "$branch"
           gh pr create --base main --head "$branch" --title "Sync the SDKs with Toskar Core $ref" \

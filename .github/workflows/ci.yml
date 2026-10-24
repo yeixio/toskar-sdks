@@ -29,6 +29,9 @@ jobs:
         run: npm run generate && git diff --exit-code src/generated
       - run: npm run typecheck
         working-directory: typescript
+      - name: The reference docs match the code
+        working-directory: typescript
+        run: npm run reference && git diff --exit-code ../reference/typescript
       - run: npm test
         working-directory: typescript
       - run: npm run build
@@ -51,6 +54,10 @@ jobs:
         if: matrix.python == '3.14'
         working-directory: python
         run: python scripts/generate.py && git diff --exit-code src/toskar/_generated
+      - name: The reference docs match the code
+        if: matrix.python == '3.14'
+        working-directory: python
+        run: python scripts/reference.py && git diff --exit-code ../reference/python
       - run: python -m mypy src/toskar --ignore-missing-imports
         working-directory: python
       - run: python -m pytest -q
@@ -67,8 +74,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: stable
-      - name: The generated code matches the spec
-        run: go generate ./... && git diff --exit-code api codes.go
+      - name: The generated code and reference docs match
+        run: go generate ./... && git diff --exit-code api codes.go ../reference/go
       # Then vet and test with the oldest Go the module supports.
       - uses: actions/setup-go@v6
         with:

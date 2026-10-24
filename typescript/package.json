@@ -34,7 +34,8 @@
     "generate": "openapi-typescript ../spec/openapi.sdk.json -o src/generated/api.ts && node scripts/codes.mjs",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "reference": "typedoc"
   },
   "dependencies": {
     "openapi-fetch": "0.17.0",
@@ -43,6 +44,8 @@
   "devDependencies": {
     "@types/node": "26.6.5",
     "openapi-typescript": "7.13.0",
+    "typedoc": "0.28.20",
+    "typedoc-plugin-markdown": "4.13.1",
     "typescript": "5.9.3",
     "vitest": "5.0.5"
   },

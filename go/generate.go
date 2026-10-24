@@ -13,3 +13,7 @@ package toskar
 
 //go:generate go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.1 -config oapi-codegen.yaml ../spec/openapi.sdk.json
 //go:generate go run scripts/codes.go
+
+// The reference docs, from these packages' doc comments.
+//go:generate go run github.com/princjef/gomarkdoc/cmd/gomarkdoc@v1.1.0 --output ../reference/go/README.md .
+//go:generate go run github.com/princjef/gomarkdoc/cmd/gomarkdoc@v1.1.0 --output ../reference/go/discover.md ./discover

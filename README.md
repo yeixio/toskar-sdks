@@ -9,7 +9,7 @@ Official packages for building on [Toskar](https://toskar.ai): local AI that run
 | Go | `github.com/yeixio/toskar-sdks/go` | [go/](go) | Preview |
 | Swift, Kotlin/Java, C#/.NET, Rust | | | Later |
 
-Docs: [toskar.ai/developers](https://toskar.ai/developers).
+Docs: [toskar.ai/developers](https://toskar.ai/developers), and the [reference](reference/README.md) for every class and function.
 
 ## How they're made
 
