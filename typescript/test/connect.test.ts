@@ -8,7 +8,9 @@ import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { openRecord, pair, pinOf, RecordError, routeId, shortPin, TOSKAR_RELAY, Toskar, unwrap, type Device } from '../src/node.js'
+import { fetch as undiciFetch } from 'undici'
+
+import { openRecord, pair, pinnedDispatcher, pinOf, RecordError, routeId, shortPin, TOSKAR_RELAY, Toskar, unwrap, type Device } from '../src/node.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const vectors = JSON.parse(readFileSync(join(here, '..', '..', 'spec', 'connection-vectors.json'), 'utf8'))
@@ -37,7 +39,7 @@ describe('connection test vectors', () => {
   })
 })
 
-/** A Toskar Core on TLS with a certificate of its own, counting the keys it's sent. */
+/** A Toskar Core on TLS with a certificate of its own, counting the keys it's sent. It asks for a key, as a computer that's connected devices does, so health answers only with one. */
 type Computer = { address: string; pin: string; keys: number; tokens: string[]; der: Buffer; keyPem: string; server: Server }
 const running: Server[] = []
 
@@ -52,7 +54,7 @@ async function computer(name: 'mine' | 'other', pairAnswer?: (pin: string) => un
       res.writeHead(status, { 'Content-Type': type })
       res.end(Buffer.isBuffer(body) ? body : JSON.stringify(body))
     }
-    if (req.url === '/api/v1/health') return send(200, { status: 'ok' })
+    if (req.url === '/api/v1/health') return req.headers.authorization ? send(200, { status: 'ok' }) : send(401, { error: { code: 'UNAUTHORIZED', message: 'A key is needed' } })
     if (record && req.url?.endsWith('/record')) {
       c.tokens.push(String(req.headers.authorization ?? ''))
       return send(200, record(), 'application/octet-stream')
@@ -124,12 +126,24 @@ describe('a paired device', () => {
     expect(other.keys).toBe(0)
   })
 
+  it('checks the certificate on every connection, including resumed ones', async () => {
+    const c = await computer('mine')
+    const dispatcher = pinnedDispatcher(c.pin)
+    // A new connection each time: a resumed TLS session shows no certificate to check.
+    for (let i = 0; i < 4; i++) {
+      const r = await undiciFetch(`https://${c.address}/api/v1/models`, { dispatcher, headers: { connection: 'close' } })
+      expect(r.status).toBe(200)
+      await r.text()
+    }
+  })
+
   it('reaches its computer at home first', async () => {
     const c = await computer('mine')
     const toskar = new Toskar({ device: { address: c.address, apiKey: 'tk_device', pin: c.pin } })
     expect(unwrap(await toskar.api.GET('/api/v1/models'))).toEqual([])
     expect(toskar.path).toBe('home')
-    expect(c.keys).toBe(1)
+    // The health check and the call.
+    expect(c.keys).toBe(2)
   })
 
   it('finds it away from home through its address record, and prefers a direct way', async () => {

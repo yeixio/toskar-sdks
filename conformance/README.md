@@ -1,0 +1,45 @@
+# Conformance
+
+Every SDK has a small program that runs the same cases, so a test bed can
+run each one as a device and check what it did. Toskar Core's
+outside-network check does: it runs them at home and away from home, with
+a real router and a real relay (toskar-core `tests/outside`).
+
+| SDK | Program | In the image |
+|---|---|---|
+| Go | `go/cmd/toskar-conformance` | `toskar-conformance-go` |
+| Python | `python/conformance.py` | `toskar-conformance-python` |
+| TypeScript | `typescript/conformance.mjs`, after `npm run build` | `toskar-conformance-node` |
+
+Build the image with all three from the repository root:
+
+```sh
+docker build -f conformance/Dockerfile -t toskar-conformance .
+```
+
+## Commands
+
+Each prints one line of JSON and exits 0, or prints
+`{"error": {"code", "message"}}` and exits 1. `code` is Toskar's error code
+(such as `PAIRING_WRONG_CODE`) or the SDK's own: `PIN_MISMATCH`,
+`NOT_CONFIRMED`, `UNREACHABLE`, `NO_RECORD`, or `ERROR` for anything else.
+
+`pair <address> <code>` pairs with the computer at `address` (host:port)
+using the code Connect a device shows, confirming the short pin, and
+prints:
+
+```json
+{"device": {"address": "…", "api_key": "…", "pin": "sha256:…", "route": {"secret": "…", "id": "…", "relay": "…", "token": "…"}}, "short_pin": "ABCD-1234"}
+```
+
+`call <device.json>` connects as the device in the file (the `device`
+from `pair`) and asks for the computer's settings, then prints the way
+in it took (`home`, `direct`, or `relay`) and the computer that answered:
+
+```json
+{"path": "relay", "node_name": "Studio"}
+```
+
+The relay's own certificate is checked as any website's is: a test bed
+with its own certificate authority sets `SSL_CERT_FILE` (Go, Python) and
+`NODE_EXTRA_CA_CERTS` (Node).

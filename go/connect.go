@@ -382,6 +382,9 @@ func (r *router) answers(ctx context.Context, address string, timeout time.Durat
 	if err != nil {
 		return false, err
 	}
+	// With the key: a computer that asks for one answers health only with
+	// it. The connection is pinned before anything is sent.
+	req.Header.Set("Authorization", "Bearer "+r.device.APIKey)
 	resp, err := r.next.RoundTrip(req)
 	if err != nil {
 		if errors.Is(err, ErrPinMismatch) {

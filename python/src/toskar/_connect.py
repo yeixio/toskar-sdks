@@ -352,7 +352,11 @@ class _Router(httpx.BaseTransport):
         self.path: Path | None = None
 
     def _answers(self, address: str, timeout: float) -> bool:
-        request = httpx.Request("GET", f"https://{address}/api/v1/health", extensions={"timeout": httpx.Timeout(timeout).as_dict()})
+        # With the key: a computer that asks for one answers health only with it. The connection is pinned first.
+        request = httpx.Request(
+            "GET", f"https://{address}/api/v1/health", headers={"Authorization": f"Bearer {self.device.api_key}"},
+            extensions={"timeout": httpx.Timeout(timeout).as_dict()},
+        )
         try:
             response = self.pinned.handle_request(request)
             response.read()
@@ -446,7 +450,11 @@ class _AsyncRouter(httpx.AsyncBaseTransport):
         self.path: Path | None = None
 
     async def _answers(self, address: str, timeout: float) -> bool:
-        request = httpx.Request("GET", f"https://{address}/api/v1/health", extensions={"timeout": httpx.Timeout(timeout).as_dict()})
+        # With the key: a computer that asks for one answers health only with it. The connection is pinned first.
+        request = httpx.Request(
+            "GET", f"https://{address}/api/v1/health", headers={"Authorization": f"Bearer {self.device.api_key}"},
+            extensions={"timeout": httpx.Timeout(timeout).as_dict()},
+        )
         try:
             response = await self.pinned.handle_async_request(request)
             await response.aread()

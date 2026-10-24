@@ -87,7 +87,9 @@ func TestConnectionVectors(t *testing.T) {
 }
 
 // computer is a Toskar Core on TLS with a certificate of its own, as a
-// computer's API listener is, counting the keys it's sent.
+// computer's API listener is, counting the keys it's sent. It asks for a
+// key, as a computer that's connected devices does, so health answers only
+// with one.
 func computer(t *testing.T, pair func(w http.ResponseWriter, pin string)) (*httptest.Server, string, *atomic.Int32) {
 	t.Helper()
 	keys := &atomic.Int32{}
@@ -98,6 +100,10 @@ func computer(t *testing.T, pair func(w http.ResponseWriter, pin string)) (*http
 		}
 		switch r.URL.Path {
 		case "/api/v1/health":
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 			_, _ = w.Write([]byte(`{"status":"ok"}`))
 		case "/api/v1/devices/pair":
 			pair(w, pin)

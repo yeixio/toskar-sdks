@@ -89,7 +89,8 @@ const pinnedFetch = (url: string | URL, init: RequestInit, dispatcher: Dispatche
  * handshake is done, before any request is sent.
  */
 export function pinnedDispatcher(pin: string): Dispatcher {
-  const base = buildConnector({ rejectUnauthorized: false })
+  // No TLS session resumption: a resumed session shows no certificate to check.
+  const base = buildConnector({ rejectUnauthorized: false, maxCachedSessions: 0 })
   return new Agent({
     connect(options, callback) {
       base(options, (err, socket) => {
@@ -256,7 +257,12 @@ class Router {
 
   private async answers(address: string, timeoutMs: number): Promise<boolean> {
     try {
-      const response = await pinnedFetch(`https://${address}/api/v1/health`, { signal: AbortSignal.timeout(timeoutMs) }, this.dispatcher)
+      // With the key: a computer that asks for one answers health only with it. The connection is pinned first.
+      const response = await pinnedFetch(
+        `https://${address}/api/v1/health`,
+        { headers: { Authorization: `Bearer ${this.device.apiKey}` }, signal: AbortSignal.timeout(timeoutMs) },
+        this.dispatcher,
+      )
       return response.ok && ((await response.json()) as { status?: string }).status === 'ok'
     } catch (err) {
       if (isPinMismatch(err) && address === this.device.address) throw pinMismatch()

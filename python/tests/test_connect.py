@@ -61,7 +61,8 @@ def test_connection_vectors():
 
 class Computer:
     """A Toskar Core on TLS with a certificate of its own, as a computer's API
-    listener is, counting the keys it's sent."""
+    listener is, counting the keys it's sent. It asks for a key, as a computer
+    that's connected devices does, so health answers only with one."""
 
     def __init__(self, pair_answer=None, record=None):
         self.keys = 0
@@ -96,7 +97,10 @@ class Computer:
                 if self.headers.get("Authorization"):
                     computer.keys += 1
                 if self.path == "/api/v1/health":
-                    self.answer(200, {"status": "ok"})
+                    if self.headers.get("Authorization"):
+                        self.answer(200, {"status": "ok"})
+                    else:
+                        self.answer(401, {"error": {"code": "UNAUTHORIZED", "message": "A key is needed"}})
                 elif record is not None and self.path.endswith("/record"):
                     computer.tokens.append(self.headers.get("Authorization", ""))
                     self.answer(200, record(), "application/octet-stream")
@@ -185,7 +189,8 @@ def test_another_certificate_never_sees_the_key(computers):
 def test_home_first(computers):
     c = computers()
     toskar = Toskar(device=Device(c.address, "tk_device", c.pin))
-    assert toskar.api.list_models() == [] and toskar.path == "home" and c.keys == 1
+    # The health check and the call.
+    assert toskar.api.list_models() == [] and toskar.path == "home" and c.keys == 2
 
 
 def test_away_through_the_record(computers):
