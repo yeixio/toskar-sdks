@@ -21,7 +21,10 @@ Homepage = "https://toskar.ai/developers"
 Repository = "https://github.com/yeixio/toskar-sdks"
 
 [project.optional-dependencies]
+# Reaching a paired computer from anywhere: opening its address record.
+anywhere = ["cryptography>=42"]
 dev = [
+  "cryptography==50.0.2",
   "datamodel-code-generator==0.86.0",
   "black==26.10.1",
   "isort==8.0.1",

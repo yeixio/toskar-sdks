@@ -9,6 +9,22 @@
 """
 
 from ._client import AsyncToskar, ChatStreamEvent, Done, Token, Toskar
+from ._connect import (
+    TOSKAR_RELAY,
+    Device,
+    NotConfirmed,
+    PinMismatch,
+    Record,
+    RecordError,
+    Route,
+    Unreachable,
+    apair,
+    open_record,
+    pair,
+    pin_of,
+    route_id,
+    short_pin,
+)
 from ._errors import ToskarError
 from ._generated import models
 from ._generated.codes import CONTRACT_VERSION, ErrorCodes
@@ -16,6 +32,20 @@ from ._sse import ServerSentEvent, aread_events, read_events
 
 __all__ = [
     "CONTRACT_VERSION",
+    "TOSKAR_RELAY",
+    "Device",
+    "NotConfirmed",
+    "PinMismatch",
+    "Record",
+    "RecordError",
+    "Route",
+    "Unreachable",
+    "apair",
+    "open_record",
+    "pair",
+    "pin_of",
+    "route_id",
+    "short_pin",
     "AsyncToskar",
     "ChatStreamEvent",
     "Done",
