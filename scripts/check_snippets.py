@@ -133,6 +133,10 @@ def go_program(s: Snippet, runnable: bool) -> str:
         return s.code
     imports = re.findall(r"^import (.+)$", s.code, re.M)
     body = re.sub(r"^import .+\n", "", s.code, flags=re.M)
+    # A fragment's variables are often there to show what a call answers;
+    # Go builds nothing with one unused.
+    declared = {n.strip() for m in re.finditer(r"^(\w+(?:\s*,\s*\w+)*)\s*:=", body, re.M) for n in m.group(1).split(",")}
+    body += "".join(f"\t_ = {n}\n" for n in sorted(declared - {"_"}))
     lines = ["package main", "", "import ("]
     lines += [f"\t{v}" if v.startswith(("toskar", '"')) else f'\t"{v}"' for v in GO_IMPORTS.values()]
     lines += [f"\t{i}" for i in imports if i not in GO_IMPORTS.values()]
