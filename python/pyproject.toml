@@ -23,8 +23,11 @@ Repository = "https://github.com/yeixio/toskar-sdks"
 [project.optional-dependencies]
 # Reaching a paired computer from anywhere: opening its address record.
 anywhere = ["cryptography>=42"]
+# Finding computers on the network (mDNS). zeroconf is LGPL-2.1, imported at run time only.
+discovery = ["zeroconf>=0.130"]
 dev = [
   "cryptography==50.0.2",
+  "zeroconf==0.151.5",
   "datamodel-code-generator==0.86.0",
   "black==26.10.1",
   "isort==8.0.1",

@@ -108,6 +108,17 @@ fmt.Println(c.Path()) // home, direct, or relay
 
 Every connection checks the computer's certificate before anything is sent. A different certificate stops with `toskar.ErrPinMismatch`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `c.Reconnect(ctx)` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
 
-## Not yet
+## Find computers on the network
 
-Finding computers on the network (mDNS) is coming next (toskar-core#666). For now, pair with the computer's address, as shown in Connect a device.
+Computers running Toskar announce themselves on the home network (mDNS, `_localai._tcp`). `discover.Find` lists them, so a person can pick one instead of typing an address:
+
+```go
+import "github.com/yeixio/toskar-sdks/go/discover"
+
+computers, err := discover.Find(ctx, 3*time.Second)
+for _, c := range computers {
+	fmt.Println(c.Name, c.Address)
+}
+```
+
+Pair with `c.Address`. When `c.OnNetwork` is false, the computer answers only on itself: tell the person to turn on Connect a device there, rather than that it's unreachable. A computer can advertise addresses this device can't reach, such as a container network's; `Address` is the first one that answers, and `Addresses` has them all.

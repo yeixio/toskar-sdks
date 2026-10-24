@@ -382,3 +382,83 @@ export class Toskar extends Base {
     return this.router.path
   }
 }
+
+// Finding computers on the network.
+
+/** A Toskar Core found on the network. */
+export type Computer = {
+  name: string
+  nodeId: string
+  version: string
+  /** The API's host:port, to pair with: the first of addresses that answers. */
+  address: string
+  /** Every host:port the computer advertised. A computer can advertise addresses this device can't reach, such as a container network's. */
+  addresses: string[]
+  /** False when the API answers only on that computer: say to turn on Connect a device there, rather than that it's unreachable. */
+  onNetwork: boolean
+}
+
+/** A computer from an mDNS answer, or null when it doesn't say where its API is. */
+export function computerOf(instance: string, addresses: string[], txt: Record<string, unknown>): Computer | null {
+  // The service's own port is for computers pairing with each other; the API's is in api_port.
+  const port = Number(txt.api_port)
+  if (!Number.isInteger(port) || port <= 0 || addresses.length === 0) return null
+  const ways = [...addresses.filter((a) => !a.includes(':')), ...addresses.filter((a) => a.includes(':'))].map((ip) =>
+    ip.includes(':') ? `[${ip}]:${port}` : `${ip}:${port}`,
+  )
+  return {
+    name: String(txt.name ?? '') || instance,
+    nodeId: String(txt.node_id ?? ''),
+    version: String(txt.version ?? ''),
+    address: ways[0],
+    addresses: ways,
+    onNetwork: String(txt.api_lan) !== 'false',
+  }
+}
+
+/** The first of addresses that takes a TCP connection, tried together; the first, when none does. */
+export async function reachable(addresses: string[]): Promise<string> {
+  if (addresses.length < 2) return addresses[0]
+  const { connect } = await import('node:net')
+  const tries = addresses.map(
+    (address) =>
+      new Promise<string>((resolve, reject) => {
+        const { host, port } = split(address)
+        const socket = connect({ host, port, timeout: 700 })
+        socket.once('connect', () => (socket.destroy(), resolve(address)))
+        socket.once('timeout', () => (socket.destroy(), reject(new Error('timeout'))))
+        socket.once('error', reject)
+      }),
+  )
+  return Promise.any(tries).catch(() => addresses[0])
+}
+
+/**
+ * Browses the network for computers running Toskar Core (_localai._tcp)
+ * and returns those that answered within timeoutMs, by name. Needs the
+ * optional bonjour-service package.
+ */
+export async function discover(timeoutMs = 3_000): Promise<Computer[]> {
+  let Bonjour: new () => {
+    find(opts: { type: string; protocol: 'tcp' }, onUp: (s: { name: string; addresses?: string[]; txt?: Record<string, unknown> }) => void): unknown
+    destroy(): void
+  }
+  try {
+    Bonjour = ((await import('bonjour-service')) as unknown as { Bonjour: typeof Bonjour }).Bonjour
+  } catch {
+    throw new Error('Finding computers on the network needs bonjour-service: npm install bonjour-service')
+  }
+  const found = new Map<string, Computer>()
+  const bonjour = new Bonjour()
+  try {
+    bonjour.find({ type: 'localai', protocol: 'tcp' }, (s) => {
+      const c = computerOf(s.name, s.addresses ?? [], s.txt ?? {})
+      if (c) found.set(c.nodeId + c.address, c)
+    })
+    await new Promise((resolve) => setTimeout(resolve, timeoutMs))
+  } finally {
+    bonjour.destroy()
+  }
+  const computers = await Promise.all([...found.values()].map(async (c) => ({ ...c, address: await reachable(c.addresses) })))
+  return computers.sort((a, b) => a.name.localeCompare(b.name))
+}
