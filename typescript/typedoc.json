@@ -1,0 +1,28 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts",
+    "src/node.ts"
+  ],
+  "tsconfig": "tsconfig.build.json",
+  "plugin": [
+    "typedoc-plugin-markdown",
+    "./scripts/typedoc-hide-generated.mjs"
+  ],
+  "out": "../reference/typescript",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "disableSources": true,
+  "hidePageHeader": true,
+  "hideBreadcrumbs": true,
+  "outputFileStrategy": "modules",
+  "entryFileName": "README.md",
+  "useCodeBlocks": true,
+  "parametersFormat": "table",
+  "gitRevision": "main",
+  "validation": {
+    "notExported": false
+  }
+}

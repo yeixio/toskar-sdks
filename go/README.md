@@ -6,6 +6,8 @@ The official Go SDK for [Toskar](https://toskar.ai). It needs Go 1.24 or later.
 go get github.com/yeixio/toskar-sdks/go
 ```
 
+Every class, function, and type: [the reference](../reference/go/README.md).
+
 ## Quick start
 
 ```go
