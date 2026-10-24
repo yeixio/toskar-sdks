@@ -167,9 +167,10 @@ def check_go(snippets: list[tuple[int, Snippet]], work: Path) -> dict[int, str]:
     r = subprocess.run(["go", "build", "-gcflags=-e", "./snippetcheck/..."], cwd=ROOT / "go",
                        capture_output=True, text=True)
     # A fragment's variables may be there to show what a call answers.
+    # Go also says what it downloads, on a runner without the modules yet.
     out = "\n".join(line for line in (r.stdout + r.stderr).splitlines()
-                    if "declared and not used" not in line and not line.startswith("# "))
-    return errors_by_file(out, files, 1 if out.strip() else 0)
+                    if "declared and not used" not in line and not line.startswith(("# ", "go: downloading ")))
+    return errors_by_file(out, files, r.returncode if out.strip() else 0)
 
 
 def errors_by_file(output: str, files: dict[int, Path], code: int) -> dict[int, str]:
