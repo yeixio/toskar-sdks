@@ -60,10 +60,15 @@ jobs:
         working-directory: go
     steps:
       - uses: actions/checkout@v5
+      # The generator needs a newer Go than the module's minimum.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: The generated code matches the spec
+        run: go generate ./... && git diff --exit-code api codes.go
+      # Then vet and test with the oldest Go the module supports.
       - uses: actions/setup-go@v6
         with:
           go-version-file: go/go.mod
-      - name: The generated code matches the spec
-        run: go generate ./... && git diff --exit-code api codes.go
       - run: go vet ./...
       - run: go test ./...

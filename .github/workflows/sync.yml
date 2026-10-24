@@ -45,7 +45,7 @@ jobs:
       - if: steps.which.outputs.ref != ''
         uses: actions/setup-go@v6
         with:
-          go-version-file: go/go.mod
+          go-version: stable
       - if: steps.which.outputs.ref != ''
         run: npm ci && (cd typescript && npm ci) && pip install -e "python[dev]"
       - if: steps.which.outputs.ref != ''
