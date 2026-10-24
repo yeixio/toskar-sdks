@@ -19,7 +19,9 @@ type APIError struct {
 	Details map[string]any
 }
 
-func (e *APIError) Error() string { return fmt.Sprintf("toskar: %s (%d %s)", e.Message, e.Status, e.Code) }
+func (e *APIError) Error() string {
+	return fmt.Sprintf("toskar: %s (%d %s)", e.Message, e.Status, e.Code)
+}
 
 // errorFrom is the error a response body describes, or a generic one for a
 // body that isn't Toskar's.
@@ -86,4 +88,3 @@ func bodyOf(r any) []byte {
 	}
 	return nil
 }
-

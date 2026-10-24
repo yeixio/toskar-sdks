@@ -89,10 +89,25 @@ for e, err := range c.Events(ctx) { // until ctx is done
 
 Safe requests (GET, HEAD, OPTIONS) that fail to connect, or that Toskar answers with 502, 503, or 504, are retried twice with backoff. A chat is never retried, since it could answer twice. Each request waits 60 seconds for its answer to start, and a streamed answer then runs for as long as it takes. Change these with `WithRetries` and `WithTimeout`, or bring your own client with `WithHTTP`.
 
+## Pairing, as the Toskar apps do
+
+An app can pair as a device, with the code **Connect a device** shows on the computer, instead of using an API key. It then reaches its computer at home and, when the computer has access from anywhere, directly or through its relay, always pinned to the computer's own certificate ([how it works](https://github.com/yeixio/toskar-core/blob/main/docs/connecting.md)).
+
+```go
+// On the computer's network, with the code it shows:
+device, err := toskar.Pair(ctx, "192.168.1.20:7331", "123456", "Kitchen tablet", func(short string) bool {
+	// Show short, such as 9B80-D9D9, and ask whether the computer shows the same.
+	return askThePerson(short)
+})
+// Save device, as a password is saved: its key and route are secrets.
+
+c, err := toskar.New(toskar.WithDevice(*device))
+models, err := toskar.Data(c.ListModelsWithResponse(ctx))
+fmt.Println(c.Path()) // home, direct, or relay
+```
+
+Every connection checks the computer's certificate before anything is sent. A different certificate stops with `toskar.ErrPinMismatch`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `c.Reconnect(ctx)` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
+
 ## Not yet
 
-- Pairing with a short code from Connect a device.
-- Pinning a computer's certificate over its local-network HTTPS.
-- Reaching it from anywhere through the relay, as the Toskar apps do.
-
-They're coming next (toskar-core#666). For now, use an API key on the home network, or this computer's loopback.
+Finding computers on the network (mDNS) is coming next (toskar-core#666). For now, pair with the computer's address, as shown in Connect a device.
