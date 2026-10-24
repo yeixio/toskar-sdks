@@ -1,0 +1,58 @@
+name: conformance
+
+# Every SDK runs the same cases (conformance/run.py) against a throwaway
+# Toskar Core built from toskar-core: chat, streaming, events, files,
+# errors, and pairing with a pinned certificate. Core chats with a
+# scripted model, so no model is downloaded.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Core changes too: each night against its main.
+  schedule:
+    - cron: "41 9 * * *"
+  workflow_dispatch:
+    inputs:
+      core_ref:
+        description: The toskar-core branch, tag, or commit to run against
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: yeixio/toskar-core
+          ref: ${{ inputs.core_ref || 'main' }}
+          path: core
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: core/go.mod
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Build Core
+        working-directory: core
+        env:
+          CGO_ENABLED: "0"
+        run: go build -o "$RUNNER_TEMP/toskar" ./cmd/daemon
+      - name: Build the SDKs
+        run: |
+          (cd go && go build -o "$RUNNER_TEMP/toskar-conformance-go" ./cmd/toskar-conformance)
+          python -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install -q "./python[anywhere]"
+          (cd typescript && npm ci && npm run build)
+      - name: Run the cases
+        run: |
+          python conformance/run.py --core "$RUNNER_TEMP/toskar" \
+            --program "go=$RUNNER_TEMP/toskar-conformance-go" \
+            --program "python=$RUNNER_TEMP/venv/bin/python python/conformance.py" \
+            --program "node=node typescript/conformance.mjs"
