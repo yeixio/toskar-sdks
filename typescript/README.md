@@ -10,6 +10,7 @@ Every class, function, and type: [the reference](../reference/typescript/README.
 
 ## Quick start
 
+<!-- snippet: run -->
 ```ts
 import { Toskar } from 'toskar'
 
@@ -32,6 +33,7 @@ console.log(answer.content)
 
 `toskar.api` reaches every route of the API, with request and answer types from Toskar Core's spec. `unwrap` returns the data, or throws the error:
 
+<!-- snippet: run -->
 ```ts
 import { Toskar, unwrap, type Schemas } from 'toskar'
 
