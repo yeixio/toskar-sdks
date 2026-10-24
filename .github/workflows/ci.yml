@@ -75,3 +75,17 @@ jobs:
           go-version-file: go/go.mod
       - run: go vet ./...
       - run: go test ./...
+
+  # The conformance image toskar-core's outside-network check runs every SDK from.
+  conformance:
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -f conformance/Dockerfile -t toskar-conformance .
+      - name: Each program answers
+        run: |
+          for sdk in go python node; do
+            out=$(docker run --rm toskar-conformance toskar-conformance-$sdk call /missing.json || true)
+            echo "$sdk: $out"
+            echo "$out" | grep -q '"code"'
+          done
