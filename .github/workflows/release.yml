@@ -123,7 +123,15 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "Toskar SDKs ${{ needs.check.outputs.version }}"
+        run: |
+          contract=$(sed -n -E 's/^export const CONTRACT_VERSION = .([0-9.]+).*/\1/p' typescript/src/generated/contract.ts)
+          core=$(sed -n -E 's/^ref: (.*)/\1/p' spec/SOURCE)
+          [[ "$core" =~ ^[0-9a-f]{40}$ ]] && core="commit ${core:0:7}"
+          printf 'Built for the client contract %s, from Toskar Core %s. They work with any Toskar Core of contract major version %s; an older Core may lack newer routes and fields.\n\n' \
+            "$contract" "$core" "${contract%%.*}" > notes.md
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --notes-file notes.md \
+            --title "Toskar SDKs ${{ needs.check.outputs.version }}"

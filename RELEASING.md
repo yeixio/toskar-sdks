@@ -21,7 +21,7 @@ One tag publishes every SDK at one version: `v0.2.0` puts `toskar` 0.2.0 on PyPI
 
 To rehearse, run the release workflow by hand (Actions → release → Run workflow): it builds and checks both packages, and publishes nothing.
 
-Versions: 0.x while the SDKs are in preview. Each release names the client contract it was built for (`CONTRACT_VERSION`), so a release after a Core sync that changes the contract's minor version is a minor release here too.
+**Versions are the SDKs' own,** not Toskar Core's: many Core releases don't change the API, and the SDKs have fixes of their own. What says which Core an SDK works with is the client contract. Each release names the contract it was built for (`CONTRACT_VERSION`, and the release notes), and works with any Core of that contract's major version; an older Core may lack newer routes and fields. They're 0.x while the SDKs are in preview. A release after a Core sync that changes the contract's minor version is a minor release here too.
 
 ## Setting up the registries, once
 
