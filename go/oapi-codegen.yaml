@@ -1,0 +1,12 @@
+# oapi-codegen settings for the Go SDK: models and a client for every
+# operation, in one generated file.
+package: api
+output: api/generated.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: true
+  nullable-type: false
+compatibility:
+  always-prefix-enum-values: true

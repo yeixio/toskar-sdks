@@ -52,3 +52,18 @@ jobs:
         working-directory: python
       - run: python -m pytest -q
         working-directory: python
+
+  go:
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+      - name: The generated code matches the spec
+        run: go generate ./... && git diff --exit-code api codes.go
+      - run: go vet ./...
+      - run: go test ./...
