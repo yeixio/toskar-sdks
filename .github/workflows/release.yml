@@ -1,0 +1,129 @@
+name: release
+
+# A tag vX.Y.Z on main publishes every SDK at that version (RELEASING.md):
+# Python to PyPI and TypeScript to npm, both by trusted publishing (no
+# stored token once set up) with provenance; and Go by tagging go/vX.Y.Z,
+# as a module in a subfolder needs. Then a GitHub release.
+#
+# Run it by hand to rehearse: it builds both packages and checks them, and
+# publishes nothing.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: The version, and that every package has it
+        id: version
+        run: |
+          npm_version=$(node -p "require('./typescript/package.json').version")
+          py_version=$(sed -n -E 's/^version = "(.*)"/\1/p' python/pyproject.toml)
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME isn't on main"; exit 1; }
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            version="$npm_version"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          [ "$npm_version" = "$version" ] && [ "$py_version" = "$version" ] || {
+            echo "::error::the tag says $version; typescript/package.json says $npm_version and python/pyproject.toml $py_version (scripts/set-version.sh $version)"
+            exit 1
+          }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  python:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # PyPI's trusted publishing
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Build
+        run: |
+          cp LICENSE python/
+          python -m pip install -q build==1.6.1 twine==7.0.0
+          python -m build python
+          python -m twine check --strict python/dist/*
+      - if: needs.check.outputs.publish == 'true'
+        uses: pypa/gh-action-pypi-publish@v1.14.2
+        with:
+          packages-dir: python/dist
+
+  typescript:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write  # npm's trusted publishing, and provenance
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5 or later.
+      - run: npm install -g npm@11.21.0
+      - name: Build
+        working-directory: typescript
+        run: |
+          cp ../LICENSE .
+          npm ci
+          npm run build
+          npm publish --dry-run --access public
+      - if: needs.check.outputs.publish == 'true'
+        working-directory: typescript
+        env:
+          # Only for the first publish, before the package has a trusted
+          # publisher on npmjs.com; empty after, and npm uses this workflow's
+          # identity instead (RELEASING.md).
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+
+  go:
+    needs: check
+    if: needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # the go/vX.Y.Z tag
+    steps:
+      - uses: actions/checkout@v5
+      - name: Tag the Go module
+        run: |
+          tag="go/v${{ needs.check.outputs.version }}"
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "$tag"
+          # Ask the Go proxy for it, so pkg.go.dev lists it soon.
+          curl -fsS "https://proxy.golang.org/github.com/yeixio/toskar-sdks/go/@v/v${{ needs.check.outputs.version }}.info" || true
+
+  release:
+    needs: [check, python, typescript, go]
+    if: needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "Toskar SDKs ${{ needs.check.outputs.version }}"

@@ -6,7 +6,7 @@ The official Python SDK for [Toskar](https://toskar.ai), sync and async. It work
 pip install toskar
 ```
 
-Every class, function, and type: [the reference](../reference/python/README.md).
+Every class, function, and type: [the reference](https://github.com/yeixio/toskar-sdks/blob/main/reference/python/README.md).
 
 ## Quick start
 

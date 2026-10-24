@@ -6,7 +6,7 @@ The official TypeScript and JavaScript SDK for [Toskar](https://toskar.ai). It w
 npm install toskar
 ```
 
-Every class, function, and type: [the reference](../reference/typescript/README.md).
+Every class, function, and type: [the reference](https://github.com/yeixio/toskar-sdks/blob/main/reference/typescript/README.md).
 
 ## Quick start
 
