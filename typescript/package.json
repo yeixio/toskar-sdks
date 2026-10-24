@@ -4,15 +4,31 @@
   "description": "The official TypeScript and JavaScript SDK for Toskar: local AI across your computers.",
   "license": "Apache-2.0",
   "homepage": "https://toskar.ai/developers",
-  "repository": { "type": "git", "url": "git+https://github.com/yeixio/toskar-sdks.git", "directory": "typescript" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yeixio/toskar-sdks.git",
+    "directory": "typescript"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    }
   },
-  "files": ["dist", "README.md"],
-  "engines": { "node": ">=18" },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "sideEffects": false,
   "scripts": {
     "generate": "openapi-typescript ../spec/openapi.sdk.json -o src/generated/api.ts && node scripts/codes.mjs",
@@ -21,7 +37,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "openapi-fetch": "0.17.0"
+    "openapi-fetch": "0.17.0",
+    "undici": "6.29.0"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
