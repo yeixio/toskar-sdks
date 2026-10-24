@@ -12,6 +12,7 @@ on:
         required: false
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -69,3 +70,5 @@ jobs:
           git push -f origin "$branch"
           gh pr create --base main --head "$branch" --title "Sync the SDKs with Toskar Core $ref" \
             --body "Regenerated from Toskar Core $ref's API spec and error codes (\`scripts/sync-spec.sh $ref\`)." || true
+          # Its checks run on the branch's commit, so they show on the PR.
+          gh workflow run ci.yml --ref "$branch"
