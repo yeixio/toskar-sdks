@@ -5,7 +5,7 @@ Official packages for building on [Toskar](https://toskar.ai): local AI that run
 | Language | Package | Folder | Status |
 | --- | --- | --- | --- |
 | TypeScript and JavaScript | `toskar` on npm | [typescript/](typescript) | Preview |
-| Python | `toskar` on PyPI | python/ | Next |
+| Python | `toskar` on PyPI | [python/](python) | Preview |
 | Go | `github.com/yeixio/toskar-sdks/go` | go/ | Planned |
 | Swift, Kotlin/Java, C#/.NET, Rust | | | Later |
 
