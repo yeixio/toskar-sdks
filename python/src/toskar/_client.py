@@ -13,6 +13,7 @@ from typing import Any, Literal, Union
 import httpx
 from pydantic import BaseModel, TypeAdapter
 
+from ._connect import Device, Path, _AsyncRouter, _Router
 from ._errors import ToskarError
 from ._generated import models
 from ._generated.codes import CONTRACT_VERSION
@@ -143,11 +144,32 @@ class Toskar:
         timeout: float | None = 60.0,
         headers: dict[str, str] | None = None,
         http_client: httpx.Client | None = None,
+        device: Device | None = None,
     ) -> None:
+        if device is not None:
+            base_url, api_key = f"https://{device.address}", device.api_key
         self._options = _Options(base_url, api_key, retries, timeout, headers)
         self.base_url = self._options.base_url
-        self._http = http_client or httpx.Client()
+        # A paired device (pair()): pinned on every connection, reaching its
+        # computer at home or away.
+        self._router = _Router(device, self._options.timeout) if device is not None else None
+        self._http = http_client or httpx.Client(transport=self._router)
         self.api = Api(self)
+
+    @property
+    def path(self) -> Path | None:
+        """How a paired device reaches its computer now: home, direct, or
+        relay; None before its first request, or without a device."""
+        return self._router.path if self._router else None
+
+    def reconnect(self) -> Path | None:
+        """Chooses the way in again, as after the network changed."""
+        if self._router is None:
+            return None
+        with self._router.lock:
+            self._router.way, self._router.path = None, None
+        self._router.current()
+        return self._router.path
 
     def __enter__(self) -> Toskar:
         return self
@@ -246,11 +268,29 @@ class AsyncToskar:
         timeout: float | None = 60.0,
         headers: dict[str, str] | None = None,
         http_client: httpx.AsyncClient | None = None,
+        device: Device | None = None,
     ) -> None:
+        if device is not None:
+            base_url, api_key = f"https://{device.address}", device.api_key
         self._options = _Options(base_url, api_key, retries, timeout, headers)
         self.base_url = self._options.base_url
-        self._http = http_client or httpx.AsyncClient()
+        self._router = _AsyncRouter(device, self._options.timeout) if device is not None else None
+        self._http = http_client or httpx.AsyncClient(transport=self._router)
         self.api = AsyncApi(self)
+
+    @property
+    def path(self) -> Path | None:
+        """How a paired device reaches its computer now."""
+        return self._router.path if self._router else None
+
+    async def reconnect(self) -> Path | None:
+        """Chooses the way in again, as after the network changed."""
+        if self._router is None:
+            return None
+        async with self._router.lock:
+            self._router.way, self._router.path = None, None
+        await self._router.current()
+        return self._router.path
 
     async def __aenter__(self) -> AsyncToskar:
         return self
