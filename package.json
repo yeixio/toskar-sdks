@@ -1,0 +1,12 @@
+{
+  "name": "toskar-sdks-tools",
+  "private": true,
+  "description": "Syncs and normalizes Toskar Core's API spec for the SDKs.",
+  "type": "module",
+  "scripts": {
+    "normalize": "node scripts/normalize-spec.mjs"
+  },
+  "devDependencies": {
+    "yaml": "2.8.1"
+  }
+}

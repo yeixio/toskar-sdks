@@ -1,0 +1,61 @@
+name: sync
+
+# Each day, and on demand: when Toskar Core has a release newer than the
+# spec the SDKs were generated from, sync it, regenerate, and open a PR.
+on:
+  schedule:
+    - cron: "41 6 * * *"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: A core tag or commit to sync, in place of its latest release
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Which core to sync
+        id: which
+        run: |
+          ref="${{ inputs.ref }}"
+          if [ -z "$ref" ]; then
+            ref="$(gh release view --repo yeixio/toskar-core --json tagName --jq .tagName)"
+            # Only a release newer than what's synced: the pinned commit may be ahead of it.
+            have="$(sed -n 's/^commit: //p' spec/SOURCE)"
+            if gh api "repos/yeixio/toskar-core/compare/$ref...$have" --jq .status | grep -qE 'ahead|identical'; then
+              echo "spec/SOURCE already has $ref"; exit 0
+            fi
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+      - if: steps.which.outputs.ref != ''
+        run: npm ci && (cd typescript && npm ci)
+      - if: steps.which.outputs.ref != ''
+        name: Sync and regenerate
+        run: |
+          scripts/sync-spec.sh "${{ steps.which.outputs.ref }}"
+          (cd typescript && npm run generate)
+      - if: steps.which.outputs.ref != ''
+        name: Open a PR
+        run: |
+          ref="${{ steps.which.outputs.ref }}"
+          git diff --quiet && { echo "Nothing changed"; exit 0; }
+          branch="sync/core-$ref"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A spec typescript/src/generated
+          git commit -m "Sync the SDKs with Toskar Core $ref."
+          git push -f origin "$branch"
+          gh pr create --base main --head "$branch" --title "Sync the SDKs with Toskar Core $ref" \
+            --body "Regenerated from Toskar Core $ref's API spec and error codes (\`scripts/sync-spec.sh $ref\`)." || true
