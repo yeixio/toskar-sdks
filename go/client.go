@@ -32,6 +32,8 @@ type Client struct {
 	BaseURL string
 	http    *http.Client
 	headers http.Header
+	// router reaches a paired device's computer (WithDevice).
+	router *router
 }
 
 type options struct {
@@ -41,6 +43,7 @@ type options struct {
 	timeout time.Duration
 	http    *http.Client
 	headers http.Header
+	device  *Device
 }
 
 // An Option changes how New connects.
@@ -98,13 +101,21 @@ func New(opts ...Option) (*Client, error) {
 		transport.ResponseHeaderTimeout = o.timeout
 		hc = &http.Client{Transport: transport}
 	}
+	var r *router
+	next := transportOf(hc)
+	if o.device != nil {
+		// A paired device: pinned on every connection, reaching its computer
+		// at home or away (connect.go).
+		r = &router{device: o.device, next: pinnedTransport(o.device.Pin, o.timeout), relayClient: &http.Client{}, now: time.Now}
+		next = r
+	}
 	hc = &http.Client{
-		Transport:     &retrying{next: transportOf(hc), retries: o.retries},
+		Transport:     &retrying{next: next, retries: o.retries},
 		CheckRedirect: hc.CheckRedirect,
 		Jar:           hc.Jar,
 		Timeout:       hc.Timeout,
 	}
-	c := &Client{BaseURL: o.baseURL, http: hc, headers: o.headers}
+	c := &Client{BaseURL: o.baseURL, http: hc, headers: o.headers, router: r}
 	generated, err := api.NewClientWithResponses(o.baseURL, api.WithHTTPClient(hc), api.WithRequestEditorFn(func(_ context.Context, r *http.Request) error {
 		for name, values := range c.headers {
 			r.Header[name] = values
