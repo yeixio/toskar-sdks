@@ -10,6 +10,7 @@ Every class, function, and type: [the reference](../reference/go/README.md).
 
 ## Quick start
 
+<!-- snippet: run -->
 ```go
 package main
 
@@ -56,7 +57,11 @@ Package `api` is generated from Toskar Core's API spec. `Client` embeds its clie
 ```go
 models, err := toskar.Data(c.ListModelsWithResponse(ctx)) // []api.Model
 title := "Trip"
-chat, err := toskar.Data(c.CreateConversationWithResponse(ctx, api.CreateConversationJSONRequestBody{Title: &title}))
+r, err := c.CreateConversationWithResponse(ctx, api.CreateConversationJSONRequestBody{Title: &title})
+if err := toskar.Check(r, err); err != nil {
+	return err
+}
+chat := r.JSON201 // it answers 201 Created
 messages, err := toskar.Data(c.ListConversationMessagesWithResponse(ctx, chat.Id))
 ```
 

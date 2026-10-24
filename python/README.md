@@ -10,6 +10,7 @@ Every class, function, and type: [the reference](../reference/python/README.md).
 
 ## Quick start
 
+<!-- snippet: run -->
 ```python
 from toskar import Toskar
 
@@ -30,6 +31,7 @@ print(answer.content)
 
 For asyncio, use `AsyncToskar`, which has the same methods, awaited:
 
+<!-- snippet: run -->
 ```python
 import asyncio
 from toskar import AsyncToskar

@@ -49,7 +49,7 @@ jobs:
       - name: Build the SDKs
         run: |
           (cd go && go build -o "$RUNNER_TEMP/toskar-conformance-go" ./cmd/toskar-conformance)
-          python -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install -q "./python[anywhere]"
+          python -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install -q "./python[anywhere,dev]"
           (cd typescript && npm ci && npm run build)
       - name: Run the cases
         run: |
@@ -63,3 +63,7 @@ jobs:
         run: |
           python core/examples/test.py --core "$RUNNER_TEMP/toskar" --sdks . \
             --python "$RUNNER_TEMP/venv/bin/python" --go-sdk-from-checkout
+      # The READMEs' snippets: each type-checked against the SDK, and the
+      # quick starts run (scripts/check_snippets.py).
+      - name: Check the READMEs' snippets
+        run: python scripts/check_snippets.py --core "$RUNNER_TEMP/toskar" --python "$RUNNER_TEMP/venv/bin/python"
