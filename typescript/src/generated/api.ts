@@ -4506,48 +4506,7 @@ export interface components {
             status?: string;
             /** Format: date-time */
             last_used_at?: string;
-            /** @description Describes how well a model fits a node's hardware. */
-            fit?: {
-                model_id: string;
-                node_id?: string;
-                node_name?: string;
-                label: string;
-                /** Format: int64 */
-                expected_memory_bytes: number;
-                reason?: string;
-                est_tok_per_sec?: number;
-                tok_per_sec_measured?: boolean;
-                /**
-                 * Format: int64
-                 * @description `runtime_memory_low_bytes` and RuntimeMemoryHighBytes are a conservative range for weights, KV cache, and runtime buffers. They are not the file size alone.
-                 */
-                runtime_memory_low_bytes?: number;
-                /** Format: int64 */
-                runtime_memory_high_bytes?: number;
-                /** Format: int64 */
-                weight_bytes?: number;
-                quantization?: string;
-                approximate?: boolean;
-                context_tokens?: number;
-                /** Format: int64 */
-                total_memory_bytes?: number;
-                /** Format: int64 */
-                available_memory_bytes?: number;
-                /** @description unified | system */
-                memory_kind?: string;
-                headroom?: number;
-                install_allowed: boolean;
-                runtime_warning?: string;
-                recommendations?: string[];
-                gpu_note?: string;
-                known_to_run?: boolean;
-                /** @description What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751). */
-                short?: string;
-                /** Format: int64 */
-                need_bytes?: number;
-                /** Format: int64 */
-                have_bytes?: number;
-            };
+            fit?: components["schemas"]["ModelFit"];
             /** @description installed from browse-all / URL */
             dynamic?: boolean;
             /** @description `support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models. */
@@ -5817,61 +5776,13 @@ export interface components {
             community_chosen?: boolean;
         };
         /** @description Returned by GET /models/fit. */
-        ModelFit: {
+        ModelsFit: {
             node_id?: string;
             node_name?: string;
             /** Format: int64 */
             memory_bytes: number;
-            fits: {
-                model_id: string;
-                node_id?: string;
-                node_name?: string;
-                label: string;
-                /** Format: int64 */
-                expected_memory_bytes: number;
-                reason?: string;
-                est_tok_per_sec?: number;
-                tok_per_sec_measured?: boolean;
-                /**
-                 * Format: int64
-                 * @description `runtime_memory_low_bytes` and RuntimeMemoryHighBytes are a conservative range for weights, KV cache, and runtime buffers. They are not the file size alone.
-                 */
-                runtime_memory_low_bytes?: number;
-                /** Format: int64 */
-                runtime_memory_high_bytes?: number;
-                /** Format: int64 */
-                weight_bytes?: number;
-                quantization?: string;
-                approximate?: boolean;
-                context_tokens?: number;
-                /** Format: int64 */
-                total_memory_bytes?: number;
-                /** Format: int64 */
-                available_memory_bytes?: number;
-                /** @description unified | system */
-                memory_kind?: string;
-                headroom?: number;
-                install_allowed: boolean;
-                runtime_warning?: string;
-                recommendations?: string[];
-                gpu_note?: string;
-                known_to_run?: boolean;
-                /** @description What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751). */
-                short?: string;
-                /** Format: int64 */
-                need_bytes?: number;
-                /** Format: int64 */
-                have_bytes?: number;
-            }[];
-            winners: {
-                /** @description best_overall|fastest|best_quality|lowest_memory|coding|general|reasoning|vision */
-                category: string;
-                /** @description human label e.g. "Best coding" */
-                label: string;
-                model_id: string;
-                /** @description True when community ratings from hardware like this computer's moved this model ahead of the curated first choice. */
-                community_chosen?: boolean;
-            }[];
+            fits: components["schemas"]["ModelFit"][];
+            winners: components["schemas"]["CategoryWinner"][];
         };
         /** @description A Hugging Face browse-all hit (GGUF filtered). */
         BrowseModel: {
@@ -7231,6 +7142,58 @@ export interface components {
             }[];
             toskar?: components["schemas"]["ToskarExtension"];
             yggdrasil?: components["schemas"]["ToskarExtension"];
+        };
+        /** @description Describes how well a model fits a node's hardware. */
+        ModelFit: {
+            model_id: string;
+            node_id?: string;
+            node_name?: string;
+            label: string;
+            /** Format: int64 */
+            expected_memory_bytes: number;
+            reason?: string;
+            est_tok_per_sec?: number;
+            tok_per_sec_measured?: boolean;
+            /**
+             * Format: int64
+             * @description `runtime_memory_low_bytes` and RuntimeMemoryHighBytes are a conservative range for weights, KV cache, and runtime buffers. They are not the file size alone.
+             */
+            runtime_memory_low_bytes?: number;
+            /** Format: int64 */
+            runtime_memory_high_bytes?: number;
+            /** Format: int64 */
+            weight_bytes?: number;
+            quantization?: string;
+            approximate?: boolean;
+            context_tokens?: number;
+            /** Format: int64 */
+            total_memory_bytes?: number;
+            /** Format: int64 */
+            available_memory_bytes?: number;
+            /** @description unified | system */
+            memory_kind?: string;
+            headroom?: number;
+            install_allowed: boolean;
+            runtime_warning?: string;
+            recommendations?: string[];
+            gpu_note?: string;
+            known_to_run?: boolean;
+            /** @description What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751). */
+            short?: string;
+            /** Format: int64 */
+            need_bytes?: number;
+            /** Format: int64 */
+            have_bytes?: number;
+        };
+        /** @description A recommendation badge for Discover. */
+        CategoryWinner: {
+            /** @description best_overall|fastest|best_quality|lowest_memory|coding|general|reasoning|vision */
+            category: string;
+            /** @description human label e.g. "Best coding" */
+            label: string;
+            model_id: string;
+            /** @description True when community ratings from hardware like this computer's moved this model ahead of the curated first choice. */
+            community_chosen?: boolean;
         };
     };
     responses: never;
@@ -11255,7 +11218,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ModelFit"][];
+                    "application/json": components["schemas"]["ModelsFit"][];
                 };
             };
         };

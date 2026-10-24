@@ -30,3 +30,25 @@ jobs:
         working-directory: typescript
       - run: npm run build
         working-directory: typescript
+
+  python:
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    strategy:
+      matrix:
+        python: ["3.10", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[dev]"
+        working-directory: python
+      - name: The generated code matches the spec
+        # Generated with the newest Python, whose formatters' output is what's committed.
+        if: matrix.python == '3.14'
+        working-directory: python
+        run: python scripts/generate.py && git diff --exit-code src/toskar/_generated
+      - run: python -m mypy src/toskar --ignore-missing-imports
+        working-directory: python
+      - run: python -m pytest -q
+        working-directory: python
