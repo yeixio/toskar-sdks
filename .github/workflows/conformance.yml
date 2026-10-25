@@ -45,7 +45,9 @@ jobs:
         working-directory: core
         env:
           CGO_ENABLED: "0"
-        run: go build -o "$RUNNER_TEMP/toskar" ./cmd/daemon
+        # Not $RUNNER_TEMP/toskar: the Ask Toskar action keeps its Toskar's
+        # folder there, and a home runner can still have one.
+        run: go build -o "$RUNNER_TEMP/toskar-daemon" ./cmd/daemon
       - name: Build the SDKs
         run: |
           (cd go && go build -o "$RUNNER_TEMP/toskar-conformance-go" ./cmd/toskar-conformance)
@@ -53,7 +55,7 @@ jobs:
           (cd typescript && npm ci && npm run build)
       - name: Run the cases
         run: |
-          python conformance/run.py --core "$RUNNER_TEMP/toskar" \
+          python conformance/run.py --core "$RUNNER_TEMP/toskar-daemon" \
             --program "go=$RUNNER_TEMP/toskar-conformance-go" \
             --program "python=$RUNNER_TEMP/venv/bin/python python/conformance.py" \
             --program "node=node typescript/conformance.mjs"
@@ -61,9 +63,9 @@ jobs:
       # that breaks one fails before it merges.
       - name: Run Core's examples
         run: |
-          python core/examples/test.py --core "$RUNNER_TEMP/toskar" --sdks . \
+          python core/examples/test.py --core "$RUNNER_TEMP/toskar-daemon" --sdks . \
             --python "$RUNNER_TEMP/venv/bin/python" --go-sdk-from-checkout
       # The READMEs' snippets: each type-checked against the SDK, and the
       # quick starts run (scripts/check_snippets.py).
       - name: Check the READMEs' snippets
-        run: python scripts/check_snippets.py --core "$RUNNER_TEMP/toskar" --python "$RUNNER_TEMP/venv/bin/python"
+        run: python scripts/check_snippets.py --core "$RUNNER_TEMP/toskar-daemon" --python "$RUNNER_TEMP/venv/bin/python"
