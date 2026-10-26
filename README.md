@@ -24,7 +24,7 @@ Each SDK is generated from Toskar Core's API spec, [`api/openapi.yaml`](https://
 
 Releases: [RELEASING.md](RELEASING.md). One tag publishes every SDK at one version.
 
-Each SDK release names the client contract it was built for (`CONTRACT_VERSION`, now 1.56) and sends it as `Toskar-Client-Contract`. Toskar Core answers `426 CONTRACT_MISMATCH` to a client built for another major version. A Core with an older minor version may lack newer routes and fields.
+Each SDK release names the client contract it was built for (`CONTRACT_VERSION`, now 1.59) and sends it as `Toskar-Client-Contract`. Toskar Core answers `426 CONTRACT_MISMATCH` to a client built for another major version. A Core with an older minor version may lack newer routes and fields.
 
 ## License
 

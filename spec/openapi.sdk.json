@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Toskar Control Plane API",
-    "version": "1.56",
+    "version": "1.59",
     "description": "Local AI control plane API for Toskar, its OpenAI-compatible routes, and its MCP server. On the default loopback bind no key is needed. When the daemon listens on any other address, every /api/v1, /v1, and /mcp route needs Authorization: Bearer YOUR_API_KEY; /about and /source do not. Errors are {\"error\": {\"code\", \"message\", \"details\"}}. docs/api.md describes the behavior of each route."
   },
   "servers": [
@@ -4691,6 +4691,15 @@
                       }
                     }
                   },
+                  "stream_options": {
+                    "type": "object",
+                    "description": "include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)",
+                    "properties": {
+                      "include_usage": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
                   "toskar": {
                     "$ref": "#/components/schemas/AssistantOptions"
                   },
@@ -4718,26 +4727,61 @@
                 "x-events": {
                   "message": {
                     "type": "string",
-                    "description": "A chat.completion.chunk as JSON, and last [DONE], as OpenAI streams them"
+                    "description": "A chat.completion.chunk as JSON, and last [DONE], as OpenAI streams them. The answer's last chunk has its finish_reason; with stream_options.include_usage, a chunk with no choices and the usage follows; a failed stream sends an OpenAIError, then [DONE] (contract 1.58)"
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid JSON, no user message, or an invalid response_format"
+            "description": "Invalid JSON, no user message, an invalid response_format, or a picture Toskar can't use (INVALID_IMAGE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIError"
+                }
+              }
+            }
           },
           "401": {
-            "description": "An API key is required"
+            "description": "An API key is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIError"
+                }
+              }
+            }
           },
           "403": {
-            "description": "The API key does not allow what was asked"
+            "description": "The API key does not allow what was asked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIError"
+                }
+              }
+            }
           },
           "422": {
-            "description": "The answer did not fit response_format after repair and one retry"
+            "description": "The answer did not fit response_format after repair and one retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "The chat failed; the message says why"
+            "description": "The chat failed; the message says why",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIError"
+                }
+              }
+            }
           }
         }
       }
@@ -10924,6 +10968,14 @@
                 "properties": {
                   "name": {
                     "type": "string"
+                  },
+                  "permissions": {
+                    "type": "object",
+                    "description": "The key's permissions from the start, as PUT /api/v1/api-keys/{id}/permissions takes them (contract 1.57); the defaults when absent"
+                  },
+                  "preset": {
+                    "type": "string",
+                    "description": "ci makes a key for a CI job (#455, contract 1.57): chat only, with no memory, knowledge, or tools, and no choice of placement Known values: `ci`; others may be added."
                   }
                 }
               }
@@ -11527,6 +11579,10 @@
           "progress": {
             "type": "boolean",
             "description": "Stream progress and tool activity as chunks with an empty delta and the toskar and yggdrasil fields"
+          },
+          "fallback": {
+            "type": "boolean",
+            "description": "When the model the request names can't answer, let another model answer instead. Off unless set, a named model answers or the request fails; auto and profiles always fall back (#871, contract 1.59)"
           }
         }
       },
@@ -13558,6 +13614,10 @@
               "profile": {
                 "type": "string",
                 "description": "The one profile the key is pinned to (#345); absent lets each request choose"
+              },
+              "routes": {
+                "type": "string",
+                "description": "chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added."
               }
             }
           },
@@ -15638,6 +15698,14 @@
           "cached_tokens": {
             "type": "integer",
             "description": "Prompt tokens reused from the model's cache instead of processed again, when the runtime reports them."
+          },
+          "finish_reason": {
+            "type": "string",
+            "description": "Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say"
+          },
+          "reasoning_tokens": {
+            "type": "integer",
+            "description": "Tokens a reasoning model thought before it answered, part of completion_tokens (contract 1.58)"
           }
         }
       },
@@ -19756,16 +19824,24 @@
         "required": [
           "id",
           "object",
+          "created",
           "model",
-          "choices"
+          "choices",
+          "usage"
         ],
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "chatcmpl- and an id of its own (contract 1.58)"
           },
           "object": {
             "type": "string",
             "description": "Known values: `chat.completion`; others may be added."
+          },
+          "created": {
+            "type": "integer",
+            "format": "int64",
+            "description": "When it was made, in Unix seconds (contract 1.58)"
           },
           "model": {
             "type": "string"
@@ -19804,16 +19880,101 @@
                   }
                 },
                 "finish_reason": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "stop, or length when the answer reached its token limit and was cut short (contract 1.58)"
                 }
               }
             }
+          },
+          "usage": {
+            "$ref": "#/components/schemas/OpenAIUsage"
           },
           "toskar": {
             "$ref": "#/components/schemas/ToskarExtension"
           },
           "yggdrasil": {
             "$ref": "#/components/schemas/ToskarExtension"
+          }
+        }
+      },
+      "OpenAIUsage": {
+        "type": "object",
+        "description": "The tokens a chat completion took (contract 1.58), as OpenAI counts them",
+        "required": [
+          "prompt_tokens",
+          "completion_tokens",
+          "total_tokens",
+          "prompt_tokens_details",
+          "completion_tokens_details"
+        ],
+        "properties": {
+          "prompt_tokens": {
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "type": "integer"
+          },
+          "total_tokens": {
+            "type": "integer"
+          },
+          "prompt_tokens_details": {
+            "type": "object",
+            "required": [
+              "cached_tokens"
+            ],
+            "properties": {
+              "cached_tokens": {
+                "type": "integer",
+                "description": "Prompt tokens reused from the model's cache"
+              }
+            }
+          },
+          "completion_tokens_details": {
+            "type": "object",
+            "required": [
+              "reasoning_tokens"
+            ],
+            "properties": {
+              "reasoning_tokens": {
+                "type": "integer",
+                "description": "Tokens a reasoning model thought before it answered"
+              }
+            }
+          }
+        }
+      },
+      "OpenAIError": {
+        "type": "object",
+        "description": "An error from the OpenAI-compatible routes, in OpenAI's shape (contract 1.58): code is Toskar's stable code",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message",
+              "type",
+              "param",
+              "code"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "description": "invalid_request_error, authentication_error, permission_error, rate_limit_error, or server_error"
+              },
+              "param": {
+                "type": "string",
+                "nullable": true,
+                "description": "The request field the error is about, when there is one"
+              },
+              "code": {
+                "type": "string"
+              }
+            }
           }
         }
       },

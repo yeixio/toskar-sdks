@@ -106,6 +106,7 @@ except ToskarError as err:
 | `JOIN_UNREACHABLE` | Couldn't reach Toskar at {{server}}. Check the address, the firewall, and that Toskar is running there. |
 | `JOIN_WRONG_SERVER` | The computer at that address isn't the one the join command was made on. Nothing that proves the token was sent. |
 | `KEYS_FAILED` | Their keys couldn't be read: {{detail}} |
+| `KEY_CHAT_ONLY` | This key is for chat only, so it can't do this. Use another key from API Access. |
 | `KEY_NOT_FOUND` | They have no key with that id. |
 | `KNOWLEDGE_SOURCE_NOT_FOUND` | That knowledge source was removed. |
 | `KNOWLEDGE_SYNC_FAILED` |  |

@@ -31,7 +31,10 @@ class Api:
         """Create an API key; the secret is shown only in this response
 
         Body fields:
-            name"""
+            name
+            permissions: The key's permissions from the start, as PUT /api/v1/api-keys/{id}/permissions takes them (contract 1.57); the defaults when absent
+            preset: ci makes a key for a CI job (#455, contract 1.57): chat only, with no memory, knowledge, or tools, and no choice of placement Known values: `ci`; others may be added.
+        """
         return self._client._request(
             "POST", f"/api/v1/api-keys", query={}, body=body, answer=models.NewAPIKey, read="json"
         )
@@ -2509,6 +2512,7 @@ class Api:
             reasoning_effort: Known values: `low`, `medium`, `high`; others may be added.
             include_reasoning: A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default.
             response_format
+            stream_options: include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)
             toskar
             yggdrasil"""
         return self._client._request(
@@ -2546,7 +2550,10 @@ class AsyncApi:
         """Create an API key; the secret is shown only in this response
 
         Body fields:
-            name"""
+            name
+            permissions: The key's permissions from the start, as PUT /api/v1/api-keys/{id}/permissions takes them (contract 1.57); the defaults when absent
+            preset: ci makes a key for a CI job (#455, contract 1.57): chat only, with no memory, knowledge, or tools, and no choice of placement Known values: `ci`; others may be added.
+        """
         return await self._client._request(
             "POST", f"/api/v1/api-keys", query={}, body=body, answer=models.NewAPIKey, read="json"
         )
@@ -5074,6 +5081,7 @@ class AsyncApi:
             reasoning_effort: Known values: `low`, `medium`, `high`; others may be added.
             include_reasoning: A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default.
             response_format
+            stream_options: include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)
             toskar
             yggdrasil"""
         return await self._client._request(

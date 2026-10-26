@@ -254,6 +254,8 @@ const (
     ErrorCodeJoinWrongServer = "JOIN_WRONG_SERVER"
     // ErrorCodeKeysFailed: Their keys couldn't be read: {{detail}}
     ErrorCodeKeysFailed = "KEYS_FAILED"
+    // ErrorCodeKeyChatOnly: This key is for chat only, so it can't do this. Use another key from API Access.
+    ErrorCodeKeyChatOnly = "KEY_CHAT_ONLY"
     // ErrorCodeKeyNotFound: They have no key with that id.
     ErrorCodeKeyNotFound = "KEY_NOT_FOUND"
     // ErrorCodeKnowledgeSourceNotFound: That knowledge source was removed.
@@ -620,7 +622,7 @@ const (
 <a name="ContractVersion"></a>ContractVersion is the client contract this SDK was built for.
 
 ```go
-const ContractVersion = "1.56"
+const ContractVersion = "1.59"
 ```
 
 <a name="DefaultURL"></a>DefaultURL is this computer's Toskar Core, which needs no key.
