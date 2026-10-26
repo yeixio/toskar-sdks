@@ -4211,6 +4211,8 @@ export interface components {
             placement?: string;
             /** @description Stream progress and tool activity as chunks with an empty delta and the toskar and yggdrasil fields */
             progress?: boolean;
+            /** @description When the model the request names can't answer, let another model answer instead. Off unless set, a named model answers or the request fails; auto and profiles always fall back (#871, contract 1.59) */
+            fallback?: boolean;
         };
         RuntimeSample: {
             /** Format: date-time */
@@ -4991,6 +4993,8 @@ export interface components {
                 placement: boolean;
                 /** @description The one profile the key is pinned to (#345); absent lets each request choose */
                 profile?: string;
+                /** @description chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added. */
+                routes?: string;
             };
             /** @description device for a key a phone or other device got by pairing (#216); absent for one made in API Access Known values: `device`; others may be added. */
             kind?: string;
@@ -5756,6 +5760,10 @@ export interface components {
             eval_tok_per_sec: number;
             /** @description Prompt tokens reused from the model's cache instead of processed again, when the runtime reports them. */
             cached_tokens?: number;
+            /** @description Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say */
+            finish_reason?: string;
+            /** @description Tokens a reasoning model thought before it answered, part of completion_tokens (contract 1.58) */
+            reasoning_tokens?: number;
         };
         /** @description Explains a recommended model setup. */
         Recommendation: {
@@ -7125,9 +7133,15 @@ export interface components {
         };
         /** @description An OpenAI chat completion, for clients that speak OpenAI's API. */
         OpenAIChatCompletion: {
+            /** @description chatcmpl- and an id of its own (contract 1.58) */
             id: string;
             /** @description Known values: `chat.completion`; others may be added. */
             object: string;
+            /**
+             * Format: int64
+             * @description When it was made, in Unix seconds (contract 1.58)
+             */
+            created: number;
             model: string;
             choices: {
                 index: number;
@@ -7138,10 +7152,37 @@ export interface components {
                     /** @description What a reasoning model thought first, when the request asked for it */
                     reasoning_content?: string;
                 };
+                /** @description stop, or length when the answer reached its token limit and was cut short (contract 1.58) */
                 finish_reason: string;
             }[];
+            usage: components["schemas"]["OpenAIUsage"];
             toskar?: components["schemas"]["ToskarExtension"];
             yggdrasil?: components["schemas"]["ToskarExtension"];
+        };
+        /** @description The tokens a chat completion took (contract 1.58), as OpenAI counts them */
+        OpenAIUsage: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            total_tokens: number;
+            prompt_tokens_details: {
+                /** @description Prompt tokens reused from the model's cache */
+                cached_tokens: number;
+            };
+            completion_tokens_details: {
+                /** @description Tokens a reasoning model thought before it answered */
+                reasoning_tokens: number;
+            };
+        };
+        /** @description An error from the OpenAI-compatible routes, in OpenAI's shape (contract 1.58): code is Toskar's stable code */
+        OpenAIError: {
+            error: {
+                message: string;
+                /** @description invalid_request_error, authentication_error, permission_error, rate_limit_error, or server_error */
+                type: string;
+                /** @description The request field the error is about, when there is one */
+                param: string | null;
+                code: string;
+            };
         };
         /** @description Describes how well a model fits a node's hardware. */
         ModelFit: {
@@ -11024,6 +11065,10 @@ export interface operations {
                             };
                         };
                     };
+                    /** @description include_usage ends a stream with a chunk of no choices and the usage (contract 1.58) */
+                    stream_options?: {
+                        include_usage?: boolean;
+                    };
                     toskar?: components["schemas"]["AssistantOptions"];
                     yggdrasil?: components["schemas"]["AssistantOptions"];
                 };
@@ -11040,40 +11085,50 @@ export interface operations {
                     "text/event-stream": string;
                 };
             };
-            /** @description Invalid JSON, no user message, or an invalid response_format */
+            /** @description Invalid JSON, no user message, an invalid response_format, or a picture Toskar can't use (INVALID_IMAGE) */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OpenAIError"];
+                };
             };
             /** @description An API key is required */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OpenAIError"];
+                };
             };
             /** @description The API key does not allow what was asked */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OpenAIError"];
+                };
             };
             /** @description The answer did not fit response_format after repair and one retry */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OpenAIError"];
+                };
             };
             /** @description The chat failed; the message says why */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OpenAIError"];
+                };
             };
         };
     };
@@ -15576,6 +15631,10 @@ export interface operations {
             content: {
                 "application/json": {
                     name?: string;
+                    /** @description The key's permissions from the start, as PUT /api/v1/api-keys/{id}/permissions takes them (contract 1.57); the defaults when absent */
+                    permissions?: Record<string, never>;
+                    /** @description ci makes a key for a CI job (#455, contract 1.57): chat only, with no memory, knowledge, or tools, and no choice of placement Known values: `ci`; others may be added. */
+                    preset?: string;
                 };
             };
         };

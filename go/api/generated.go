@@ -42,6 +42,9 @@ type APIKey struct {
 		// Profile The one profile the key is pinned to (#345); absent lets each request choose
 		Profile *string `json:"profile,omitempty"`
 
+		// Routes chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added.
+		Routes *string `json:"routes,omitempty"`
+
 		// Tools Known values: `profile`, `read_only`, `none`; others may be added.
 		Tools string `json:"tools"`
 	} `json:"permissions"`
@@ -131,7 +134,10 @@ type Artifact struct {
 // AssistantOptions The assistant's own controls for an OpenAI-compatible request, sent as toskar (or yggdrasil, its name from before the rename)
 type AssistantOptions struct {
 	// Effort Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
-	Effort           *string   `json:"effort,omitempty"`
+	Effort *string `json:"effort,omitempty"`
+
+	// Fallback When the model the request names can't answer, let another model answer instead. Off unless set, a named model answers or the request fails; auto and profiles always fall back (#871, contract 1.59)
+	Fallback         *bool     `json:"fallback,omitempty"`
 	Knowledge        *bool     `json:"knowledge,omitempty"`
 	KnowledgeSources *[]string `json:"knowledge_sources,omitempty"`
 	Memory           *bool     `json:"memory,omitempty"`
@@ -1232,12 +1238,18 @@ type GenerationMetrics struct {
 	CompletionTokens int     `json:"completion_tokens"`
 	EvalMs           float32 `json:"eval_ms"`
 	EvalTokPerSec    float32 `json:"eval_tok_per_sec"`
-	PromptMs         float32 `json:"prompt_ms"`
-	PromptTokPerSec  float32 `json:"prompt_tok_per_sec"`
-	PromptTokens     int     `json:"prompt_tokens"`
-	TotalMs          float32 `json:"total_ms"`
-	TotalTokens      int     `json:"total_tokens"`
-	TtftMs           float32 `json:"ttft_ms"`
+
+	// FinishReason Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say
+	FinishReason    *string `json:"finish_reason,omitempty"`
+	PromptMs        float32 `json:"prompt_ms"`
+	PromptTokPerSec float32 `json:"prompt_tok_per_sec"`
+	PromptTokens    int     `json:"prompt_tokens"`
+
+	// ReasoningTokens Tokens a reasoning model thought before it answered, part of completion_tokens (contract 1.58)
+	ReasoningTokens *int    `json:"reasoning_tokens,omitempty"`
+	TotalMs         float32 `json:"total_ms"`
+	TotalTokens     int     `json:"total_tokens"`
+	TtftMs          float32 `json:"ttft_ms"`
 }
 
 // GenerationRun defines model for GenerationRun.
@@ -2050,6 +2062,9 @@ type MyDevice struct {
 		// Profile The one profile the key is pinned to (#345); absent lets each request choose
 		Profile *string `json:"profile,omitempty"`
 
+		// Routes chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added.
+		Routes *string `json:"routes,omitempty"`
+
 		// Tools Known values: `profile`, `read_only`, `none`; others may be added.
 		Tools string `json:"tools"`
 	} `json:"permissions"`
@@ -2362,6 +2377,7 @@ type OK struct {
 // OpenAIChatCompletion An OpenAI chat completion, for clients that speak OpenAI's API.
 type OpenAIChatCompletion struct {
 	Choices []struct {
+		// FinishReason stop, or length when the answer reached its token limit and was cut short (contract 1.58)
 		FinishReason string `json:"finish_reason"`
 		Index        int    `json:"index"`
 		Message      struct {
@@ -2374,6 +2390,11 @@ type OpenAIChatCompletion struct {
 			Role string `json:"role"`
 		} `json:"message"`
 	} `json:"choices"`
+
+	// Created When it was made, in Unix seconds (contract 1.58)
+	Created int64 `json:"created"`
+
+	// Id chatcmpl- and an id of its own (contract 1.58)
 	Id    string `json:"id"`
 	Model string `json:"model"`
 
@@ -2383,8 +2404,25 @@ type OpenAIChatCompletion struct {
 	// Toskar What Toskar adds to an OpenAI answer, under toskar (and yggdrasil, its name before): the answer's sources, steps, notice, and files.
 	Toskar *ToskarExtension `json:"toskar,omitempty"`
 
+	// Usage The tokens a chat completion took (contract 1.58), as OpenAI counts them
+	Usage OpenAIUsage `json:"usage"`
+
 	// Yggdrasil What Toskar adds to an OpenAI answer, under toskar (and yggdrasil, its name before): the answer's sources, steps, notice, and files.
 	Yggdrasil *ToskarExtension `json:"yggdrasil,omitempty"`
+}
+
+// OpenAIError An error from the OpenAI-compatible routes, in OpenAI's shape (contract 1.58): code is Toskar's stable code
+type OpenAIError struct {
+	Error struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+
+		// Param The request field the error is about, when there is one
+		Param *string `json:"param"`
+
+		// Type invalid_request_error, authentication_error, permission_error, rate_limit_error, or server_error
+		Type string `json:"type"`
+	} `json:"error"`
 }
 
 // OpenAIModel A model as OpenAI clients list them: auto (Toskar picks), profile:<id>, or a specialized AI.
@@ -2405,6 +2443,21 @@ type OpenAIModelList struct {
 
 	// Object Known values: `list`; others may be added.
 	Object string `json:"object"`
+}
+
+// OpenAIUsage The tokens a chat completion took (contract 1.58), as OpenAI counts them
+type OpenAIUsage struct {
+	CompletionTokens        int `json:"completion_tokens"`
+	CompletionTokensDetails struct {
+		// ReasoningTokens Tokens a reasoning model thought before it answered
+		ReasoningTokens int `json:"reasoning_tokens"`
+	} `json:"completion_tokens_details"`
+	PromptTokens        int `json:"prompt_tokens"`
+	PromptTokensDetails struct {
+		// CachedTokens Prompt tokens reused from the model's cache
+		CachedTokens int `json:"cached_tokens"`
+	} `json:"prompt_tokens_details"`
+	TotalTokens int `json:"total_tokens"`
 }
 
 // PairedDevice A newly connected device's key, shown once, with the certificate to pin from now on (#213) and, when this computer has one, its route (#456).
@@ -3483,6 +3536,12 @@ type VisitorLink struct {
 // CreateAPIKeyJSONBody defines parameters for CreateAPIKey.
 type CreateAPIKeyJSONBody struct {
 	Name *string `json:"name,omitempty"`
+
+	// Permissions The key's permissions from the start, as PUT /api/v1/api-keys/{id}/permissions takes them (contract 1.57); the defaults when absent
+	Permissions *map[string]interface{} `json:"permissions,omitempty"`
+
+	// Preset ci makes a key for a CI job (#455, contract 1.57): chat only, with no memory, knowledge, or tools, and no choice of placement Known values: `ci`; others may be added.
+	Preset *string `json:"preset,omitempty"`
 }
 
 // SetAPIKeyPermissionsJSONBody defines parameters for SetAPIKeyPermissions.
@@ -4369,6 +4428,11 @@ type OpenaiChatCompletionsJSONBody struct {
 		Type *string `json:"type,omitempty"`
 	} `json:"response_format,omitempty"`
 	Stream *bool `json:"stream,omitempty"`
+
+	// StreamOptions include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)
+	StreamOptions *struct {
+		IncludeUsage *bool `json:"include_usage,omitempty"`
+	} `json:"stream_options,omitempty"`
 
 	// Temperature For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
 	Temperature *float32 `json:"temperature,omitempty"`
@@ -40971,11 +41035,46 @@ type OpenaiChatCompletionsResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *OpenAIChatCompletion
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *OpenAIError
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *OpenAIError
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *OpenAIError
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *OpenAIError
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *OpenAIError
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r OpenaiChatCompletionsResponse) GetJSON200() *OpenAIChatCompletion {
 	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r OpenaiChatCompletionsResponse) GetJSON400() *OpenAIError {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r OpenaiChatCompletionsResponse) GetJSON401() *OpenAIError {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r OpenaiChatCompletionsResponse) GetJSON403() *OpenAIError {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r OpenaiChatCompletionsResponse) GetJSON422() *OpenAIError {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r OpenaiChatCompletionsResponse) GetJSON500() *OpenAIError {
+	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
@@ -54340,20 +54439,40 @@ func ParseOpenaiChatCompletionsResponse(rsp *http.Response) (*OpenaiChatCompleti
 		}
 		response.JSON200 = &dest
 
-	case rsp.StatusCode == 400:
-		break // No content-type
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest OpenAIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
-	case rsp.StatusCode == 401:
-		break // No content-type
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest OpenAIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
-	case rsp.StatusCode == 403:
-		break // No content-type
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest OpenAIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
-	case rsp.StatusCode == 422:
-		break // No content-type
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest OpenAIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
-	case rsp.StatusCode == 500:
-		break // No content-type
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest OpenAIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	case rsp.StatusCode == 200:
 		// Content-type (text/event-stream) unsupported
