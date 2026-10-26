@@ -193,6 +193,8 @@ export const ErrorCodes = {
   JOIN_WRONG_SERVER: 'JOIN_WRONG_SERVER',
   /** Their keys couldn't be read: {{detail}} */
   KEYS_FAILED: 'KEYS_FAILED',
+  /** This key is for chat only, so it can't do this. Use another key from API Access. */
+  KEY_CHAT_ONLY: 'KEY_CHAT_ONLY',
   /** They have no key with that id. */
   KEY_NOT_FOUND: 'KEY_NOT_FOUND',
   /** That knowledge source was removed. */

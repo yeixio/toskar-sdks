@@ -1379,6 +1379,10 @@ class APIKeyPermissions(BaseModel):
     """
     The one profile the key is pinned to (#345); absent lets each request choose
     """
+    routes: str | None = None
+    """
+    chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added.
+    """
 
 
 class APIKey(BaseModel):
@@ -2653,6 +2657,14 @@ class GenerationMetrics(BaseModel):
     cached_tokens: int | None = None
     """
     Prompt tokens reused from the model's cache instead of processed again, when the runtime reports them.
+    """
+    finish_reason: str | None = None
+    """
+    Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say
+    """
+    reasoning_tokens: int | None = None
+    """
+    Tokens a reasoning model thought before it answered, part of completion_tokens (contract 1.58)
     """
 
 
@@ -5168,26 +5180,76 @@ class OpenAIChatCompletionChoice(BaseModel):
     index: int
     message: OpenAIChatCompletionChoiceMessage
     finish_reason: str
-
-
-class OpenAIChatCompletion(BaseModel):
     """
-    An OpenAI chat completion, for clients that speak OpenAI's API.
+    stop, or length when the answer reached its token limit and was cut short (contract 1.58)
+    """
+
+
+class OpenAIUsagePromptTokensDetails(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    cached_tokens: int
+    """
+    Prompt tokens reused from the model's cache
+    """
+
+
+class OpenAIUsageCompletionTokensDetails(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    reasoning_tokens: int
+    """
+    Tokens a reasoning model thought before it answered
+    """
+
+
+class OpenAIUsage(BaseModel):
+    """
+    The tokens a chat completion took (contract 1.58), as OpenAI counts them
     """
 
     model_config = ConfigDict(
         extra='allow',
         populate_by_name=True,
     )
-    id: str
-    object: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    prompt_tokens_details: OpenAIUsagePromptTokensDetails
+    completion_tokens_details: OpenAIUsageCompletionTokensDetails
+
+
+class OpenAIErrorError(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    message: str
+    type: str
     """
-    Known values: `chat.completion`; others may be added.
+    invalid_request_error, authentication_error, permission_error, rate_limit_error, or server_error
     """
-    model: str
-    choices: list[OpenAIChatCompletionChoice]
-    toskar: ToskarExtension | None = None
-    yggdrasil: ToskarExtension | None = None
+    param: str
+    """
+    The request field the error is about, when there is one
+    """
+    code: str
+
+
+class OpenAIError(BaseModel):
+    """
+    An error from the OpenAI-compatible routes, in OpenAI's shape (contract 1.58): code is Toskar's stable code
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    error: OpenAIErrorError
 
 
 class ModelFit(BaseModel):
@@ -5898,6 +5960,34 @@ class CreatedDestination(BaseModel):
     )
     destination: NotificationDestination
     secret: str | None = None
+
+
+class OpenAIChatCompletion(BaseModel):
+    """
+    An OpenAI chat completion, for clients that speak OpenAI's API.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    id: str
+    """
+    chatcmpl- and an id of its own (contract 1.58)
+    """
+    object: str
+    """
+    Known values: `chat.completion`; others may be added.
+    """
+    created: int
+    """
+    When it was made, in Unix seconds (contract 1.58)
+    """
+    model: str
+    choices: list[OpenAIChatCompletionChoice]
+    usage: OpenAIUsage
+    toskar: ToskarExtension | None = None
+    yggdrasil: ToskarExtension | None = None
 
 
 class LiveFigures(BaseModel):

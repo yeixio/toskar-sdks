@@ -63,9 +63,11 @@ chat(request, init?): Promise<{
      completion_tokens: number;
      eval_ms: number;
      eval_tok_per_sec: number;
+     finish_reason?: string;
      prompt_ms: number;
      prompt_tok_per_sec: number;
      prompt_tokens: number;
+     reasoning_tokens?: number;
      total_ms: number;
      total_tokens: number;
      ttft_ms: number;
@@ -92,9 +94,11 @@ Asks once and waits for the whole answer.
      `completion_tokens`: `number`;
      `eval_ms`: `number`;
      `eval_tok_per_sec`: `number`;
+     `finish_reason?`: `string`;
      `prompt_ms`: `number`;
      `prompt_tok_per_sec`: `number`;
      `prompt_tokens`: `number`;
+     `reasoning_tokens?`: `number`;
      `total_ms`: `number`;
      `total_tokens`: `number`;
      `ttft_ms`: `number`;
@@ -423,7 +427,7 @@ Milliseconds to wait for an answer to start. Default 60000; 0 waits as long as i
 ### CONTRACT\_VERSION
 
 ```ts
-const CONTRACT_VERSION: "1.56" = '1.56';
+const CONTRACT_VERSION: "1.58" = '1.58';
 ```
 
 The client contract this SDK was built for.
@@ -1184,6 +1188,14 @@ readonly JOIN_WRONG_SERVER: "JOIN_WRONG_SERVER" = 'JOIN_WRONG_SERVER';
 ```
 
 The computer at that address isn't the one the join command was made on. Nothing that proves the token was sent.
+
+##### KEY\_CHAT\_ONLY
+
+```ts
+readonly KEY_CHAT_ONLY: "KEY_CHAT_ONLY" = 'KEY_CHAT_ONLY';
+```
+
+This key is for chat only, so it can't do this. Use another key from API Access.
 
 ##### KEY\_NOT\_FOUND
 

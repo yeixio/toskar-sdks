@@ -130,9 +130,11 @@ chat(request, init?): Promise<{
      completion_tokens: number;
      eval_ms: number;
      eval_tok_per_sec: number;
+     finish_reason?: string;
      prompt_ms: number;
      prompt_tok_per_sec: number;
      prompt_tokens: number;
+     reasoning_tokens?: number;
      total_ms: number;
      total_tokens: number;
      ttft_ms: number;
@@ -159,9 +161,11 @@ Asks once and waits for the whole answer.
      `completion_tokens`: `number`;
      `eval_ms`: `number`;
      `eval_tok_per_sec`: `number`;
+     `finish_reason?`: `string`;
      `prompt_ms`: `number`;
      `prompt_tok_per_sec`: `number`;
      `prompt_tokens`: `number`;
+     `reasoning_tokens?`: `number`;
      `total_ms`: `number`;
      `total_tokens`: `number`;
      `ttft_ms`: `number`;

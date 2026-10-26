@@ -3,7 +3,7 @@
 package toskar
 
 // ContractVersion is the client contract this SDK was built for.
-const ContractVersion = "1.56"
+const ContractVersion = "1.58"
 
 // The codes Toskar Core answers errors with, as APIError.Code. A newer
 // Core may answer with one this list doesn't have yet.
@@ -196,6 +196,8 @@ const (
 	ErrorCodeJoinWrongServer = "JOIN_WRONG_SERVER"
 	// ErrorCodeKeysFailed: Their keys couldn't be read: {{detail}}
 	ErrorCodeKeysFailed = "KEYS_FAILED"
+	// ErrorCodeKeyChatOnly: This key is for chat only, so it can't do this. Use another key from API Access.
+	ErrorCodeKeyChatOnly = "KEY_CHAT_ONLY"
 	// ErrorCodeKeyNotFound: They have no key with that id.
 	ErrorCodeKeyNotFound = "KEY_NOT_FOUND"
 	// ErrorCodeKnowledgeSourceNotFound: That knowledge source was removed.
