@@ -4,9 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
-  # The sync workflow starts CI on its branches this way: GitHub runs no
-  # workflows for a pull request opened with a workflow's own token.
   workflow_dispatch:
+  # The sync workflow runs CI on what it generated before publishing it.
+  workflow_call:
+    inputs:
+      ref:
+        description: The branch or commit to check
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -16,6 +21,8 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -44,6 +51,8 @@ jobs:
         python: ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
@@ -70,6 +79,8 @@ jobs:
         working-directory: go
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
       # The generator needs a newer Go than the module's minimum.
       - uses: actions/setup-go@v6
         with:
@@ -88,6 +99,8 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
       - run: docker build -f conformance/Dockerfile -t toskar-conformance .
       - name: Each program answers
         run: |

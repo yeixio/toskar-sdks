@@ -1,7 +1,13 @@
 name: sync
 
 # Each day, and on demand: when Toskar Core has a release newer than the
-# spec the SDKs were generated from, sync it, regenerate, and open a PR.
+# spec the SDKs were generated from, sync it and regenerate, onto a branch.
+# CI and the conformance cases (against that Core release) run on the
+# branch, and when they pass it goes to main with SYNC_DEPLOY_KEY, a write
+# deploy key on this repository: main needs an approved pull request,
+# except from a deploy key. Nothing is published until a release tag.
+# When a check fails, main moved meanwhile, or the key isn't set, it opens
+# a pull request instead.
 on:
   schedule:
     - cron: "41 6 * * *"
@@ -21,6 +27,11 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
     env:
       GH_TOKEN: ${{ github.token }}
+    outputs:
+      ref: ${{ steps.which.outputs.ref }}
+      branch: ${{ steps.push.outputs.branch }}
+      sha: ${{ steps.push.outputs.sha }}
+      base: ${{ steps.push.outputs.base }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -58,18 +69,91 @@ jobs:
           (cd go && go generate ./...)
           (cd typescript && npm run reference)
       - if: steps.which.outputs.ref != ''
-        name: Open a PR
+        id: push
+        name: Push the branch
         run: |
           ref="${{ steps.which.outputs.ref }}"
           git diff --quiet && { echo "Nothing changed"; exit 0; }
           branch="sync/core-$ref"
+          base="$(git rev-parse HEAD)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git add -A spec typescript/src/generated python/src/toskar/_generated go/api go/codes.go reference
           git commit -m "Sync the SDKs with Toskar Core $ref."
           git push -f origin "$branch"
-          gh pr create --base main --head "$branch" --title "Sync the SDKs with Toskar Core $ref" \
-            --body "Regenerated from Toskar Core $ref's API spec and error codes (\`scripts/sync-spec.sh $ref\`)." || true
-          # Its checks run on the branch's commit, so they show on the PR.
-          gh workflow run ci.yml --ref "$branch"
+          { echo "branch=$branch"; echo "sha=$(git rev-parse HEAD)"; echo "base=$base"; } >> "$GITHUB_OUTPUT"
+
+  ci:
+    needs: sync
+    if: needs.sync.outputs.branch != ''
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.sync.outputs.sha }}
+
+  conformance:
+    needs: sync
+    if: needs.sync.outputs.branch != ''
+    uses: ./.github/workflows/conformance.yml
+    with:
+      ref: ${{ needs.sync.outputs.sha }}
+      core_ref: ${{ needs.sync.outputs.ref }}
+
+  # Both passed: to main, if it hasn't moved since the sync started.
+  publish:
+    needs: [sync, ci, conformance]
+    if: needs.sync.outputs.branch != ''
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SYNC_DEPLOY_KEY: ${{ secrets.SYNC_DEPLOY_KEY }}
+      REF: ${{ needs.sync.outputs.ref }}
+      BRANCH: ${{ needs.sync.outputs.branch }}
+      SHA: ${{ needs.sync.outputs.sha }}
+      BASE: ${{ needs.sync.outputs.base }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.sync.outputs.sha }}
+          # The commit and its parent, main as it was, for the push.
+          fetch-depth: 2
+      - name: Publish to main
+        run: |
+          set -euo pipefail
+          main="$(git ls-remote origin refs/heads/main | cut -f1)"
+          why=""
+          if [ -z "$SYNC_DEPLOY_KEY" ]; then
+            why="SYNC_DEPLOY_KEY isn't set"
+          elif [ "$main" != "$BASE" ]; then
+            # What was checked was generated on another main; don't publish it on this one.
+            why="main moved while the checks ran"
+          else
+            key="$RUNNER_TEMP/sync-deploy-key"
+            (umask 077 && printf '%s\n' "$SYNC_DEPLOY_KEY" > "$key")
+            trap 'rm -f "$key"' EXIT
+            export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+            if git push "git@github.com:${GITHUB_REPOSITORY}.git" "$SHA:refs/heads/main"; then
+              git push -q origin --delete "$BRANCH" || true
+              echo "Published the sync with Toskar Core $REF to main"
+              exit 0
+            fi
+            why="the push to main was refused"
+          fi
+          echo "::warning::Opening a pull request instead: $why."
+          gh pr create --base main --head "$BRANCH" --title "Sync the SDKs with Toskar Core $REF" \
+            --body "Regenerated from Toskar Core $REF's API spec and error codes (\`scripts/sync-spec.sh $REF\`). CI and the conformance cases passed; it wasn't published to main because $why." || true
+
+  # A check failed: a pull request, for a person to look at.
+  propose:
+    needs: [sync, ci, conformance]
+    if: failure() && needs.sync.outputs.branch != ''
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REF: ${{ needs.sync.outputs.ref }}
+      BRANCH: ${{ needs.sync.outputs.branch }}
+    steps:
+      - name: Open a pull request
+        run: |
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" --title "Sync the SDKs with Toskar Core $REF" \
+            --body "Regenerated from Toskar Core $REF's API spec and error codes. **CI or the conformance cases failed** on it ($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID), so it wasn't published: the new Core may need a change in the SDKs' hand-written layer." || true
