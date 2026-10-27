@@ -17,6 +17,18 @@ on:
       core_ref:
         description: The toskar-core branch, tag, or commit to run against
         default: main
+  # The sync workflow runs these against the Core it synced, before
+  # publishing what it generated.
+  workflow_call:
+    inputs:
+      ref:
+        description: The branch or commit of the SDKs to run
+        type: string
+        default: ""
+      core_ref:
+        description: The toskar-core branch, tag, or commit to run against
+        type: string
+        default: main
 
 permissions:
   contents: read
@@ -27,6 +39,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/checkout@v5
         with:
           repository: yeixio/toskar-core

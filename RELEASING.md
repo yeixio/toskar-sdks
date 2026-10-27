@@ -60,3 +60,17 @@ Every release after that publishes by trusted publishing.
 - toskar.ai/developers installs with `npm install toskar` and `pip install toskar` instead of from git (the `INSTALL` and `PY_INSTALL` snippets in yeixio/toskar.ai `app/developers/page.tsx`).
 - Toskar Core's `examples/README.md` does the same.
 - `go get github.com/yeixio/toskar-sdks/go@v0.1.0` gets a version, not a commit.
+
+## Keeping up with Toskar Core
+
+The sync workflow (`.github/workflows/sync.yml`) runs each day. When Toskar Core has a newer release, it syncs the spec, regenerates the SDKs and their reference docs onto a `sync/core-<tag>` branch, and runs CI and the conformance cases there, against that Core release. When they pass, it publishes to main with the repository secret `SYNC_DEPLOY_KEY`, so no one has to approve it. main needs an approved pull request, except from a deploy key. Nothing reaches PyPI, npm, or Go until a release tag. If a check fails, if main moved meanwhile, or if the key isn't set, it opens a pull request instead.
+
+`SYNC_DEPLOY_KEY` is the private half of a deploy key with write access, titled "SDK sync workflow", on this repository only. To set it up or replace it:
+
+```sh
+ssh-keygen -t ed25519 -N '' -C "toskar-sdks sync" -f sync-key
+gh repo deploy-key add sync-key.pub --repo yeixio/toskar-sdks --allow-write --title "SDK sync workflow"
+gh secret set SYNC_DEPLOY_KEY --repo yeixio/toskar-sdks < sync-key
+rm sync-key sync-key.pub
+```
+
