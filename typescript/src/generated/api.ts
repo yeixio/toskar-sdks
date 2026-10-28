@@ -11051,7 +11051,7 @@ export interface operations {
                     max_tokens?: number;
                     /** @description OpenAI's newer name for max_tokens; wins when both are sent. */
                     max_completion_tokens?: number;
-                    /** @description Known values: `low`, `medium`, `high`; others may be added. */
+                    /** @description Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added. */
                     reasoning_effort?: string;
                     /** @description A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default. */
                     include_reasoning?: boolean;

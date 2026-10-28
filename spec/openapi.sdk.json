@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Toskar Control Plane API",
-    "version": "1.59",
+    "version": "1.60",
     "description": "Local AI control plane API for Toskar, its OpenAI-compatible routes, and its MCP server. On the default loopback bind no key is needed. When the daemon listens on any other address, every /api/v1, /v1, and /mcp route needs Authorization: Bearer YOUR_API_KEY; /about and /source do not. Errors are {\"error\": {\"code\", \"message\", \"details\"}}. docs/api.md describes the behavior of each route."
   },
   "servers": [
@@ -4664,7 +4664,7 @@
                   },
                   "reasoning_effort": {
                     "type": "string",
-                    "description": "Known values: `low`, `medium`, `high`; others may be added."
+                    "description": "Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added."
                   },
                   "include_reasoning": {
                     "type": "boolean",

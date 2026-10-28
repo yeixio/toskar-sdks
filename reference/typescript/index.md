@@ -427,7 +427,7 @@ Milliseconds to wait for an answer to start. Default 60000; 0 waits as long as i
 ### CONTRACT\_VERSION
 
 ```ts
-const CONTRACT_VERSION: "1.59" = '1.59';
+const CONTRACT_VERSION: "1.60" = '1.60';
 ```
 
 The client contract this SDK was built for.

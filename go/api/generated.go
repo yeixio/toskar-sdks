@@ -4416,7 +4416,7 @@ type OpenaiChatCompletionsJSONBody struct {
 	// Model auto, profile:<id>, sai:<slug>, or a model id
 	Model string `json:"model"`
 
-	// ReasoningEffort Known values: `low`, `medium`, `high`; others may be added.
+	// ReasoningEffort Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
 	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
 	ResponseFormat  *struct {
 		JsonSchema *struct {

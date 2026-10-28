@@ -3,7 +3,7 @@
 package toskar
 
 // ContractVersion is the client contract this SDK was built for.
-const ContractVersion = "1.59"
+const ContractVersion = "1.60"
 
 // The codes Toskar Core answers errors with, as APIError.Code. A newer
 // Core may answer with one this list doesn't have yet.

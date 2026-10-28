@@ -622,7 +622,7 @@ const (
 <a name="ContractVersion"></a>ContractVersion is the client contract this SDK was built for.
 
 ```go
-const ContractVersion = "1.59"
+const ContractVersion = "1.60"
 ```
 
 <a name="DefaultURL"></a>DefaultURL is this computer's Toskar Core, which needs no key.

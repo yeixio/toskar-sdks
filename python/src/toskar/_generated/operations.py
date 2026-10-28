@@ -2509,7 +2509,7 @@ class Api:
             temperature: For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
             max_tokens: The most tokens each answer-writing call may use. Left out, the model's default.
             max_completion_tokens: OpenAI's newer name for max_tokens; wins when both are sent.
-            reasoning_effort: Known values: `low`, `medium`, `high`; others may be added.
+            reasoning_effort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
             include_reasoning: A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default.
             response_format
             stream_options: include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)
@@ -5078,7 +5078,7 @@ class AsyncApi:
             temperature: For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
             max_tokens: The most tokens each answer-writing call may use. Left out, the model's default.
             max_completion_tokens: OpenAI's newer name for max_tokens; wins when both are sent.
-            reasoning_effort: Known values: `low`, `medium`, `high`; others may be added.
+            reasoning_effort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
             include_reasoning: A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default.
             response_format
             stream_options: include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)
