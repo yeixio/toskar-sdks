@@ -9,7 +9,8 @@ Official packages for building on [Toskar](https://toskar.ai): local AI that run
 | Go | `github.com/yeixio/toskar-sdks/go` | [go/](go) | Preview |
 | Swift | `https://github.com/yeixio/toskar-sdks`, product `Toskar` | [swift/](swift) | Preview |
 | Kotlin and Java | `ai.toskar:toskar` (Maven Central soon) | [kotlin/](kotlin) | Preview |
-| C#/.NET, Rust | | | Later |
+| Rust | `toskar` (crates.io soon) | [rust/](rust) | Preview |
+| C#/.NET | | | Later |
 
 Docs: [toskar.ai/developers](https://toskar.ai/developers), and the [reference](reference/README.md) for every class and function.
 
@@ -19,7 +20,7 @@ Each SDK is generated from Toskar Core's API spec, [`api/openapi.yaml`](https://
 
 - **The spec stays honest.** Core's tests check every response they see against it, and every named schema against the Go type it stands for. A route can't fall out of the spec.
 - **[`spec/`](spec)** is the copy the SDKs are generated from. `SOURCE` names the core release or commit, and `errors.json` holds the stable error codes. `openapi.sdk.json` is the spec with each enum's values moved into its description: the client contract may add values in a minor version, and an SDK must accept a value it doesn't know yet.
-- **The snippets work.** CI type-checks every code snippet in the READMEs against its SDK (Swift's on a Mac, Kotlin and Java's with Gradle), and runs the ones marked `<!-- snippet: run -->` against a throwaway Core (`scripts/check_snippets.py`). Toskar Core's examples run with each change too.
+- **The snippets work.** CI type-checks every code snippet in the READMEs against its SDK (Swift's on a Mac, Kotlin and Java's with Gradle, Rust's with cargo), and runs the ones marked `<!-- snippet: run -->` against a throwaway Core (`scripts/check_snippets.py`). Toskar Core's examples run with each change too.
 - **`scripts/sync-spec.sh <core tag>`** syncs it. The `sync` workflow does that each day and opens a pull request when Core has a newer release.
 
 ## Versions

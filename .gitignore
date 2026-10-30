@@ -23,3 +23,7 @@ kotlin/.kotlin/
 kotlin/build/
 kotlin/conformance/build/
 kotlin/.snippetcheck/
+
+# Rust
+rust/target/
+rust/.snippetcheck/

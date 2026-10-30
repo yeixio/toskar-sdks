@@ -1,0 +1,27 @@
+[package]
+name = "toskar"
+version = "0.3.0"
+edition = "2024"
+rust-version = "1.85"
+description = "The official Rust SDK for Toskar: local AI across your own computers."
+license = "Apache-2.0"
+repository = "https://github.com/yeixio/toskar-sdks"
+homepage = "https://toskar.ai/developers"
+documentation = "https://docs.rs/toskar"
+readme = "README.md"
+keywords = ["toskar", "ai", "llm", "local-ai", "sdk"]
+categories = ["api-bindings", "web-programming::http-client"]
+exclude = [".snippetcheck/", "scripts/"]
+
+[dependencies]
+bytes = "1.12"
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
+reqwest = { version = "0.13.5", features = ["stream"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+time = { version = "0.3.55", features = ["serde", "formatting", "parsing"] }
+tokio = { version = "1.54.1", features = ["time"] }
+
+[dev-dependencies]
+tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }
+wiremock = "0.6.5"
