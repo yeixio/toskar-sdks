@@ -137,7 +137,7 @@ jobs:
       - run: docker build -f conformance/Dockerfile -t toskar-conformance .
       - name: Each program answers
         run: |
-          for sdk in go python node; do
+          for sdk in go python node kotlin; do
             out=$(docker run --rm toskar-conformance toskar-conformance-$sdk call /missing.json || true)
             echo "$sdk: $out"
             echo "$out" | grep -q '"code"'

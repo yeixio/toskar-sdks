@@ -59,8 +59,15 @@ public class Toskar internal constructor(
     timeout: Duration,
     httpClient: OkHttpClient?,
     headers: Map<String, String>,
+    private val router: Router?,
+    owns: Boolean,
     env: (String) -> String?,
 ) : Closeable {
+    internal constructor(
+        url: String?, key: String?, retries: Int, timeout: Duration, httpClient: OkHttpClient?,
+        headers: Map<String, String>, env: (String) -> String?,
+    ) : this(url, key, retries, timeout, httpClient, headers, null, httpClient == null, env)
+
     @JvmOverloads
     public constructor(
         url: String? = null,
@@ -71,6 +78,35 @@ public class Toskar internal constructor(
         headers: Map<String, String> = emptyMap(),
     ) : this(url, key, retries, timeout, httpClient, headers, System::getenv)
 
+    /**
+     * Connects as a paired device: every connection pinned to its
+     * computer's certificate, at home when it answers, and otherwise directly
+     * or through its relay, from its address record.
+     */
+    @JvmOverloads
+    public constructor(device: Device, retries: Int = 2, timeout: Duration = Duration.ofSeconds(60)) :
+        this(device, retries, timeout, OkHttpClient())
+
+    internal constructor(device: Device, retries: Int, timeout: Duration, relayClient: OkHttpClient) : this(
+        "https://${device.address}", device.apiKey, retries, timeout,
+        Pinning(device.pin).client(timeout, relayClient), emptyMap(),
+        Router(device, Pinning(device.pin).client(timeout, relayClient), relayClient), true, { null },
+    )
+
+    /**
+     * How the client reaches its paired computer now, or null before its
+     * first request, or for a client that isn't a paired device.
+     */
+    public val path: ConnectionPath? get() = router?.path
+
+    /** Chooses the way in again, as after the network changed, and says which it found. */
+    public fun reconnect(): ConnectionPath? {
+        val router = router ?: return null
+        router.forget()
+        router.current()
+        return router.path
+    }
+
     /** Where Toskar Core answers. */
     public val url: String
 
@@ -80,7 +116,7 @@ public class Toskar internal constructor(
     private val base: HttpUrl
     private val sent: List<Pair<String, String>>
     private val retries = maxOf(0, retries)
-    private val ownsClient = httpClient == null
+    private val ownsClient = owns
     internal val http: OkHttpClient
 
     init {
@@ -219,7 +255,7 @@ public class Toskar internal constructor(
         accept: String,
         stream: Boolean,
     ): Response {
-        val target = base.newBuilder().apply {
+        fun target(root: HttpUrl) = root.newBuilder().apply {
             var next = 0
             for (segment in path.split('/').filter { it.isNotEmpty() }) {
                 addPathSegment(if (segment.startsWith("{")) params[next++] else segment)
@@ -232,7 +268,7 @@ public class Toskar internal constructor(
                 }
             }
         }.build()
-        val request = Request.Builder().url(target).apply {
+        val request = Request.Builder().url(target(base)).apply {
             sent.forEach { (name, value) -> header(name, value) }
             headers.forEach { (name, value) -> if (value != null) header(name, value.toString()) }
             header("Accept", accept)
@@ -243,9 +279,16 @@ public class Toskar internal constructor(
         val attempts = if (method in SAFE) 1 + retries else 1
         var attempt = 1
         while (true) {
+            // A paired device's way in, chosen again after one stops answering.
+            val way = router?.current()
             val response = try {
-                client.newCall(request).execute()
+                val call = if (way == null) request else request.newBuilder().url(target(baseOf(way))).build()
+                client.newCall(call).execute()
             } catch (e: IOException) {
+                if (e.isPinMismatch()) {
+                    throw ToskarException(0, "PIN_MISMATCH", "The computer's certificate isn't the one paired with", cause = e)
+                }
+                way?.let { router?.forget(it) }
                 if (attempt >= attempts) {
                     throw ToskarException(0, "CONNECTION_FAILED", "Couldn't reach Toskar at $url: ${e.message}", cause = e)
                 }
@@ -267,6 +310,20 @@ public class Toskar internal constructor(
     }
 
     public companion object {
+        /**
+         * Pairs with the computer at address (host:port, as found or typed)
+         * using the code Connect a device shows on it. The device must be on
+         * the computer's local network.
+         *
+         * @param confirm Shows the person the short pin, such as 9B80-D9D9,
+         *   and says whether the computer shows the same. Null skips the
+         *   check, as a script with no one to ask does.
+         */
+        @JvmStatic
+        @JvmOverloads
+        public fun pair(address: String, code: String, deviceName: String, confirm: ShortPinCheck? = null): Device =
+            Pairing.pair(address, code, deviceName, confirm)
+
         /** This computer's Toskar Core, which needs no key. */
         public const val DEFAULT_URL: String = "http://127.0.0.1:7331"
 
