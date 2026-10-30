@@ -2,10 +2,11 @@ name: release
 
 # A tag vX.Y.Z on main publishes every SDK at that version (RELEASING.md):
 # Python to PyPI and TypeScript to npm, both by trusted publishing (no
-# stored token once set up) with provenance; and Go by tagging go/vX.Y.Z,
-# as a module in a subfolder needs. Then a GitHub release.
+# stored token once set up) with provenance; Kotlin and Java to Maven
+# Central, signed; and Go by tagging go/vX.Y.Z, as a module in a subfolder
+# needs. Swift needs nothing: SwiftPM reads the tag. Then a GitHub release.
 #
-# Run it by hand to rehearse: it builds both packages and checks them, and
+# Run it by hand to rehearse: it builds the packages and checks them, and
 # publishes nothing.
 on:
   push:
@@ -34,6 +35,7 @@ jobs:
         run: |
           npm_version=$(node -p "require('./typescript/package.json').version")
           py_version=$(sed -n -E 's/^version = "(.*)"/\1/p' python/pyproject.toml)
+          kt_version=$(sed -n -E 's/^version = "(.*)"/\1/p' kotlin/build.gradle.kts)
           if [ "$GITHUB_REF_TYPE" = tag ]; then
             version="${GITHUB_REF_NAME#v}"
             git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME isn't on main"; exit 1; }
@@ -42,8 +44,8 @@ jobs:
             version="$npm_version"
             echo "publish=false" >> "$GITHUB_OUTPUT"
           fi
-          [ "$npm_version" = "$version" ] && [ "$py_version" = "$version" ] || {
-            echo "::error::the tag says $version; typescript/package.json says $npm_version and python/pyproject.toml $py_version (scripts/set-version.sh $version)"
+          [ "$npm_version" = "$version" ] && [ "$py_version" = "$version" ] && [ "$kt_version" = "$version" ] || {
+            echo "::error::the tag says $version; typescript/package.json says $npm_version, python/pyproject.toml $py_version, and kotlin/build.gradle.kts $kt_version (scripts/set-version.sh $version)"
             exit 1
           }
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -100,6 +102,31 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public
 
+  kotlin:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: maven-central
+    defaults:
+      run:
+        working-directory: kotlin
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Build
+        run: ./gradlew build publishToMavenLocal
+      # Signed, uploaded, and released on Maven Central (RELEASING.md).
+      - if: needs.check.outputs.publish == 'true'
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
+
   go:
     needs: check
     if: needs.check.outputs.publish == 'true'
@@ -117,7 +144,7 @@ jobs:
           curl -fsS "https://proxy.golang.org/github.com/yeixio/toskar-sdks/go/@v/v${{ needs.check.outputs.version }}.info" || true
 
   release:
-    needs: [check, python, typescript, go]
+    needs: [check, python, typescript, kotlin, go]
     if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
