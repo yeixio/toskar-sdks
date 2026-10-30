@@ -81,6 +81,7 @@ jobs:
           (cd typescript && npm ci && npm run build)
           (cd kotlin && ./gradlew -q :conformance:installDist)
           dotnet build dotnet/conformance -c Release
+          (cd rust/conformance && cargo build --release)
       - name: Run the cases
         run: |
           python conformance/run.py --core "$RUNNER_TEMP/toskar-daemon" \
@@ -88,7 +89,8 @@ jobs:
             --program "python=$RUNNER_TEMP/venv/bin/python python/conformance.py" \
             --program "node=node typescript/conformance.mjs" \
             --program "kotlin=kotlin/conformance/build/install/toskar-conformance/bin/toskar-conformance" \
-            --program "dotnet=dotnet dotnet/conformance/bin/Release/net8.0/toskar-conformance.dll"
+            --program "dotnet=dotnet dotnet/conformance/bin/Release/net8.0/toskar-conformance.dll" \
+            --program "rust=rust/conformance/target/release/toskar-conformance"
       # Toskar Core's examples (examples/), with these SDKs: a change here
       # that breaks one fails before it merges.
       - name: Run Core's examples

@@ -21,7 +21,8 @@ python3 conformance/run.py --core ../toskar-core/daemon \
   --program "python=python/.venv/bin/python python/conformance.py" \
   --program "node=node typescript/conformance.mjs" \
   --program kotlin=kotlin/conformance/build/install/toskar-conformance/bin/toskar-conformance \
-  --program "dotnet=dotnet dotnet/conformance/bin/Release/net8.0/toskar-conformance.dll"
+  --program "dotnet=dotnet dotnet/conformance/bin/Release/net8.0/toskar-conformance.dll" \
+  --program rust=rust/conformance/target/release/toskar-conformance
 ```
 
 | SDK | Program | In the image |
@@ -31,11 +32,12 @@ python3 conformance/run.py --core ../toskar-core/daemon \
 | TypeScript | `typescript/conformance.mjs`, after `npm run build` | `toskar-conformance-node` |
 | Kotlin | `kotlin/conformance`, `./gradlew :conformance:installDist` | `toskar-conformance-kotlin` |
 | .NET | `dotnet/conformance`, `dotnet build -c Release` | `toskar-conformance-dotnet` |
+| Rust | `rust/conformance`, `cargo build --release` | `toskar-conformance-rust` |
 | Swift | `swift build --product toskar-conformance`, on a Mac | — |
 
 Swift's pinning uses Apple's Security framework, so its program runs on
 a Mac, in the conformance workflow's `swift` job, and isn't in the image.
-Build the image with the other five from the repository root:
+Build the image with the other six from the repository root:
 
 ```sh
 docker build -f conformance/Dockerfile -t toskar-conformance .
@@ -73,5 +75,5 @@ The rest connect as `TOSKAR_URL` and `TOSKAR_API_KEY` say:
 - `download <id>` prints `{"sha256", "size_bytes"}` of the file's content.
 
 The relay's own certificate is checked as any website's is: a test bed
-with its own certificate authority sets `SSL_CERT_FILE` (Go, Python, Kotlin, and .NET on Linux) and
+with its own certificate authority sets `SSL_CERT_FILE` (Go, Python, Kotlin, Rust, and .NET on Linux) and
 `NODE_EXTRA_CA_CERTS` (Node).
