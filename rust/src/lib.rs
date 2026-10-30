@@ -23,12 +23,17 @@
 
 mod api;
 mod client;
+mod connect;
+#[cfg(test)]
+mod connect_tests;
 mod error;
 mod generated;
+pub mod records;
 mod sse;
 
 pub use api::Api;
 pub use client::{Builder, ChatEvent, Client, DEFAULT_URL};
+pub use connect::{ConnectionPath, Device, Route, pair};
 pub use error::{Error, Result};
 pub use generated::codes::{CONTRACT_VERSION, error_codes};
 pub use generated::models;

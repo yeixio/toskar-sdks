@@ -31,4 +31,5 @@ dotnet/.snippetcheck/
 
 # Rust
 rust/target/
+rust/conformance/target/
 rust/.snippetcheck/

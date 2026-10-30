@@ -20,6 +20,11 @@ WORKDIR /src
 COPY dotnet/ dotnet/
 RUN dotnet publish dotnet/conformance -c Release -o out
 
+FROM rust:1-bookworm AS rust
+WORKDIR /src
+COPY rust/ rust/
+RUN cd rust/conformance && cargo build --release --locked
+
 FROM node:22-bookworm-slim AS typescript
 WORKDIR /src/typescript
 COPY typescript/package.json typescript/package-lock.json ./
@@ -42,6 +47,7 @@ COPY --from=eclipse-temurin:21-jre /opt/java/openjdk /opt/jre
 COPY --from=kotlin /src/kotlin/conformance/build/install/toskar-conformance /opt/kotlin
 COPY --from=mcr.microsoft.com/dotnet/runtime:8.0 /usr/share/dotnet /opt/dotnet
 COPY --from=dotnet /src/out /opt/dotnet-conformance
+COPY --from=rust /src/rust/conformance/target/release/toskar-conformance /usr/local/bin/toskar-conformance-rust
 RUN printf '#!/bin/sh\nexec /opt/venv/bin/python /opt/python/conformance.py "$@"\n' > /usr/local/bin/toskar-conformance-python \
  && printf '#!/bin/sh\nexec node /opt/typescript/conformance.mjs "$@"\n' > /usr/local/bin/toskar-conformance-node \
  && printf '#!/bin/sh\nJAVA_HOME=/opt/jre exec /opt/kotlin/bin/toskar-conformance "$@"\n' > /usr/local/bin/toskar-conformance-kotlin \

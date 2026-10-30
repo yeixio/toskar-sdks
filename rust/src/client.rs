@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
@@ -8,6 +9,7 @@ use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderName
 use reqwest::{Method, Url};
 use serde::de::DeserializeOwned;
 
+use crate::connect::{self, ConnectionPath, Device, Pinning, Router};
 use crate::generated::codes::{CONTRACT_VERSION, error_codes};
 use crate::models::{ChatAnswer, ChatDone, ChatRequest, ChatToken, Event, GenerationMetrics, VersionResponse};
 use crate::{Api, Error, Result, sse};
@@ -27,6 +29,7 @@ pub struct Client {
     retries: u32,
     timeout: Duration,
     http: reqwest::Client,
+    router: Option<Arc<Router>>,
 }
 
 /// One event of a streamed chat.
@@ -47,6 +50,8 @@ pub struct Builder {
     timeout: Option<Duration>,
     http: Option<reqwest::Client>,
     headers: BTreeMap<String, String>,
+    device: Option<Device>,
+    pub(crate) relay_http: Option<reqwest::Client>,
 }
 
 impl Builder {
@@ -89,12 +94,33 @@ impl Builder {
         self
     }
 
+    /// Connects as a paired device: every connection pinned to its
+    /// computer's certificate, at home when it answers, and otherwise
+    /// directly or through its relay, from its address record. The device's
+    /// own address and key take the place of [`Builder::url`],
+    /// [`Builder::key`], and [`Builder::http_client`].
+    pub fn device(mut self, device: Device) -> Self {
+        self.device = Some(device);
+        self
+    }
+
     /// Connects.
     pub fn build(self) -> Result<Client> {
         self.build_with(|name| std::env::var(name).ok())
     }
 
-    pub(crate) fn build_with(self, env: impl Fn(&str) -> Option<String>) -> Result<Client> {
+    pub(crate) fn build_with(mut self, env: impl Fn(&str) -> Option<String>) -> Result<Client> {
+        let timeout = self.timeout.unwrap_or(Duration::from_secs(60));
+        let mut router = None;
+        if let Some(device) = self.device.take() {
+            let pinned = Arc::new(Pinning::new(Some(device.pin.clone()))).client(timeout)?;
+            self.url = Some(format!("https://{}", device.address));
+            self.key = Some(device.api_key.clone());
+            self.http = Some(pinned.clone());
+            let relay = self.relay_http.take().unwrap_or_default();
+            router = Some(Arc::new(Router::new(device, pinned, relay)));
+        }
+        let env = |name: &str| if router.is_some() { None } else { env(name) };
         let not_empty = |s: Option<String>| s.filter(|s| !s.is_empty());
         let raw = not_empty(self.url)
             .or_else(|| not_empty(env("TOSKAR_URL")))
@@ -122,7 +148,7 @@ impl Builder {
         let http = match self.http {
             Some(http) => http,
             None => reqwest::Client::builder()
-                .connect_timeout(self.timeout.unwrap_or(Duration::from_secs(60)))
+                .connect_timeout(timeout)
                 .build()
                 .map_err(|e| Error::new(0, "CONNECTION_FAILED", "Couldn't set up HTTP").with_source(e))?,
         };
@@ -130,8 +156,9 @@ impl Builder {
             url,
             headers,
             retries: self.retries.unwrap_or(2),
-            timeout: self.timeout.unwrap_or(Duration::from_secs(60)),
+            timeout,
             http,
+            router,
         })
     }
 }
@@ -150,6 +177,22 @@ impl Client {
     /// Where Toskar Core answers.
     pub fn url(&self) -> &str {
         self.url.as_str().trim_end_matches('/')
+    }
+
+    /// How the client reaches its paired computer now: `None` before its
+    /// first request, or for a client that isn't a paired device.
+    pub fn path(&self) -> Option<ConnectionPath> {
+        self.router.as_ref().and_then(|r| r.path())
+    }
+
+    /// Chooses the way in again, as after the network changed, and says which it found.
+    pub async fn reconnect(&self) -> Result<Option<ConnectionPath>> {
+        let Some(router) = &self.router else {
+            return Ok(None);
+        };
+        router.forget();
+        router.current().await?;
+        Ok(router.path())
     }
 
     /// Every route, typed from Toskar Core's API spec.
@@ -332,17 +375,23 @@ impl Client {
         accept: &str,
         stream: bool,
     ) -> Result<reqwest::Response> {
-        let target = self.target(path, params, query)?;
         let method =
             Method::from_bytes(method.as_bytes()).map_err(|_| Error::new(0, "BAD_REQUEST", "Not an HTTP method"))?;
         let safe = matches!(method, Method::GET | Method::HEAD | Method::OPTIONS);
         let attempts = if safe { 1 + self.retries } else { 1 };
         let mut attempt = 1;
         loop {
-            let mut request = self
-                .http
-                .request(method.clone(), target.clone())
-                .headers(self.headers.clone());
+            // A paired device's way in, chosen again after one stops answering.
+            let way = match &self.router {
+                Some(router) => Some(router.current().await?),
+                None => None,
+            };
+            let base = match &way {
+                Some(way) => connect::base_of(way)?,
+                None => self.url.clone(),
+            };
+            let target = target(base, path, params, query)?;
+            let mut request = self.http.request(method.clone(), target).headers(self.headers.clone());
             for (name, value) in headers {
                 if let Some(value) = value {
                     request = request.header(*name, value);
@@ -370,14 +419,13 @@ impl Client {
                     }
                     None
                 }
-                Ok(Err(e)) => Some(
-                    Error::new(
-                        0,
-                        "CONNECTION_FAILED",
-                        format!("Couldn't reach Toskar at {}: {e}", self.url()),
-                    )
-                    .with_source(e),
-                ),
+                Ok(Err(e)) if connect::is_pin_mismatch(&e) => return Err(connect::pin_mismatch().with_source(e)),
+                Ok(Err(e)) => {
+                    if let (Some(router), Some(way)) = (&self.router, &way) {
+                        router.forget_way(way);
+                    }
+                    Some(connect::connection_error(e, self.url()))
+                }
                 Err(_) => Some(Error::new(
                     0,
                     "CONNECTION_FAILED",
@@ -397,32 +445,31 @@ impl Client {
             attempt += 1;
         }
     }
+}
 
-    fn target(&self, path: &str, params: &[&str], query: &[(&str, Option<String>)]) -> Result<Url> {
-        let mut url = self.url.clone();
-        {
-            let mut segments = url
-                .path_segments_mut()
-                .map_err(|_| Error::new(0, "BAD_URL", "The address can't have a path"))?;
-            segments.pop_if_empty();
-            let mut next = params.iter();
-            for segment in path.split('/').filter(|s| !s.is_empty()) {
-                if segment.starts_with('{') {
-                    segments.push(next.next().copied().unwrap_or_default());
-                } else {
-                    segments.push(segment);
-                }
+fn target(mut url: Url, path: &str, params: &[&str], query: &[(&str, Option<String>)]) -> Result<Url> {
+    {
+        let mut segments = url
+            .path_segments_mut()
+            .map_err(|_| Error::new(0, "BAD_URL", "The address can't have a path"))?;
+        segments.pop_if_empty();
+        let mut next = params.iter();
+        for segment in path.split('/').filter(|s| !s.is_empty()) {
+            if segment.starts_with('{') {
+                segments.push(next.next().copied().unwrap_or_default());
+            } else {
+                segments.push(segment);
             }
         }
-        let pairs: Vec<_> = query
-            .iter()
-            .filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.as_str())))
-            .collect();
-        if !pairs.is_empty() {
-            url.query_pairs_mut().extend_pairs(pairs);
-        }
-        Ok(url)
     }
+    let pairs: Vec<_> = query
+        .iter()
+        .filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.as_str())))
+        .collect();
+    if !pairs.is_empty() {
+        url.query_pairs_mut().extend_pairs(pairs);
+    }
+    Ok(url)
 }
 
 fn bad_answer(e: serde_json::Error) -> Error {

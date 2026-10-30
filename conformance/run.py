@@ -94,6 +94,7 @@ class Core:
     """A throwaway Toskar Core on loopback, with a data folder of its own."""
 
     def __init__(self, binary: str, data: Path) -> None:
+        self.binary = binary
         self.port = free_port()
         self.url = f"http://127.0.0.1:{self.port}"
         env = {**os.environ, "TOSKAR_API_PORT": str(self.port), "TOSKAR_DISCOVERY_ENABLED": "false", "TOSKAR_NODE_NAME": NODE_NAME}
@@ -185,7 +186,17 @@ def errors(p: Program, core: Core, work: Path) -> None:
     expect(out.get("error", {}).get("code") == "FILE_NOT_FOUND", "Toskar's error code", out)
 
 
-def pairing(p: Program, core: Core, work: Path) -> None:
+def pairing(p: Program, shared: Core, work: Path) -> None:
+    # A Core of its own: Core blocks a source after 5 wrong codes, and every
+    # program pairs from 127.0.0.1.
+    core = Core(shared.binary, work)
+    try:
+        pair_with(p, core, work)
+    finally:
+        core.stop()
+
+
+def pair_with(p: Program, core: Core, work: Path) -> None:
     address = f"127.0.0.1:{core.port}"
     started = core.api("POST", "/api/v1/devices/pairing", {})
     wrong = "000000" if started["code"] != "000000" else "111111"
