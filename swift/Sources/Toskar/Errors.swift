@@ -58,6 +58,27 @@ public struct ToskarError: Error, Sendable, CustomStringConvertible {
     public var description: String { "toskar: \(message) (\(status) \(code))" }
 }
 
+/// The SDK's own codes, for what goes wrong before Toskar Core answers.
+extension ToskarError.Code {
+    /// The computer's certificate isn't the one paired with: stop, and pair
+    /// again to trust a new certificate.
+    public static let pinMismatch = Self("PIN_MISMATCH")
+    /// Pairing that the person stopped at the short pin.
+    public static let notConfirmed = Self("NOT_CONFIRMED")
+    /// No way in answered, at home or away.
+    public static let unreachable = Self("UNREACHABLE")
+    /// No address record to find the computer away from home: it may be off
+    /// or asleep, or have no access from anywhere.
+    public static let noRecord = Self("NO_RECORD")
+    /// An address record that doesn't open with the route secret.
+    public static let recordSealed = Self("RECORD_SEALED")
+    /// An address record that isn't from the pinned computer, or is for
+    /// another route.
+    public static let recordPin = Self("RECORD_PIN")
+    /// An address record too old, or from too far in the future.
+    public static let recordStale = Self("RECORD_STALE")
+}
+
 extension Error {
     /// The `ToskarError` this is, or that a generated call wrapped, or nil.
     public var toskar: ToskarError? {

@@ -84,8 +84,8 @@ jobs:
       - name: Check the READMEs' snippets
         run: python scripts/check_snippets.py --core "$RUNNER_TEMP/toskar-daemon" --python "$RUNNER_TEMP/venv/bin/python"
 
-  # The Swift README's snippets, on a Mac: type-checked, and the quick start
-  # run against a throwaway Core.
+  # The Swift SDK on a Mac: the conformance cases, and the README's
+  # snippets type-checked and the quick start run, against a throwaway Core.
   swift:
     runs-on: ${{ fromJSON(vars.MAC_RUNS_ON || '"macos-latest"') }}
     timeout-minutes: 30
@@ -106,5 +106,9 @@ jobs:
         env:
           CGO_ENABLED: "0"
         run: go build -o "$RUNNER_TEMP/toskar-daemon" ./cmd/daemon
+      - name: Run the cases
+        run: |
+          swift build --product toskar-conformance
+          python3 conformance/run.py --core "$RUNNER_TEMP/toskar-daemon" --program "swift=$(swift build --show-bin-path)/toskar-conformance"
       - name: Check the Swift README's snippets
         run: python3 scripts/check_snippets.py --core "$RUNNER_TEMP/toskar-daemon" --langs swift

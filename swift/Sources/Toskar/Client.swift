@@ -32,6 +32,10 @@ public final class Toskar: Sendable {
     public let api: Client
     /// Where Toskar Core answers.
     public let url: URL
+    #if canImport(CryptoKit) && canImport(Security)
+        /// Reaches a paired device's computer (Connect.swift).
+        let router: Router?
+    #endif
 
     /// Connects to Toskar Core.
     ///
@@ -51,7 +55,7 @@ public final class Toskar: Sendable {
     ///     AsyncHTTPClientTransport on Linux, where URLSession doesn't
     ///     stream answers.
     ///   - headers: Headers to add to every request.
-    public init(
+    public convenience init(
         url: URL? = nil,
         key: String? = nil,
         retries: Int = 2,
@@ -59,6 +63,15 @@ public final class Toskar: Sendable {
         session: URLSession? = nil,
         transport: (any ClientTransport)? = nil,
         headers: [String: String] = [:]
+    ) throws {
+        try self.init(url: url, key: key, retries: retries, timeout: timeout, session: session, transport: transport, headers: headers, routing: nil)
+    }
+
+    /// The init the public ones share: routing, when set, is a paired
+    /// device's way in, the innermost middleware, so a retry chooses again.
+    init(
+        url: URL?, key: String?, retries: Int, timeout: TimeInterval = 60, session: URLSession? = nil,
+        transport: (any ClientTransport)?, headers: [String: String] = [:], routing: (any ClientMiddleware)?
     ) throws {
         let env = ProcessInfo.processInfo.environment
         var base = url ?? env["TOSKAR_URL"].flatMap { $0.isEmpty ? nil : URL(string: $0) } ?? Self.defaultURL
@@ -98,8 +111,11 @@ public final class Toskar: Sendable {
                 // Outside the retries, so they see Core's 502, 503, and 504.
                 Errors(),
                 Retrying(retries: max(0, retries)),
-            ]
+            ] + (routing.map { [$0] } ?? [])
         )
+        #if canImport(CryptoKit) && canImport(Security)
+            router = (routing as? Routing)?.router
+        #endif
     }
 
     /// Asks once and waits for the whole answer.
