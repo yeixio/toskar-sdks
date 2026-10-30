@@ -94,6 +94,18 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
 
+  # On a Mac: the Swift SDK is for Apple's platforms first.
+  swift:
+    runs-on: ${{ fromJSON(vars.MAC_RUNS_ON || '"macos-latest"') }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+      - name: The generated code matches the spec
+        run: swift/scripts/generate.sh && git diff --exit-code swift/Sources
+      - run: swift build
+      - run: swift test
+
   # The conformance image toskar-core's outside-network check runs every SDK from.
   conformance:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}

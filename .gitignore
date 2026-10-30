@@ -9,3 +9,10 @@ go/snippetcheck/
 # Copied in by the release workflow.
 python/LICENSE
 typescript/LICENSE
+
+# Swift
+.build/
+.swiftpm/
+/Package.resolved
+swift/generator/.build/
+swift/.snippetcheck/
