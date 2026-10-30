@@ -8,6 +8,7 @@ Every class, function, and type each SDK has, generated from its code's doc comm
 | Python | [python/](python/README.md), with [every route on `toskar.api`](python/api.md) and [the error codes](python/errors.md) |
 | Go | [go/](go/README.md), and [`discover`](go/discover.md); also on [pkg.go.dev](https://pkg.go.dev/github.com/yeixio/toskar-sdks/go) |
 | Swift | [swift/](swift/README.md), with [the error codes](swift/errors.md) |
+| Kotlin and Java | [kotlin/](kotlin/README.md), with [every route on `toskar.api`](kotlin/api.md) and [the error codes](kotlin/errors.md) |
 
 The routes themselves, with every field: [toskar.ai/developers/api](https://toskar.ai/developers/api).
 
@@ -18,4 +19,5 @@ Regenerate them after changing an SDK:
 (cd python && python scripts/reference.py)
 (cd go && go generate ./...)
 python3 swift/scripts/reference.py   # on a Mac
+python3 kotlin/scripts/reference.py
 ```

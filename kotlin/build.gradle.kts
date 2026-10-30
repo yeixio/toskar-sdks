@@ -5,6 +5,8 @@ plugins {
     kotlin("plugin.serialization") version "2.4.21"
     `java-library`
     id("com.vanniktech.maven.publish") version "0.37.0"
+    // The javadoc jar Maven Central takes: the API's docs, from its KDoc.
+    id("org.jetbrains.dokka-javadoc") version "2.2.0"
 }
 
 group = "ai.toskar"
@@ -30,6 +32,12 @@ java {
 // _signingInMemoryKey, and _signingInMemoryKeyPassword.
 mavenPublishing {
     coordinates("ai.toskar", "toskar", version.toString())
+    configure(
+        com.vanniktech.maven.publish.KotlinJvm(
+            javadocJar = com.vanniktech.maven.publish.JavadocJar.Dokka("dokkaGeneratePublicationJavadoc"),
+            sourcesJar = com.vanniktech.maven.publish.SourcesJar.Sources(),
+        ),
+    )
     publishToMavenCentral(automaticRelease = true)
     if (providers.gradleProperty("signingInMemoryKey").isPresent) {
         signAllPublications()
