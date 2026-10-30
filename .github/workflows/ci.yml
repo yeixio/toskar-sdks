@@ -140,6 +140,9 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - uses: actions/setup-dotnet@v5
+        # Not /usr/share/dotnet, which a home runner's user can't write.
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}/dotnet
         with:
           dotnet-version: "10.0.x"
       - name: The generated code matches the spec
