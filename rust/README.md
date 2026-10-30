@@ -115,3 +115,15 @@ println!("{:?}", paired.path()); // Some(Home), Some(Direct), or Some(Relay)
 ```
 
 Every connection checks the computer's certificate before anything is sent. A different certificate is `PIN_MISMATCH`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `paired.reconnect().await?` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
+
+## Find computers on the network
+
+Computers running Toskar announce themselves on the home network (mDNS, `_localai._tcp`). `toskar::find` lists them, so a person can pick one instead of typing an address:
+
+```rust
+for computer in toskar::find(std::time::Duration::from_secs(3)).await? {
+    println!("{} {}", computer.name, computer.address);
+}
+```
+
+Pair with `computer.address`. When `computer.on_network` is false, the computer answers only on itself: tell the person to turn on Connect a device there, rather than that it's unreachable. A computer can have addresses this device can't reach, such as a container network's. `address` is the first one that answers, and `addresses` has them all.
