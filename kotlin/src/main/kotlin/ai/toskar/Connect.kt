@@ -267,7 +267,7 @@ internal class Router(
                 }
             }
         } catch (e: IOException) {
-            throw noRecord()
+            throw noRecord(e)
         }
         return Records.open(data, route.secret, device.pin, maxAge = RECORD_MAX_AGE)
     }
@@ -283,8 +283,10 @@ internal class Router(
         const val TOSKAR_RELAY = "relay.toskar.ai"
 
         fun unreachable() = ToskarException(0, "UNREACHABLE", "The computer can't be reached")
-        fun noRecord() = ToskarException(
+        /** cause, when there is one, says why the relay couldn't be asked, such as its certificate. */
+        fun noRecord(cause: Throwable? = null) = ToskarException(
             0, "NO_RECORD", "No address record for the computer: it may be off or asleep, or have no access from anywhere",
+            cause = cause,
         )
     }
 }

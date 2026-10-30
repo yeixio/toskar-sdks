@@ -131,10 +131,12 @@ fun trustCertFile() {
             store.setCertificateEntry("ca$i", cert)
         }
     }
+    // A password, though nothing here is secret: the JDK reads no
+    // certificates from a store saved with an empty one.
     val file = File.createTempFile("toskar-ca", ".p12").apply { deleteOnExit() }
-    file.outputStream().use { store.store(it, CharArray(0)) }
+    file.outputStream().use { store.store(it, "toskar".toCharArray()) }
     System.setProperty("javax.net.ssl.trustStore", file.path)
-    System.setProperty("javax.net.ssl.trustStorePassword", "")
+    System.setProperty("javax.net.ssl.trustStorePassword", "toskar")
     System.setProperty("javax.net.ssl.trustStoreType", "PKCS12")
 }
 
@@ -143,7 +145,9 @@ fun main(args: Array<String>) {
         trustCertFile()
         run(args.toList())
     } catch (e: ToskarException) {
-        println(buildJsonObject { put("error", buildJsonObject { put("code", e.code); put("message", e.message) }) })
+        // With the cause, such as a certificate the relay showed: a test bed's log then says why.
+        val message = e.message + (e.cause?.let { ": $it" } ?: "")
+        println(buildJsonObject { put("error", buildJsonObject { put("code", e.code); put("message", message) }) })
         exitProcess(1)
     } catch (e: Exception) {
         println(buildJsonObject { put("error", buildJsonObject { put("code", "ERROR"); put("message", e.toString()) }) })
