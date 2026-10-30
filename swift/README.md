@@ -101,3 +101,17 @@ print(await paired.path?.rawValue ?? "") // home, direct, or relay
 ```
 
 Every connection checks the computer's certificate before anything is sent. A different certificate throws `.pinMismatch`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `try await paired.reconnect()` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
+
+## Find computers on the network
+
+Computers running Toskar announce themselves on the home network (mDNS, `_localai._tcp`). `Toskar.find` lists them, so a person can pick one instead of typing an address:
+
+```swift
+for computer in await Toskar.find(timeout: 3) {
+    print(computer.name, computer.address)
+}
+```
+
+Pair with `computer.address`. When `computer.onNetwork` is false, the computer answers only on itself: tell the person to turn on Connect a device there, rather than that it's unreachable. A computer can have addresses this device can't reach, such as a container network's; `address` is the first one that answers, and `addresses` has them all.
+
+On iOS, tvOS, and visionOS, add `NSLocalNetworkUsageDescription` and `NSBonjourServices` (with `_localai._tcp`) to the app's Info.plist; the system asks the person before the app can browse.
