@@ -6,9 +6,10 @@ fails CI.
         --python python/.venv/bin/python [more pages...]
 
 Every snippet is type-checked against the SDK: mypy for Python, tsc for
-TypeScript, the Go compiler for Go, the Swift compiler for Swift. A
-fragment may use `toskar` (a client), `c` and `ctx` (Go), and
-`ask_the_person` / `askThePerson` without defining them. `--langs` picks
+TypeScript, the Go compiler for Go, the Swift compiler for Swift, and
+Gradle for Kotlin and Java. A fragment may use `toskar` (a client), `c`
+and `ctx` (Go), and `ask_the_person` / `askThePerson` without defining
+them. `--langs` picks
 the languages, for a runner that has only some of the toolchains. Snippets marked to run are also run against a throwaway
 Core, which chats with the scripted model (conformance/run.py):
 
@@ -35,8 +36,10 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-READMES = [ROOT / "python" / "README.md", ROOT / "typescript" / "README.md", ROOT / "go" / "README.md", ROOT / "swift" / "README.md"]
-LANGS = {"python": "python", "py": "python", "ts": "ts", "typescript": "ts", "js": "ts", "go": "go", "swift": "swift"}
+READMES = [ROOT / "python" / "README.md", ROOT / "typescript" / "README.md", ROOT / "go" / "README.md", ROOT / "swift" / "README.md",
+           ROOT / "kotlin" / "README.md"]
+LANGS = {"python": "python", "py": "python", "ts": "ts", "typescript": "ts", "js": "ts", "go": "go", "swift": "swift",
+         "kotlin": "kotlin", "kt": "kotlin", "java": "java"}
 
 
 @dataclass
@@ -81,6 +84,10 @@ def defines(code: str, name: str, lang: str) -> bool:
         return re.search(rf"\b(?:const|let|var|function)\s+{name}\b", code) is not None
     if lang == "swift":
         return re.search(rf"\b(?:let|var|func)\s+{name}\b", code) is not None
+    if lang == "kotlin":
+        return re.search(rf"\b(?:val|var|fun)\s+{name}\b", code) is not None
+    if lang == "java":
+        return re.search(rf"\b[\w<>]+\s+{name}\s*[=;(]", code) is not None
     return re.search(rf"\b{name}(?:\s*,\s*\w+)*\s*:=|\bvar {name}\b", code) is not None
 
 
@@ -233,6 +240,81 @@ def check_swift(snippets: list[tuple[int, Snippet]], work: Path) -> dict[int, st
     return errors_by_file(out, files, r.returncode)
 
 
+JVM_SETTINGS = """rootProject.name = "snippetcheck"
+includeBuild("..")
+dependencyResolutionManagement { repositories { mavenCentral() } }
+"""
+
+JVM_BUILD = """plugins {
+    kotlin("jvm") version "%s"
+}
+kotlin { jvmToolchain(21) }
+dependencies { implementation("ai.toskar:toskar") }
+tasks.register("classpath") {
+    val files = sourceSets["main"].runtimeClasspath
+    // Builds what's on it, such as the SDK's jar, before naming it.
+    inputs.files(files)
+    doLast { file("build/classpath.txt").writeText(files.asPath) }
+}
+"""
+
+
+def jvm_program(s: Snippet, name: str) -> tuple[str, str]:
+    """A snippet as a file of its own package, name: its imports first, then
+    the SDK's, then a main that makes toskar and askThePerson when it
+    doesn't. Answers the file's path in the project and its source."""
+    imports = re.findall(r"^import .+$", s.code, re.M)
+    body = re.sub(r"^import .+\n", "", s.code, flags=re.M)
+    if s.lang == "kotlin":
+        lines = [f"package {name}", "", *imports, "import ai.toskar.*", "import ai.toskar.api.*", ""]
+        if not defines(s.code, "askThePerson", "kotlin"):
+            lines.append("fun askThePerson(short: String): Boolean = true")
+        lines.append("fun main() {")
+        if not defines(s.code, "toskar", "kotlin"):
+            lines.append("val toskar = Toskar()")
+        return f"src/main/kotlin/{name}/Main.kt", "\n".join(lines) + "\n" + body + "}\n"
+    lines = [f"package {name};", "", *imports, "import ai.toskar.*;", "import ai.toskar.api.*;", "",
+             "public class Main {", "static boolean askThePerson(String s) { return true; }",
+             "public static void main(String[] args) throws Exception {"]
+    if not defines(s.code, "toskar", "java"):
+        lines.append("Toskar toskar = new Toskar();")
+    return f"src/main/java/{name}/Main.java", "\n".join(lines) + "\n" + body + "}\n}\n"
+
+
+def jvm_project(snippets: list[tuple[str, Snippet]]) -> dict[str, Path]:
+    """The snippets' Gradle project, which uses the SDK as it is in this
+    checkout. Answers each snippet's file."""
+    base = ROOT / "kotlin" / ".snippetcheck"
+    shutil.rmtree(base / "src", ignore_errors=True)
+    kotlin = re.search(r'kotlin\("jvm"\) version "([^"]+)"', (ROOT / "kotlin" / "build.gradle.kts").read_text())
+    base.mkdir(exist_ok=True)
+    (base / "settings.gradle.kts").write_text(JVM_SETTINGS)
+    (base / "build.gradle.kts").write_text(JVM_BUILD % kotlin.group(1))
+    files = {}
+    for name, s in snippets:
+        path, source = jvm_program(s, name)
+        f = base / path
+        f.parent.mkdir(parents=True)
+        f.write_text(source)
+        files[name] = f
+    return files
+
+
+def gradle(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run([str(ROOT / "kotlin" / "gradlew"), "-q", "-p", str(ROOT / "kotlin" / ".snippetcheck"), *args],
+                          capture_output=True, text=True)
+
+
+def check_jvm(snippets: list[tuple[int, Snippet]], work: Path) -> dict[int, str]:
+    if not snippets:
+        return {}
+    files = jvm_project([(f"snippet_{i}", s) for i, s in snippets])
+    r = gradle("classes")
+    # kotlinc: e: file:///…/snippet_1/Main.kt:3:5 …; javac: /…/snippet_1/Main.java:3: error: …
+    out = "\n".join(line for line in (r.stdout + r.stderr).splitlines() if line.startswith("e: ") or ": error:" in line)
+    return errors_by_file(out, {i: files[f"snippet_{i}"] for i, _ in snippets}, r.returncode)
+
+
 def errors_by_file(output: str, files: dict[int, Path], code: int) -> dict[int, str]:
     """Each snippet's lines of a checker's output. Go's files are all
     main.go, each in a folder of its own. A checker that failed without
@@ -240,7 +322,9 @@ def errors_by_file(output: str, files: dict[int, Path], code: int) -> dict[int, 
     def mark(f: Path) -> str:
         # mypy: snippet_1.py:3: …; tsc: snippet_1.ts(3,5): …; go: snippet_1/main.go:3:5: …;
         # swift: snippet_1/main.swift:3:5: …
-        return {".py": f.name + ":", ".ts": f.name + "(", ".go": f.parent.name + "/", ".swift": f.parent.name + "/"}[f.suffix]
+        if f.suffix in (".py", ".ts"):
+            return f.name + {".py": ":", ".ts": "("}[f.suffix]
+        return f.parent.name + "/"
 
     found: dict[int, str] = {}
     if code and not any(mark(f) in output for f in files.values()):
@@ -280,6 +364,14 @@ def run_snippet(s: Snippet, i: int, python: str, env: dict[str, str], work: Path
             return r.stdout + r.stderr
         bin_dir = subprocess.run(["swift", "build", "--package-path", str(base), "--show-bin-path"], capture_output=True, text=True).stdout.strip()
         cmd = [str(Path(bin_dir) / f"run_{i}")]
+    elif s.lang in ("kotlin", "java"):
+        jvm_project([(f"run_{i}", s)])
+        r = gradle("classes", "classpath")
+        if r.returncode:
+            return r.stdout + r.stderr
+        classpath = (ROOT / "kotlin" / ".snippetcheck" / "build" / "classpath.txt").read_text()
+        java = Path(os.environ["JAVA_HOME"]) / "bin" / "java" if os.environ.get("JAVA_HOME") else "java"
+        cmd = [str(java), "-cp", classpath, f"run_{i}.MainKt" if s.lang == "kotlin" else f"run_{i}.Main"]
     else:
         d = ROOT / "go" / "snippetcheck" / f"run_{i}"
         d.mkdir(parents=True, exist_ok=True)
@@ -306,7 +398,7 @@ def main() -> int:
     ap.add_argument("pages", nargs="*", type=Path, help="more pages with snippets, such as toskar.ai's app/developers/page.tsx")
     ap.add_argument("--core", required=True, help="the Toskar Core daemon to run snippets against")
     ap.add_argument("--python", default=sys.executable, help="a Python with the toskar package and mypy installed")
-    ap.add_argument("--langs", default="python,ts,go", help="the languages to check, of python, ts, go, and swift")
+    ap.add_argument("--langs", default="python,ts,go", help="the languages to check, of python, ts, go, swift, kotlin, and java")
     args = ap.parse_args()
     langs = set(args.langs.split(","))
     python = str(Path(args.python).absolute()) if os.sep in args.python else args.python
@@ -324,6 +416,8 @@ def main() -> int:
                                 ("swift", lambda n: check_swift(n, tmp))):
                 if lang in langs:
                     problems.update(check([(i, s) for i, s in numbered if s.lang == lang]))
+            # Kotlin and Java build together, in one Gradle project.
+            problems.update(check_jvm([(i, s) for i, s in numbered if s.lang in ("kotlin", "java")], tmp))
             runs = [(i, s) for i, s in numbered if s.run and i not in problems]
             if runs:
                 sys.path.insert(0, str(ROOT / "conformance"))
@@ -357,6 +451,7 @@ def main() -> int:
         finally:
             shutil.rmtree(ROOT / "go" / "snippetcheck", ignore_errors=True)
             shutil.rmtree(ROOT / "swift" / ".snippetcheck" / "Sources", ignore_errors=True)
+            shutil.rmtree(ROOT / "kotlin" / ".snippetcheck" / "src", ignore_errors=True)
     print(f"{failed} of {len(snippets)} snippets failed" if failed else f"all {len(snippets)} snippets work")
     return 1 if failed else 0
 
