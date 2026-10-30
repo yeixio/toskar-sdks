@@ -42,8 +42,10 @@ SYNTHESIZED = {"!=(_:_:)", "==(_:_:)", "hash(into:)", "hashValue", "init(from:)"
 
 
 def symbols() -> list[dict]:
-    subprocess.run(["swift", "package", "dump-symbol-graph", "--minimum-access-level", "public"],
-                   cwd=ROOT, check=True, capture_output=True)
+    dump = subprocess.run(["swift", "package", "dump-symbol-graph", "--minimum-access-level", "public"],
+                          cwd=ROOT, capture_output=True, text=True)
+    if dump.returncode != 0:
+        sys.exit(dump.stdout[-4000:] + dump.stderr[-4000:] + "\nswift package dump-symbol-graph failed")
     graphs = sorted((ROOT / ".build").glob("**/symbolgraph/Toskar*.symbols.json"))
     if not graphs:
         sys.exit("no symbol graph for Toskar")
