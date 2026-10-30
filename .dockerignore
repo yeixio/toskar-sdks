@@ -8,3 +8,6 @@
 **/build
 kotlin/.kotlin
 kotlin/.snippetcheck
+**/bin
+**/obj
+dotnet/.snippetcheck

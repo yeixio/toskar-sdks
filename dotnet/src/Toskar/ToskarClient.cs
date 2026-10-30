@@ -71,6 +71,8 @@ public sealed class ToskarClient : IDisposable
     private readonly TimeSpan timeout;
     private readonly HttpClient http;
     private readonly bool ownsClient;
+    private readonly Router? router;
+    private readonly HttpClient? relay;
 
     /// <summary>Connects to Toskar Core: this computer's, unless options or <c>TOSKAR_URL</c> say another.</summary>
     public ToskarClient(ToskarOptions? options = null)
@@ -82,6 +84,38 @@ public sealed class ToskarClient : IDisposable
     public ToskarClient(string url, string? key = null)
         : this(new ToskarOptions { Url = url, Key = key })
     {
+    }
+
+    /// <summary>
+    /// Connects as a paired device: every connection pinned to its
+    /// computer's certificate, at home when it answers, and otherwise
+    /// directly or through its relay, from its address record. Of the
+    /// options, the device's own address and key take the place of
+    /// <see cref="ToskarOptions.Url"/>, <see cref="ToskarOptions.Key"/>, and
+    /// <see cref="ToskarOptions.HttpClient"/>.
+    /// </summary>
+    public ToskarClient(Device device, ToskarOptions? options = null)
+        : this(device, options, new HttpClient())
+    {
+    }
+
+    internal ToskarClient(Device device, ToskarOptions? options, HttpClient relay)
+        : this(
+            (options ?? new ToskarOptions()) with
+            {
+                Url = $"https://{device.Address}",
+                Key = device.ApiKey,
+                HttpClient = new HttpClient(new Pinning(device.Pin).Handler((options ?? new ToskarOptions()).Timeout))
+                {
+                    Timeout = System.Threading.Timeout.InfiniteTimeSpan,
+                },
+            },
+            _ => null)
+    {
+        // The client made the pinned HttpClient, so it disposes it.
+        ownsClient = true;
+        this.relay = relay;
+        router = new Router(device, http, relay);
     }
 
     internal ToskarClient(ToskarOptions options, Func<string, string?> env)
@@ -116,6 +150,47 @@ public sealed class ToskarClient : IDisposable
 
     /// <summary>Where Toskar Core answers.</summary>
     public string Url { get; }
+
+    /// <summary>
+    /// How the client reaches its paired computer now, or null before its
+    /// first request, or for a client that isn't a paired device.
+    /// </summary>
+    public ConnectionPath? Path => router?.Path;
+
+    /// <summary>Chooses the way in again, as after the network changed, and says which it found.</summary>
+    public async Task<ConnectionPath?> ReconnectAsync(CancellationToken cancellationToken = default)
+    {
+        if (router is null)
+        {
+            return null;
+        }
+        router.Forget();
+        await router.CurrentAsync(cancellationToken).ConfigureAwait(false);
+        return router.Path;
+    }
+
+    /// <summary>
+    /// Pairs with the computer at address (host:port, as found or typed)
+    /// using the code Connect a device shows on it. The device must be on
+    /// the computer's local network.
+    /// </summary>
+    /// <param name="address">The computer's host:port.</param>
+    /// <param name="code">The code Connect a device shows.</param>
+    /// <param name="deviceName">What the computer calls this device.</param>
+    /// <param name="confirm">
+    /// Shows the person the short pin, such as 9B80-D9D9, and says whether
+    /// the computer shows the same. Null skips the check, as a script with
+    /// no one to ask does.
+    /// </param>
+    /// <param name="cancellationToken">Cancels pairing.</param>
+    public static Task<Device> PairAsync(
+        string address, string code, string deviceName, Func<string, Task<bool>>? confirm = null, CancellationToken cancellationToken = default) =>
+        Pairing.PairAsync(address, code, deviceName, confirm, cancellationToken);
+
+    /// <inheritdoc cref="PairAsync(string, string, string, Func{string, Task{bool}}?, CancellationToken)"/>
+    public static Task<Device> PairAsync(
+        string address, string code, string deviceName, Func<string, bool> confirm, CancellationToken cancellationToken = default) =>
+        Pairing.PairAsync(address, code, deviceName, pin => Task.FromResult(confirm(pin)), cancellationToken);
 
     /// <summary>Every route, typed from Toskar Core's API spec.</summary>
     public ToskarApi Api { get; }
@@ -192,6 +267,7 @@ public sealed class ToskarClient : IDisposable
         {
             http.Dispose();
         }
+        relay?.Dispose();
     }
 
     // The generated ToskarApi calls these.
@@ -235,13 +311,14 @@ public sealed class ToskarClient : IDisposable
         string method, string path, string[] parameters, (string, object?)[] query, (string, object?)[] headers,
         HttpContent? body, string accept, bool stream, CancellationToken cancellationToken)
     {
-        var target = Target(path, parameters, query);
         // A request's body can be sent once, so a retry sends a copy.
         var bytes = body is null ? null : await body.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         var attempts = Safe.Contains(method) ? 1 + retries : 1;
         for (var attempt = 1; ; attempt++)
         {
-            using var request = new HttpRequestMessage(new HttpMethod(method), target);
+            // A paired device's way in, chosen again after one stops answering.
+            var way = router is null ? null : await router.CurrentAsync(cancellationToken).ConfigureAwait(false);
+            using var request = new HttpRequestMessage(new HttpMethod(method), Target(way is null ? baseUri : Connect.BaseOf(way), path, parameters, query));
             foreach (var (name, value) in sent)
             {
                 request.Headers.TryAddWithoutValidation(name, value);
@@ -277,6 +354,14 @@ public sealed class ToskarClient : IDisposable
             catch (Exception e) when (e is HttpRequestException || (e is OperationCanceledException && !cancellationToken.IsCancellationRequested))
             {
                 response?.Dispose();
+                if (Connect.IsPinMismatch(e))
+                {
+                    throw Connect.PinMismatch(e);
+                }
+                if (way is not null)
+                {
+                    router!.Forget(way);
+                }
                 if (attempt >= attempts)
                 {
                     var why = e is OperationCanceledException ? $"no answer within {timeout.TotalSeconds:0.#} s" : e.Message;
@@ -303,7 +388,7 @@ public sealed class ToskarClient : IDisposable
         }
     }
 
-    private Uri Target(string path, string[] parameters, (string, object?)[] query)
+    private static Uri Target(Uri baseUri, string path, string[] parameters, (string, object?)[] query)
     {
         var next = 0;
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries)
