@@ -17,6 +17,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -42,16 +43,22 @@ SYNTHESIZED = {"!=(_:_:)", "==(_:_:)", "hash(into:)", "hashValue", "init(from:)"
 
 
 def symbols() -> list[dict]:
-    dump = subprocess.run(["swift", "package", "dump-symbol-graph", "--minimum-access-level", "public"],
-                          cwd=ROOT, capture_output=True, text=True)
-    if dump.returncode != 0:
-        sys.exit(dump.stdout[-4000:] + dump.stderr[-4000:] + "\nswift package dump-symbol-graph failed")
-    graphs = sorted((ROOT / ".build").glob("**/symbolgraph/Toskar*.symbols.json"))
-    if not graphs:
-        sys.exit("no symbol graph for Toskar")
+    # The compiler writes the graph while it builds the Toskar target alone:
+    # `swift package dump-symbol-graph` extracts every module, test bundle
+    # too, which fails on some Xcodes.
+    with tempfile.TemporaryDirectory() as tmp:
+        flags = ["-emit-symbol-graph", "-emit-symbol-graph-dir", tmp, "-symbol-graph-minimum-access-level", "public"]
+        build = subprocess.run(["swift", "build", "--target", "Toskar", *(a for f in flags for a in ("-Xswiftc", f))],
+                               cwd=ROOT, capture_output=True, text=True)
+        if build.returncode != 0:
+            sys.exit(build.stdout[-4000:] + build.stderr[-4000:] + "\nswift build failed")
+        graphs = sorted(Path(tmp).glob("Toskar*.symbols.json"))
+        if not graphs:
+            sys.exit("no symbol graph for Toskar")
+        texts = [g.read_text() for g in graphs]
     out = []
-    for g in graphs:
-        for s in json.loads(g.read_text())["symbols"]:
+    for t in texts:
+        for s in json.loads(t)["symbols"]:
             # Only this SDK's own code: ToskarAPI's is re-exported, and has its own reference.
             # Extension blocks, such as Error's, are where members are, not symbols.
             if "/swift/Sources/Toskar/" in s.get("location", {}).get("uri", "") and s["kind"]["identifier"] != "swift.extension":
