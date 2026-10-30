@@ -70,6 +70,8 @@ jobs:
           (cd typescript && npm run reference)
           # Swift's generator runs in the swift image; this runner has no Swift.
           docker run --rm -v "$PWD":/w -w /w swift:6.2 swift/scripts/generate.sh
+          # Swift's error codes page; the rest of its reference changes only with its hand-written code.
+          python swift/scripts/reference.py --errors
       - if: steps.which.outputs.ref != ''
         id: push
         name: Push the branch
