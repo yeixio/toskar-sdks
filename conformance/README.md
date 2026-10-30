@@ -27,8 +27,11 @@ python3 conformance/run.py --core ../toskar-core/daemon \
 | Go | `go/cmd/toskar-conformance` | `toskar-conformance-go` |
 | Python | `python/conformance.py` | `toskar-conformance-python` |
 | TypeScript | `typescript/conformance.mjs`, after `npm run build` | `toskar-conformance-node` |
+| Swift | `swift build --product toskar-conformance`, on a Mac | — |
 
-Build the image with all three from the repository root:
+Swift's pinning uses Apple's Security framework, so its program runs on
+a Mac, in the conformance workflow's `swift` job, and isn't in the image.
+Build the image with the other three from the repository root:
 
 ```sh
 docker build -f conformance/Dockerfile -t toskar-conformance .

@@ -183,7 +183,7 @@ def swift_program(s: Snippet) -> str:
     body = re.sub(r"^import .+\n", "", s.code, flags=re.M)
     lines = ["import Foundation", "import Toskar", *[i for i in imports if i not in ("import Foundation", "import Toskar")]]
     if not defines(s.code, "askThePerson", "swift"):
-        lines.append("let askThePerson: (String) -> Bool = { _ in true }")
+        lines.append("@Sendable func askThePerson(_ short: String) async -> Bool { true }")
     if not defines(s.code, "toskar", "swift"):
         lines.append("let toskar = try Toskar()")
     return "\n".join(lines) + "\n" + body

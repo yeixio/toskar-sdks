@@ -30,6 +30,8 @@ let package = Package(
             ],
             path: "swift/Sources/Toskar"
         ),
+        // The shared conformance cases (conformance/README.md); not a product.
+        .executableTarget(name: "toskar-conformance", dependencies: ["Toskar"], path: "swift/conformance"),
         .testTarget(name: "ToskarTests", dependencies: ["Toskar"], path: "swift/Tests/ToskarTests"),
     ]
 )
