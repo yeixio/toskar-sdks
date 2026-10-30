@@ -324,6 +324,18 @@ public class Toskar internal constructor(
         public fun pair(address: String, code: String, deviceName: String, confirm: ShortPinCheck? = null): Device =
             Pairing.pair(address, code, deviceName, confirm)
 
+        /** What Toskar Core advertises over mDNS. */
+        public const val SERVICE_TYPE: String = Discovery.SERVICE_TYPE
+
+        /**
+         * Asks the network for timeout and returns the computers that
+         * answered, by name. On Android, hold a `WifiManager.MulticastLock`
+         * while it looks.
+         */
+        @JvmStatic
+        @JvmOverloads
+        public fun find(timeout: Duration = Duration.ofSeconds(3)): List<DiscoveredComputer> = Discovery.find(timeout)
+
         /** This computer's Toskar Core, which needs no key. */
         public const val DEFAULT_URL: String = "http://127.0.0.1:7331"
 
