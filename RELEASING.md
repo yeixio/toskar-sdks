@@ -1,6 +1,6 @@
 # Releasing
 
-One tag publishes every SDK at one version: `v0.2.0` puts `toskar` 0.2.0 on PyPI and npm, tags the Go module `go/v0.2.0`, and makes a GitHub release (`.github/workflows/release.yml`). PyPI and npm take the packages by trusted publishing: they trust this repository's release workflow, so no token is stored, and each package says which workflow built it (provenance).
+One tag publishes every SDK at one version: `v0.2.0` puts `toskar` 0.2.0 on PyPI and npm and `ai.toskar:toskar` 0.2.0 on Maven Central, tags the Go module `go/v0.2.0`, and makes a GitHub release (`.github/workflows/release.yml`). PyPI and npm take the packages by trusted publishing: they trust this repository's release workflow, so no token is stored, and each package says which workflow built it (provenance).
 
 ## A release
 
@@ -57,11 +57,37 @@ Every release after that publishes by trusted publishing.
 
 **Swift** needs nothing either: Swift Package Manager reads the package from this repository's root `Package.swift` at the `vX.Y.Z` tag itself.
 
+**Maven Central** (Kotlin and Java, `ai.toskar:toskar`) takes a signed upload with a token, from the `maven-central` environment.
+
+1. The namespace `ai.toskar` is registered at [central.sonatype.com](https://central.sonatype.com/publishing/namespaces), verified by a TXT record on `toskar.ai` (Route 53; done 2026-10-30). Keep the record: it does no harm, and re-verifying needs it.
+2. In GitHub: toskar-sdks → Settings → Environments → **New environment** `maven-central`. Optionally add yourself as a required reviewer.
+3. The upload token: central.sonatype.com → your account → **Generate User Token**. It shows a username and a password once:
+
+   ```sh
+   gh secret set MAVEN_CENTRAL_USERNAME --repo yeixio/toskar-sdks --env maven-central
+   gh secret set MAVEN_CENTRAL_PASSWORD --repo yeixio/toskar-sdks --env maven-central
+   ```
+
+4. The signing key. Maven Central needs every file signed, and the public key on a keyserver:
+
+   ```sh
+   gpg --quick-gen-key "Toskar SDKs" ed25519 sign 5y   # asks for a passphrase
+   gpg --list-keys "Toskar SDKs"                       # the long hex line is KEY
+   gpg --keyserver keyserver.ubuntu.com --send-keys KEY
+   gpg --armor --export-secret-keys KEY | gh secret set SIGNING_KEY --repo yeixio/toskar-sdks --env maven-central
+   gh secret set SIGNING_PASSWORD --repo yeixio/toskar-sdks --env maven-central   # the passphrase
+   ```
+
+   Keep a backup of the key somewhere safe (`gpg --export-secret-keys --armor KEY`), as you would a password: releases signed with a new key are fine, but the old key can't be recovered.
+
+The release's `kotlin` job builds, signs, uploads, and releases. Central checks the upload (signatures, POM, sources, and javadoc jars) and publishes it within about half an hour; search.maven.org can take longer to show it.
+
 ## After the first release
 
 - toskar.ai/developers installs with `npm install toskar` and `pip install toskar` instead of from git (the `INSTALL` and `PY_INSTALL` snippets in yeixio/toskar.ai `app/developers/page.tsx`).
 - Toskar Core's `examples/README.md` does the same.
 - `go get github.com/yeixio/toskar-sdks/go@v0.1.0` gets a version, not a commit.
+- After the first Maven Central release: `kotlin/README.md` drops its "build it from this repository" note, and toskar.ai/developers gets a Kotlin and Java section.
 
 ## Keeping up with Toskar Core
 

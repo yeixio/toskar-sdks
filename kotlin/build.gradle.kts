@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm") version "2.4.21"
     kotlin("plugin.serialization") version "2.4.21"
     `java-library`
-    `maven-publish`
+    id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
 group = "ai.toskar"
@@ -22,28 +22,41 @@ kotlin {
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
-    withSourcesJar()
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            artifactId = "toskar"
-            from(components["java"])
-            pom {
-                name.set("Toskar")
-                description.set("The official Kotlin and Java SDK for Toskar: local AI across your own computers.")
-                url.set("https://toskar.ai/developers")
-                licenses {
-                    license {
-                        name.set("Apache-2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
-                    }
-                }
-                scm {
-                    url.set("https://github.com/yeixio/toskar-sdks")
-                }
+// Maven Central (RELEASING.md): signed, with sources and docs, uploaded and
+// released by the release workflow. Credentials and the signing key come
+// from ORG_GRADLE_PROJECT_mavenCentralUsername, _mavenCentralPassword,
+// _signingInMemoryKey, and _signingInMemoryKeyPassword.
+mavenPublishing {
+    coordinates("ai.toskar", "toskar", version.toString())
+    publishToMavenCentral(automaticRelease = true)
+    if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+        signAllPublications()
+    }
+    pom {
+        name.set("Toskar")
+        description.set("The official Kotlin and Java SDK for Toskar: local AI across your own computers.")
+        url.set("https://toskar.ai/developers")
+        inceptionYear.set("2026")
+        licenses {
+            license {
+                name.set("Apache-2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0")
+                distribution.set("repo")
             }
+        }
+        developers {
+            developer {
+                id.set("yeixio")
+                name.set("Yeix.io")
+                url.set("https://yeix.io")
+            }
+        }
+        scm {
+            url.set("https://github.com/yeixio/toskar-sdks")
+            connection.set("scm:git:https://github.com/yeixio/toskar-sdks.git")
+            developerConnection.set("scm:git:ssh://git@github.com/yeixio/toskar-sdks.git")
         }
     }
 }
