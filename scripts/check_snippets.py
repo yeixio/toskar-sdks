@@ -252,6 +252,8 @@ kotlin { jvmToolchain(21) }
 dependencies { implementation("ai.toskar:toskar") }
 tasks.register("classpath") {
     val files = sourceSets["main"].runtimeClasspath
+    // Builds what's on it, such as the SDK's jar, before naming it.
+    inputs.files(files)
     doLast { file("build/classpath.txt").writeText(files.asPath) }
 }
 """
