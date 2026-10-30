@@ -55,6 +55,11 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v5
       - name: Build Core
         working-directory: core
         env:
@@ -82,7 +87,7 @@ jobs:
       # The READMEs' snippets: each type-checked against the SDK, and the
       # quick starts run (scripts/check_snippets.py).
       - name: Check the READMEs' snippets
-        run: python scripts/check_snippets.py --core "$RUNNER_TEMP/toskar-daemon" --python "$RUNNER_TEMP/venv/bin/python"
+        run: python scripts/check_snippets.py --core "$RUNNER_TEMP/toskar-daemon" --python "$RUNNER_TEMP/venv/bin/python" --langs python,ts,go,kotlin,java
 
   # The Swift SDK on a Mac: the conformance cases, and the README's
   # snippets type-checked and the quick start run, against a throwaway Core.
