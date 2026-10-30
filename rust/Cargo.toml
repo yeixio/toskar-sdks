@@ -14,14 +14,23 @@ categories = ["api-bindings", "web-programming::http-client"]
 exclude = [".snippetcheck/", "scripts/"]
 
 [dependencies]
+# Records' HKDF, AES-GCM, and SHA-256, from the crypto reqwest's rustls uses.
+aws-lc-rs = "1.19"
+base64 = "0.22.1"
 bytes = "1.12"
 futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
-reqwest = { version = "0.13.5", features = ["stream"] }
+reqwest = { version = "0.13.5", features = ["json", "stream"] }
+# Pinning: reqwest's own rustls, with a verifier that checks the pin.
+rustls = { version = "0.23.46", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 time = { version = "0.3.55", features = ["serde", "formatting", "parsing"] }
-tokio = { version = "1.54.1", features = ["time"] }
+tokio = { version = "1.54.1", features = ["sync", "time"] }
+# Records' signatures: ECDSA, RSA, and Ed25519.
+webpki = { package = "rustls-webpki", version = "0.103.16", default-features = false, features = ["aws-lc-rs", "std"] }
 
 [dev-dependencies]
-tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }
+rcgen = { version = "0.14.7", default-features = false, features = ["aws_lc_rs", "pem"] }
+tokio = { version = "1.54.1", features = ["io-util", "macros", "net", "rt-multi-thread"] }
+tokio-rustls = { version = "0.26.6", default-features = false, features = ["aws_lc_rs"] }
 wiremock = "0.6.5"

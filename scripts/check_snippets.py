@@ -389,6 +389,7 @@ publish = false
 [dependencies]
 toskar = { path = ".." }
 futures-util = "0.3"
+serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [workspace]

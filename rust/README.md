@@ -90,3 +90,28 @@ use std::time::Duration;
 
 let patient = Client::builder().retries(5).timeout(Duration::from_secs(300)).build()?;
 ```
+
+## Pairing, as the Toskar apps do
+
+An app can pair as a device, with the code **Connect a device** shows on the computer, instead of using an API key. It then reaches its computer at home and, when the computer has access from anywhere, directly or through its relay, always pinned to the computer's own certificate ([how it works](https://github.com/yeixio/toskar-core/blob/main/docs/connecting.md)).
+
+```rust
+use toskar::Device;
+
+// On the computer's network, with the code it shows:
+let device = toskar::pair("192.168.1.20:7331", "123456", "Kitchen tablet", |short_pin| {
+    // Show the short pin, such as 9B80-D9D9, and ask whether the computer shows the same.
+    ask_the_person(short_pin)
+})
+.await?;
+// Save device as a password is saved: its key and route are secrets. It's
+// serde, in the same JSON as the other SDKs':
+let saved = serde_json::to_string(&device)?;
+
+let device: Device = serde_json::from_str(&saved)?;
+let paired = Client::builder().device(device).build()?;
+let models = paired.api().list_models().await?;
+println!("{:?}", paired.path()); // Some(Home), Some(Direct), or Some(Relay)
+```
+
+Every connection checks the computer's certificate before anything is sent. A different certificate is `PIN_MISMATCH`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `paired.reconnect().await?` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
