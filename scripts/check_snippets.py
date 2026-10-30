@@ -7,9 +7,9 @@ fails CI.
 
 Every snippet is type-checked against the SDK: mypy for Python, tsc for
 TypeScript, the Go compiler for Go, the Swift compiler for Swift, and
-Gradle for Kotlin and Java. A fragment may use `toskar` (a client), `c`
-and `ctx` (Go), and `ask_the_person` / `askThePerson` without defining
-them. `--langs` picks
+Gradle for Kotlin and Java, and the .NET SDK for C#. A fragment may use
+`toskar` (a client), `c` and `ctx` (Go), and `ask_the_person` /
+`askThePerson` / `AskThePerson` without defining them. `--langs` picks
 the languages, for a runner that has only some of the toolchains. Snippets marked to run are also run against a throwaway
 Core, which chats with the scripted model (conformance/run.py):
 
@@ -38,9 +38,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 READMES = [ROOT / "python" / "README.md", ROOT / "typescript" / "README.md", ROOT / "go" / "README.md", ROOT / "swift" / "README.md",
-           ROOT / "kotlin" / "README.md"]
+           ROOT / "kotlin" / "README.md", ROOT / "dotnet" / "README.md"]
 LANGS = {"python": "python", "py": "python", "ts": "ts", "typescript": "ts", "js": "ts", "go": "go", "swift": "swift",
-         "kotlin": "kotlin", "kt": "kotlin", "java": "java"}
+         "kotlin": "kotlin", "kt": "kotlin", "java": "java", "csharp": "csharp", "cs": "csharp"}
 
 
 @dataclass
@@ -65,7 +65,7 @@ def extract(path: Path) -> list[Snippet]:
             name = m.group(2)
             if name.endswith("INSTALL") or m.group(1) == "skip":
                 continue
-            prefixes = {"PY_": "python", "GO_": "go", "SWIFT_": "swift", "KT_": "kotlin", "JAVA_": "java"}
+            prefixes = {"PY_": "python", "GO_": "go", "SWIFT_": "swift", "KT_": "kotlin", "JAVA_": "java", "CS_": "csharp"}
             lang = next((v for k, v in prefixes.items() if name.startswith(k)), "ts")
             code = m.group(3).replace("\\`", "`").replace("\\${", "${")
             out.append(Snippet(f"{label(path)}:{name}", lang, code + "\n", m.group(1) == "run"))
@@ -317,6 +317,66 @@ def check_jvm(snippets: list[tuple[int, Snippet]], work: Path) -> dict[int, str]
     return errors_by_file(out, {i: files[f"snippet_{i}"] for i, _ in snippets}, r.returncode)
 
 
+CSHARP_PROJECT = """<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- A fragment's variables are often there to show what a call answers. -->
+    <NoWarn>CS0168;CS0219;CS8321</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../src/Toskar/Toskar.csproj" />
+  </ItemGroup>
+</Project>
+"""
+
+
+def csharp_program(s: Snippet, name: str) -> str:
+    """A snippet as a method of its own class, its usings first, with toskar
+    and AskThePerson when it doesn't make its own."""
+    usings = re.findall(r"^using [\w.]+;$", s.code, re.M)
+    body = re.sub(r"^using [\w.]+;\n", "", s.code, flags=re.M)
+    lines = [*usings, "using Toskar;", "using Toskar.Models;", "", f"namespace {name};", "",
+             "public static class Snippet", "{"]
+    if not re.search(r"\bAskThePerson\s*\(string", s.code):
+        lines.append("    static bool AskThePerson(string shortPin) => true;")
+    lines.append("    public static async System.Threading.Tasks.Task Run()")
+    lines.append("    {")
+    if not re.search(r"\bvar\s+toskar\b|\bToskarClient\s+toskar\b", s.code):
+        lines.append("        using var toskar = new ToskarClient();")
+    return "\n".join(lines) + "\n" + body + "\n    }\n}\n"
+
+
+def csharp_project(snippets: list[tuple[str, Snippet]], main: str | None) -> dict[str, Path]:
+    """The snippets' project, which uses the SDK as it is in this checkout.
+    main, when given, is the snippet the program runs."""
+    base = ROOT / "dotnet" / ".snippetcheck"
+    shutil.rmtree(base / "Snippets", ignore_errors=True)
+    (base / "Snippets").mkdir(parents=True)
+    (base / "Snippets.csproj").write_text(CSHARP_PROJECT)
+    run = f"await {main}.Snippet.Run();" if main else "await System.Threading.Tasks.Task.CompletedTask;"
+    (base / "Snippets" / "Program.cs").write_text(f"public static class Program\n{{\n    public static async System.Threading.Tasks.Task Main() {{ {run} }}\n}}\n")
+    files = {}
+    for name, s in snippets:
+        f = base / "Snippets" / f"{name}.cs"
+        f.write_text(csharp_program(s, name))
+        files[name] = f
+    return files
+
+
+def check_csharp(snippets: list[tuple[int, Snippet]], work: Path) -> dict[int, str]:
+    if not snippets:
+        return {}
+    files = csharp_project([(f"snippet_{i}", s) for i, s in snippets], None)
+    r = subprocess.run(["dotnet", "build", str(ROOT / "dotnet" / ".snippetcheck"), "-nologo", "-v", "q"],
+                       capture_output=True, text=True)
+    out = "\n".join(line for line in (r.stdout + r.stderr).splitlines() if ": error " in line)
+    return errors_by_file(out, {i: files[f"snippet_{i}"] for i, _ in snippets}, r.returncode)
+
+
 def errors_by_file(output: str, files: dict[int, Path], code: int) -> dict[int, str]:
     """Each snippet's lines of a checker's output. Go's files are all
     main.go, each in a folder of its own. A checker that failed without
@@ -324,8 +384,9 @@ def errors_by_file(output: str, files: dict[int, Path], code: int) -> dict[int, 
     def mark(f: Path) -> str:
         # mypy: snippet_1.py:3: …; tsc: snippet_1.ts(3,5): …; go: snippet_1/main.go:3:5: …;
         # swift: snippet_1/main.swift:3:5: …
-        if f.suffix in (".py", ".ts"):
-            return f.name + {".py": ":", ".ts": "("}[f.suffix]
+        # C#: snippet_1.cs(3,5): …
+        if f.suffix in (".py", ".ts", ".cs"):
+            return f.name + {".py": ":", ".ts": "(", ".cs": "("}[f.suffix]
         return f.parent.name + "/"
 
     found: dict[int, str] = {}
@@ -366,6 +427,13 @@ def run_snippet(s: Snippet, i: int, python: str, env: dict[str, str], work: Path
             return r.stdout + r.stderr
         bin_dir = subprocess.run(["swift", "build", "--package-path", str(base), "--show-bin-path"], capture_output=True, text=True).stdout.strip()
         cmd = [str(Path(bin_dir) / f"run_{i}")]
+    elif s.lang == "csharp":
+        csharp_project([(f"run_{i}", s)], f"run_{i}")
+        project = ROOT / "dotnet" / ".snippetcheck"
+        r = subprocess.run(["dotnet", "build", str(project), "-nologo", "-v", "q", "-o", str(work / "cs")], capture_output=True, text=True)
+        if r.returncode:
+            return r.stdout + r.stderr
+        cmd = ["dotnet", str(work / "cs" / "Snippets.dll")]
     elif s.lang in ("kotlin", "java"):
         jvm_project([(f"run_{i}", s)])
         r = gradle("classes", "classpath")
@@ -400,7 +468,8 @@ def main() -> int:
     ap.add_argument("pages", nargs="*", type=Path, help="more pages with snippets, such as toskar.ai's app/developers/page.tsx")
     ap.add_argument("--core", required=True, help="the Toskar Core daemon to run snippets against")
     ap.add_argument("--python", default=sys.executable, help="a Python with the toskar package and mypy installed")
-    ap.add_argument("--langs", default="python,ts,go", help="the languages to check, of python, ts, go, swift, kotlin, and java")
+    ap.add_argument("--langs", default="python,ts,go",
+                    help="the languages to check, of python, ts, go, swift, kotlin, java, and csharp")
     args = ap.parse_args()
     langs = set(args.langs.split(","))
     python = str(Path(args.python).absolute()) if os.sep in args.python else args.python
@@ -415,7 +484,8 @@ def main() -> int:
             for lang, check in (("python", lambda n: check_python(n, python, mk(tmp, "py"))),
                                 ("ts", lambda n: check_ts(n, mk(tmp, "ts"))),
                                 ("go", lambda n: check_go(n, tmp)),
-                                ("swift", lambda n: check_swift(n, tmp))):
+                                ("swift", lambda n: check_swift(n, tmp)),
+                                ("csharp", lambda n: check_csharp(n, tmp))):
                 if lang in langs:
                     problems.update(check([(i, s) for i, s in numbered if s.lang == lang]))
             # Kotlin and Java build together, in one Gradle project.
@@ -454,6 +524,7 @@ def main() -> int:
             shutil.rmtree(ROOT / "go" / "snippetcheck", ignore_errors=True)
             shutil.rmtree(ROOT / "swift" / ".snippetcheck" / "Sources", ignore_errors=True)
             shutil.rmtree(ROOT / "kotlin" / ".snippetcheck" / "src", ignore_errors=True)
+            shutil.rmtree(ROOT / "dotnet" / ".snippetcheck" / "Snippets", ignore_errors=True)
     print(f"{failed} of {len(snippets)} snippets failed" if failed else f"all {len(snippets)} snippets work")
     return 1 if failed else 0
 

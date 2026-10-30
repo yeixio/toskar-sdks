@@ -71,6 +71,7 @@ jobs:
           # Swift's generator runs in the swift image; this runner has no Swift.
           docker run --rm -v "$PWD":/w -w /w swift:6.2 swift/scripts/generate.sh
           python kotlin/scripts/generate.py && python kotlin/scripts/reference.py
+          python dotnet/scripts/generate.py
           # Swift's error codes page; the rest of its reference changes only with its hand-written code.
           python swift/scripts/reference.py --errors
       - if: steps.which.outputs.ref != ''
@@ -84,7 +85,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add -A spec typescript/src/generated python/src/toskar/_generated go/api go/codes.go swift/Sources/ToskarAPI swift/Sources/Toskar/Codes.swift kotlin/src/main/kotlin/ai/toskar/api kotlin/src/main/kotlin/ai/toskar/Codes.kt reference
+          git add -A spec typescript/src/generated python/src/toskar/_generated go/api go/codes.go swift/Sources/ToskarAPI swift/Sources/Toskar/Codes.swift kotlin/src/main/kotlin/ai/toskar/api kotlin/src/main/kotlin/ai/toskar/Codes.kt dotnet/src/Toskar/Generated reference
           git commit -m "Sync the SDKs with Toskar Core $ref."
           git push -f origin "$branch"
           { echo "branch=$branch"; echo "sha=$(git rev-parse HEAD)"; echo "base=$base"; } >> "$GITHUB_OUTPUT"

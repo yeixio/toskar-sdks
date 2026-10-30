@@ -10,4 +10,5 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 (cd "$root/typescript" && npm version "$version" --no-git-tag-version --allow-same-version >/dev/null)
 sed -i.bak -E "s/^version = \".*\"/version = \"$version\"/" "$root/python/pyproject.toml" && rm "$root/python/pyproject.toml.bak"
 sed -i.bak -E "s/^version = \".*\"/version = \"$version\"/" "$root/kotlin/build.gradle.kts" && rm "$root/kotlin/build.gradle.kts.bak"
-echo "TypeScript $(node -p "require('$root/typescript/package.json').version"), Python $(sed -n -E 's/^version = "(.*)"/\1/p' "$root/python/pyproject.toml"), Kotlin $(sed -n -E 's/^version = "(.*)"/\1/p' "$root/kotlin/build.gradle.kts")"
+sed -i.bak -E "s|<Version>[^<]*</Version>|<Version>$version</Version>|" "$root/dotnet/src/Toskar/Toskar.csproj" && rm "$root/dotnet/src/Toskar/Toskar.csproj.bak"
+echo "TypeScript $(node -p "require('$root/typescript/package.json').version"), Python $(sed -n -E 's/^version = "(.*)"/\1/p' "$root/python/pyproject.toml"), Kotlin $(sed -n -E 's/^version = "(.*)"/\1/p' "$root/kotlin/build.gradle.kts"), .NET $(sed -n -E 's|.*<Version>(.*)</Version>.*|\1|p' "$root/dotnet/src/Toskar/Toskar.csproj")"
