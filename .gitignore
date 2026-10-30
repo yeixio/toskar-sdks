@@ -24,6 +24,11 @@ kotlin/build/
 kotlin/conformance/build/
 kotlin/.snippetcheck/
 
+# .NET
+dotnet/**/bin/
+dotnet/**/obj/
+dotnet/.snippetcheck/
+
 # Rust
 rust/target/
 rust/.snippetcheck/
