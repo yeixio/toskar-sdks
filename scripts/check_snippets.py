@@ -7,9 +7,10 @@ fails CI.
 
 Every snippet is type-checked against the SDK: mypy for Python, tsc for
 TypeScript, the Go compiler for Go, the Swift compiler for Swift, and
-Gradle for Kotlin and Java, and the .NET SDK for C#. A fragment may use
-`toskar` (a client), `c` and `ctx` (Go), and `ask_the_person` /
-`askThePerson` / `AskThePerson` without defining them. `--langs` picks
+Gradle for Kotlin and Java, the .NET SDK for C#, and cargo for Rust. A
+fragment may use `toskar` (a client), `c` and `ctx` (Go), and
+`ask_the_person` / `askThePerson` / `AskThePerson` without defining
+them. `--langs` picks
 the languages, for a runner that has only some of the toolchains. Snippets marked to run are also run against a throwaway
 Core, which chats with the scripted model (conformance/run.py):
 
@@ -38,9 +39,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 READMES = [ROOT / "python" / "README.md", ROOT / "typescript" / "README.md", ROOT / "go" / "README.md", ROOT / "swift" / "README.md",
-           ROOT / "kotlin" / "README.md", ROOT / "dotnet" / "README.md"]
+           ROOT / "kotlin" / "README.md", ROOT / "dotnet" / "README.md", ROOT / "rust" / "README.md"]
 LANGS = {"python": "python", "py": "python", "ts": "ts", "typescript": "ts", "js": "ts", "go": "go", "swift": "swift",
-         "kotlin": "kotlin", "kt": "kotlin", "java": "java", "csharp": "csharp", "cs": "csharp"}
+         "kotlin": "kotlin", "kt": "kotlin", "java": "java", "csharp": "csharp", "cs": "csharp", "rust": "rust",
+         "rs": "rust"}
 
 
 @dataclass
@@ -65,7 +67,8 @@ def extract(path: Path) -> list[Snippet]:
             name = m.group(2)
             if name.endswith("INSTALL") or m.group(1) == "skip":
                 continue
-            prefixes = {"PY_": "python", "GO_": "go", "SWIFT_": "swift", "KT_": "kotlin", "JAVA_": "java", "CS_": "csharp"}
+            prefixes = {"PY_": "python", "GO_": "go", "SWIFT_": "swift", "KT_": "kotlin", "JAVA_": "java", "CS_": "csharp",
+                        "RS_": "rust"}
             lang = next((v for k, v in prefixes.items() if name.startswith(k)), "ts")
             code = m.group(3).replace("\\`", "`").replace("\\${", "${")
             out.append(Snippet(f"{label(path)}:{name}", lang, code + "\n", m.group(1) == "run"))
@@ -377,6 +380,66 @@ def check_csharp(snippets: list[tuple[int, Snippet]], work: Path) -> dict[int, s
     return errors_by_file(out, {i: files[f"snippet_{i}"] for i, _ in snippets}, r.returncode)
 
 
+RUST_MANIFEST = """[package]
+name = "snippetcheck"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+toskar = { path = ".." }
+futures-util = "0.3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[workspace]
+"""
+
+
+def rust_project(snippets: list[tuple[str, Snippet]], main: str | None) -> dict[str, Path]:
+    """The snippets' crate, which uses the SDK as it is in this checkout: each
+    snippet an async fn in a module of its own, with toskar when it doesn't
+    make its own. main, when given, is the snippet the program runs."""
+    base = ROOT / "rust" / ".snippetcheck"
+    shutil.rmtree(base / "src", ignore_errors=True)
+    (base / "src").mkdir(parents=True)
+    (base / "Cargo.toml").write_text(RUST_MANIFEST)
+    files = {}
+    mods = []
+    for name, s in snippets:
+        lines = ["#![allow(unused)]", "use futures_util::StreamExt;", "use toskar::models::*;", "use toskar::*;", "",
+                 "fn ask_the_person(short_pin: &str) -> bool { true }", "",
+                 "pub async fn run() -> std::result::Result<(), Box<dyn std::error::Error>> {"]
+        if not re.search(r"\blet\s+(mut\s+)?toskar\b", s.code):
+            lines.append("let toskar = Client::new()?;")
+        f = base / "src" / f"{name}.rs"
+        f.write_text("\n".join(lines) + "\n" + s.code + "\nOk(())\n}\n")
+        files[name] = f
+        mods.append(f"mod {name};")
+    run = f"{main}::run().await?;" if main else ""
+    (base / "src" / "main.rs").write_text(
+        "#![allow(unused)]\n" + "\n".join(mods) + "\n\n#[tokio::main]\n"
+        "async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {\n" + run + "\nOk(())\n}\n")
+    return files
+
+
+def check_rust(snippets: list[tuple[int, Snippet]], work: Path) -> dict[int, str]:
+    if not snippets:
+        return {}
+    files = rust_project([(f"snippet_{i}", s) for i, s in snippets], None)
+    r = subprocess.run(["cargo", "build", "--quiet", "--manifest-path", str(ROOT / "rust" / ".snippetcheck" / "Cargo.toml")],
+                       capture_output=True, text=True)
+    # rustc says the error, then where it is on the next line: one line each, where first.
+    out, said = [], ""
+    for line in r.stderr.splitlines():
+        if line.startswith("error"):
+            said = line
+        elif "-->" in line and said:
+            out.append(f"{line.split('-->', 1)[1].strip()}: {said}")
+            said = ""
+    out = "\n".join(out)
+    return errors_by_file(out, {i: files[f"snippet_{i}"] for i, _ in snippets}, r.returncode)
+
+
 def errors_by_file(output: str, files: dict[int, Path], code: int) -> dict[int, str]:
     """Each snippet's lines of a checker's output. Go's files are all
     main.go, each in a folder of its own. A checker that failed without
@@ -384,9 +447,9 @@ def errors_by_file(output: str, files: dict[int, Path], code: int) -> dict[int, 
     def mark(f: Path) -> str:
         # mypy: snippet_1.py:3: …; tsc: snippet_1.ts(3,5): …; go: snippet_1/main.go:3:5: …;
         # swift: snippet_1/main.swift:3:5: …
-        # C#: snippet_1.cs(3,5): …
-        if f.suffix in (".py", ".ts", ".cs"):
-            return f.name + {".py": ":", ".ts": "(", ".cs": "("}[f.suffix]
+        # C#: snippet_1.cs(3,5): …; rustc:  --> src/snippet_1.rs:3:5
+        if f.suffix in (".py", ".ts", ".cs", ".rs"):
+            return f.name + {".py": ":", ".ts": "(", ".cs": "(", ".rs": ":"}[f.suffix]
         return f.parent.name + "/"
 
     found: dict[int, str] = {}
@@ -434,6 +497,13 @@ def run_snippet(s: Snippet, i: int, python: str, env: dict[str, str], work: Path
         if r.returncode:
             return r.stdout + r.stderr
         cmd = ["dotnet", str(work / "cs" / "Snippets.dll")]
+    elif s.lang == "rust":
+        rust_project([(f"run_{i}", s)], f"run_{i}")
+        manifest = ROOT / "rust" / ".snippetcheck" / "Cargo.toml"
+        r = subprocess.run(["cargo", "build", "--quiet", "--manifest-path", str(manifest)], capture_output=True, text=True)
+        if r.returncode:
+            return r.stdout + r.stderr
+        cmd = [str(ROOT / "rust" / ".snippetcheck" / "target" / "debug" / "snippetcheck")]
     elif s.lang in ("kotlin", "java"):
         jvm_project([(f"run_{i}", s)])
         r = gradle("classes", "classpath")
@@ -469,7 +539,7 @@ def main() -> int:
     ap.add_argument("--core", required=True, help="the Toskar Core daemon to run snippets against")
     ap.add_argument("--python", default=sys.executable, help="a Python with the toskar package and mypy installed")
     ap.add_argument("--langs", default="python,ts,go",
-                    help="the languages to check, of python, ts, go, swift, kotlin, java, and csharp")
+                    help="the languages to check, of python, ts, go, swift, kotlin, java, csharp, and rust")
     args = ap.parse_args()
     langs = set(args.langs.split(","))
     python = str(Path(args.python).absolute()) if os.sep in args.python else args.python
@@ -485,7 +555,8 @@ def main() -> int:
                                 ("ts", lambda n: check_ts(n, mk(tmp, "ts"))),
                                 ("go", lambda n: check_go(n, tmp)),
                                 ("swift", lambda n: check_swift(n, tmp)),
-                                ("csharp", lambda n: check_csharp(n, tmp))):
+                                ("csharp", lambda n: check_csharp(n, tmp)),
+                                ("rust", lambda n: check_rust(n, tmp))):
                 if lang in langs:
                     problems.update(check([(i, s) for i, s in numbered if s.lang == lang]))
             # Kotlin and Java build together, in one Gradle project.
@@ -525,6 +596,7 @@ def main() -> int:
             shutil.rmtree(ROOT / "swift" / ".snippetcheck" / "Sources", ignore_errors=True)
             shutil.rmtree(ROOT / "kotlin" / ".snippetcheck" / "src", ignore_errors=True)
             shutil.rmtree(ROOT / "dotnet" / ".snippetcheck" / "Snippets", ignore_errors=True)
+            shutil.rmtree(ROOT / "rust" / ".snippetcheck" / "src", ignore_errors=True)
     print(f"{failed} of {len(snippets)} snippets failed" if failed else f"all {len(snippets)} snippets work")
     return 1 if failed else 0
 

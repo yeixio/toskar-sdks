@@ -28,3 +28,7 @@ kotlin/.snippetcheck/
 dotnet/**/bin/
 dotnet/**/obj/
 dotnet/.snippetcheck/
+
+# Rust
+rust/target/
+rust/.snippetcheck/
