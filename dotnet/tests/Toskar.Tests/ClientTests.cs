@@ -14,7 +14,7 @@ namespace Toskar.Tests;
 /// <summary>Answers requests from a list, and keeps what it was sent.</summary>
 internal sealed class FakeCore : HttpMessageHandler
 {
-    internal sealed record Answer(int Status = 200, string Body = "", string Type = "application/json", bool Fails = false);
+    internal sealed record Answer(int Status = 200, string Body = "", string Type = "application/json", bool Fails = false, byte[]? Bytes = null);
 
     private readonly Queue<Answer> answers;
 
@@ -31,7 +31,8 @@ internal sealed class FakeCore : HttpMessageHandler
         {
             throw new HttpRequestException("connection refused");
         }
-        return new HttpResponseMessage((HttpStatusCode)a.Status) { Content = new StringContent(a.Body, Encoding.UTF8, a.Type) };
+        HttpContent content = a.Bytes is null ? new StringContent(a.Body, Encoding.UTF8, a.Type) : new ByteArrayContent(a.Bytes);
+        return new HttpResponseMessage((HttpStatusCode)a.Status) { Content = content };
     }
 }
 

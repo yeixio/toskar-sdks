@@ -82,3 +82,25 @@ using var patient = new ToskarClient(new ToskarOptions { Retries = 5, Timeout = 
 ```
 
 Bring your own `HttpClient` with `ToskarOptions.HttpClient`, such as one from `IHttpClientFactory`; the client then leaves disposing it to you.
+
+## Pairing, as the Toskar apps do
+
+An app can pair as a device, with the code **Connect a device** shows on the computer, instead of using an API key. It then reaches its computer at home and, when the computer has access from anywhere, directly or through its relay, always pinned to the computer's own certificate ([how it works](https://github.com/yeixio/toskar-core/blob/main/docs/connecting.md)).
+
+```csharp
+using System.Text.Json;
+
+// On the computer's network, with the code it shows:
+var device = await ToskarClient.PairAsync("192.168.1.20:7331", "123456", "Kitchen tablet",
+    // Show the short pin, such as 9B80-D9D9, and ask whether the computer shows the same.
+    shortPin => AskThePerson(shortPin));
+// Save device as a password is saved: its key and route are secrets. It's
+// in the same JSON as the other SDKs':
+var saved = JsonSerializer.Serialize(device);
+
+using var paired = new ToskarClient(JsonSerializer.Deserialize<Device>(saved)!);
+var models = await paired.Api.ListModelsAsync();
+Console.WriteLine(paired.Path); // Home, Direct, or Relay
+```
+
+`PairAsync` also takes a `Func<string, Task<bool>>`, to ask in a dialog. Every connection checks the computer's certificate before anything is sent. A different certificate throws `PIN_MISMATCH`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `await paired.ReconnectAsync()` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
