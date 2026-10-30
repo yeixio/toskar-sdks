@@ -364,7 +364,7 @@ public sealed class ToskarClient : IDisposable
                 }
                 if (attempt >= attempts)
                 {
-                    var why = e is OperationCanceledException ? $"no answer within {timeout.TotalSeconds:0.#} s" : e.Message;
+                    var why = e is OperationCanceledException ? $"no answer within {timeout.TotalSeconds:0.#} s" : e.GetBaseException().Message;
                     throw new ToskarException(0, "CONNECTION_FAILED", $"Couldn't reach Toskar at {Url}: {why}", inner: e);
                 }
                 await Backoff(attempt, cancellationToken).ConfigureAwait(false);

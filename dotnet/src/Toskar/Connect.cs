@@ -75,7 +75,7 @@ internal static class Pairing
             }
             catch (Exception e) when (e is HttpRequestException || (e is OperationCanceledException && !cancellationToken.IsCancellationRequested))
             {
-                throw new ToskarException(0, "CONNECTION_FAILED", $"Couldn't reach the computer at {address}: {e.Message}", inner: e);
+                throw new ToskarException(0, "CONNECTION_FAILED", $"Couldn't reach the computer at {address}: {e.GetBaseException().Message}", inner: e);
             }
         }
         var seen = seeing.Seen ?? throw new ToskarException(0, "PIN_MISMATCH", "The computer showed no certificate");

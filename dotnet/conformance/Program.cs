@@ -18,8 +18,9 @@ try
 }
 catch (ToskarException e)
 {
-    // With the inner exception, such as a certificate the relay showed: a test bed's log then says why.
-    var message = e.Message + (e.InnerException is { } inner ? $": {inner.Message}" : "");
+    // With the root cause, such as a certificate the relay showed: a test bed's log then says why.
+    var cause = e.InnerException?.GetBaseException().Message;
+    var message = cause is null || e.Message.Contains(cause) ? e.Message : $"{e.Message}: {cause}";
     Console.WriteLine(new JsonObject { ["error"] = new JsonObject { ["code"] = e.Code, ["message"] = message } }.ToJsonString());
     return 1;
 }
