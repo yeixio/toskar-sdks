@@ -83,3 +83,28 @@ jobs:
       # quick starts run (scripts/check_snippets.py).
       - name: Check the READMEs' snippets
         run: python scripts/check_snippets.py --core "$RUNNER_TEMP/toskar-daemon" --python "$RUNNER_TEMP/venv/bin/python"
+
+  # The Swift README's snippets, on a Mac: type-checked, and the quick start
+  # run against a throwaway Core.
+  swift:
+    runs-on: ${{ fromJSON(vars.MAC_RUNS_ON || '"macos-latest"') }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/checkout@v5
+        with:
+          repository: yeixio/toskar-core
+          ref: ${{ inputs.core_ref || 'main' }}
+          path: core
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: core/go.mod
+      - name: Build Core
+        working-directory: core
+        env:
+          CGO_ENABLED: "0"
+        run: go build -o "$RUNNER_TEMP/toskar-daemon" ./cmd/daemon
+      - name: Check the Swift README's snippets
+        run: python3 scripts/check_snippets.py --core "$RUNNER_TEMP/toskar-daemon" --langs swift

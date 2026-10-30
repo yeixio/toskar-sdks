@@ -6,9 +6,10 @@ fails CI.
         --python python/.venv/bin/python [more pages...]
 
 Every snippet is type-checked against the SDK: mypy for Python, tsc for
-TypeScript, the Go compiler for Go. A fragment may use `toskar` (a
-client), `c` and `ctx` (Go), and `ask_the_person` / `askThePerson` without
-defining them. Snippets marked to run are also run against a throwaway
+TypeScript, the Go compiler for Go, the Swift compiler for Swift. A
+fragment may use `toskar` (a client), `c` and `ctx` (Go), and
+`ask_the_person` / `askThePerson` without defining them. `--langs` picks
+the languages, for a runner that has only some of the toolchains. Snippets marked to run are also run against a throwaway
 Core, which chats with the scripted model (conformance/run.py):
 
 - in Markdown, `<!-- snippet: run -->` on the line before the fence;
@@ -34,8 +35,8 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-READMES = [ROOT / "python" / "README.md", ROOT / "typescript" / "README.md", ROOT / "go" / "README.md"]
-LANGS = {"python": "python", "py": "python", "ts": "ts", "typescript": "ts", "js": "ts", "go": "go"}
+READMES = [ROOT / "python" / "README.md", ROOT / "typescript" / "README.md", ROOT / "go" / "README.md", ROOT / "swift" / "README.md"]
+LANGS = {"python": "python", "py": "python", "ts": "ts", "typescript": "ts", "js": "ts", "go": "go", "swift": "swift"}
 
 
 @dataclass
@@ -78,6 +79,8 @@ def defines(code: str, name: str, lang: str) -> bool:
         return re.search(rf"^\s*(?:{name}\s*=|(?:async\s+)?def {name}\b|.*\bas {name}\b)", code, re.M) is not None
     if lang == "ts":
         return re.search(rf"\b(?:const|let|var|function)\s+{name}\b", code) is not None
+    if lang == "swift":
+        return re.search(rf"\b(?:let|var|func)\s+{name}\b", code) is not None
     return re.search(rf"\b{name}(?:\s*,\s*\w+)*\s*:=|\bvar {name}\b", code) is not None
 
 
@@ -173,13 +176,71 @@ def check_go(snippets: list[tuple[int, Snippet]], work: Path) -> dict[int, str]:
     return errors_by_file(out, files, r.returncode if out.strip() else 0)
 
 
+def swift_program(s: Snippet) -> str:
+    """A snippet as a main.swift: its imports first, then toskar and
+    askThePerson when it doesn't make its own."""
+    imports = re.findall(r"^import .+$", s.code, re.M)
+    body = re.sub(r"^import .+\n", "", s.code, flags=re.M)
+    lines = ["import Foundation", "import Toskar", *[i for i in imports if i not in ("import Foundation", "import Toskar")]]
+    if not defines(s.code, "askThePerson", "swift"):
+        lines.append("let askThePerson: (String) -> Bool = { _ in true }")
+    if not defines(s.code, "toskar", "swift"):
+        lines.append("let toskar = try Toskar()")
+    return "\n".join(lines) + "\n" + body
+
+
+SWIFT_PACKAGE = """// swift-tools-version:5.9
+import PackageDescription
+
+let package = Package(
+    name: "snippetcheck",
+    platforms: [.macOS(.v13)],
+    dependencies: [
+        .package(name: "toskar-sdks", path: "../.."),
+        .package(url: "https://github.com/swift-server/swift-openapi-async-http-client", from: "1.0.0"),
+    ],
+    targets: [
+%s
+    ]
+)
+"""
+
+
+def swift_package(names: list[str]) -> Path:
+    """The snippets' package, which uses the SDK as it is in this checkout,
+    with one executable for each of names."""
+    base = ROOT / "swift" / ".snippetcheck"
+    deps = '[.product(name: "Toskar", package: "toskar-sdks"), .product(name: "OpenAPIAsyncHTTPClient", package: "swift-openapi-async-http-client")]'
+    targets = ",\n".join(f'        .executableTarget(name: "{n}", dependencies: {deps})' for n in names)
+    (base / "Package.swift").write_text(SWIFT_PACKAGE % targets)
+    return base
+
+
+def check_swift(snippets: list[tuple[int, Snippet]], work: Path) -> dict[int, str]:
+    base = ROOT / "swift" / ".snippetcheck"
+    shutil.rmtree(base / "Sources", ignore_errors=True)
+    files = {}
+    for i, s in snippets:
+        d = base / "Sources" / f"snippet_{i}"
+        d.mkdir(parents=True)
+        (d / "main.swift").write_text(swift_program(s))
+        files[i] = d / "main.swift"
+    if not files:
+        return {}
+    swift_package([f"snippet_{i}" for i in files])
+    r = subprocess.run(["swift", "build", "--package-path", str(base)], capture_output=True, text=True)
+    out = "\n".join(line for line in (r.stdout + r.stderr).splitlines() if "error:" in line)
+    return errors_by_file(out, files, r.returncode)
+
+
 def errors_by_file(output: str, files: dict[int, Path], code: int) -> dict[int, str]:
     """Each snippet's lines of a checker's output. Go's files are all
     main.go, each in a folder of its own. A checker that failed without
     naming a snippet fails them all."""
     def mark(f: Path) -> str:
-        # mypy: snippet_1.py:3: …; tsc: snippet_1.ts(3,5): …; go: snippet_1/main.go:3:5: …
-        return {".py": f.name + ":", ".ts": f.name + "(", ".go": f.parent.name + "/"}[f.suffix]
+        # mypy: snippet_1.py:3: …; tsc: snippet_1.ts(3,5): …; go: snippet_1/main.go:3:5: …;
+        # swift: snippet_1/main.swift:3:5: …
+        return {".py": f.name + ":", ".ts": f.name + "(", ".go": f.parent.name + "/", ".swift": f.parent.name + "/"}[f.suffix]
 
     found: dict[int, str] = {}
     if code and not any(mark(f) in output for f in files.values()):
@@ -207,6 +268,18 @@ def run_snippet(s: Snippet, i: int, python: str, env: dict[str, str], work: Path
         f = d / f"run_{i}.ts"
         f.write_text(s.code)
         cmd = ["node", "--experimental-strip-types", "--no-warnings", str(f)]
+    elif s.lang == "swift":
+        base = ROOT / "swift" / ".snippetcheck"
+        shutil.rmtree(base / "Sources", ignore_errors=True)
+        d = base / "Sources" / f"run_{i}"
+        d.mkdir(parents=True)
+        (d / "main.swift").write_text(swift_program(s))
+        swift_package([f"run_{i}"])
+        r = subprocess.run(["swift", "build", "--package-path", str(base), "--product", f"run_{i}"], capture_output=True, text=True)
+        if r.returncode:
+            return r.stdout + r.stderr
+        bin_dir = subprocess.run(["swift", "build", "--package-path", str(base), "--show-bin-path"], capture_output=True, text=True).stdout.strip()
+        cmd = [str(Path(bin_dir) / f"run_{i}")]
     else:
         d = ROOT / "go" / "snippetcheck" / f"run_{i}"
         d.mkdir(parents=True, exist_ok=True)
@@ -233,10 +306,12 @@ def main() -> int:
     ap.add_argument("pages", nargs="*", type=Path, help="more pages with snippets, such as toskar.ai's app/developers/page.tsx")
     ap.add_argument("--core", required=True, help="the Toskar Core daemon to run snippets against")
     ap.add_argument("--python", default=sys.executable, help="a Python with the toskar package and mypy installed")
+    ap.add_argument("--langs", default="python,ts,go", help="the languages to check, of python, ts, go, and swift")
     args = ap.parse_args()
+    langs = set(args.langs.split(","))
     python = str(Path(args.python).absolute()) if os.sep in args.python else args.python
 
-    snippets = [s for page in READMES + [p.resolve() for p in args.pages] for s in extract(page)]
+    snippets = [s for page in READMES + [p.resolve() for p in args.pages] for s in extract(page) if s.lang in langs]
     numbered = list(enumerate(snippets))
     failed = 0
     with tempfile.TemporaryDirectory(prefix="toskar-snippets-") as tmp_name:
@@ -245,8 +320,10 @@ def main() -> int:
             problems: dict[int, str] = {}
             for lang, check in (("python", lambda n: check_python(n, python, mk(tmp, "py"))),
                                 ("ts", lambda n: check_ts(n, mk(tmp, "ts"))),
-                                ("go", lambda n: check_go(n, tmp))):
-                problems.update(check([(i, s) for i, s in numbered if s.lang == lang]))
+                                ("go", lambda n: check_go(n, tmp)),
+                                ("swift", lambda n: check_swift(n, tmp))):
+                if lang in langs:
+                    problems.update(check([(i, s) for i, s in numbered if s.lang == lang]))
             runs = [(i, s) for i, s in numbered if s.run and i not in problems]
             if runs:
                 sys.path.insert(0, str(ROOT / "conformance"))
@@ -279,6 +356,7 @@ def main() -> int:
                     print(f"ok   {s.where:28} {s.lang:6} {kind}")
         finally:
             shutil.rmtree(ROOT / "go" / "snippetcheck", ignore_errors=True)
+            shutil.rmtree(ROOT / "swift" / ".snippetcheck" / "Sources", ignore_errors=True)
     print(f"{failed} of {len(snippets)} snippets failed" if failed else f"all {len(snippets)} snippets work")
     return 1 if failed else 0
 

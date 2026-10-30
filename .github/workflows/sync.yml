@@ -68,6 +68,8 @@ jobs:
           (cd python && python scripts/generate.py && python scripts/reference.py)
           (cd go && go generate ./...)
           (cd typescript && npm run reference)
+          # Swift's generator runs in the swift image; this runner has no Swift.
+          docker run --rm -v "$PWD":/w -w /w swift:6.2 swift/scripts/generate.sh
       - if: steps.which.outputs.ref != ''
         id: push
         name: Push the branch
@@ -79,7 +81,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add -A spec typescript/src/generated python/src/toskar/_generated go/api go/codes.go reference
+          git add -A spec typescript/src/generated python/src/toskar/_generated go/api go/codes.go swift/Sources/ToskarAPI swift/Sources/Toskar/Codes.swift reference
           git commit -m "Sync the SDKs with Toskar Core $ref."
           git push -f origin "$branch"
           { echo "branch=$branch"; echo "sha=$(git rev-parse HEAD)"; echo "base=$base"; } >> "$GITHUB_OUTPUT"

@@ -55,6 +55,8 @@ Every release after that publishes by trusted publishing.
 
 **Go** needs nothing: the module is public, and the Go proxy and pkg.go.dev take it from the `go/vX.Y.Z` tag.
 
+**Swift** needs nothing either: Swift Package Manager reads the package from this repository's root `Package.swift` at the `vX.Y.Z` tag itself.
+
 ## After the first release
 
 - toskar.ai/developers installs with `npm install toskar` and `pip install toskar` instead of from git (the `INSTALL` and `PY_INSTALL` snippets in yeixio/toskar.ai `app/developers/page.tsx`).
