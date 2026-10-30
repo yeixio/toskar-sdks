@@ -72,12 +72,14 @@ jobs:
           (cd go && go build -o "$RUNNER_TEMP/toskar-conformance-go" ./cmd/toskar-conformance)
           python -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install -q "./python[anywhere,dev]"
           (cd typescript && npm ci && npm run build)
+          (cd kotlin && ./gradlew -q :conformance:installDist)
       - name: Run the cases
         run: |
           python conformance/run.py --core "$RUNNER_TEMP/toskar-daemon" \
             --program "go=$RUNNER_TEMP/toskar-conformance-go" \
             --program "python=$RUNNER_TEMP/venv/bin/python python/conformance.py" \
-            --program "node=node typescript/conformance.mjs"
+            --program "node=node typescript/conformance.mjs" \
+            --program "kotlin=kotlin/conformance/build/install/toskar-conformance/bin/toskar-conformance"
       # Toskar Core's examples (examples/), with these SDKs: a change here
       # that breaks one fails before it merges.
       - name: Run Core's examples

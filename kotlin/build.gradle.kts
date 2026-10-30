@@ -57,6 +57,7 @@ dependencies {
     api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     testImplementation(kotlin("test"))
     testImplementation("com.squareup.okhttp3:mockwebserver3:5.5.1")
+    testImplementation("com.squareup.okhttp3:okhttp-tls:5.5.1")
 }
 
 tasks.test {

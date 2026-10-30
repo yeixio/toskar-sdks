@@ -21,4 +21,5 @@ swift/.snippetcheck/
 kotlin/.gradle/
 kotlin/.kotlin/
 kotlin/build/
+kotlin/conformance/build/
 kotlin/.snippetcheck/
