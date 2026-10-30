@@ -187,6 +187,18 @@ public sealed class ToskarClient : IDisposable
         string address, string code, string deviceName, Func<string, Task<bool>>? confirm = null, CancellationToken cancellationToken = default) =>
         Pairing.PairAsync(address, code, deviceName, confirm, cancellationToken);
 
+    /// <summary>What Toskar Core advertises over mDNS.</summary>
+    public const string ServiceType = Discovery.ServiceType;
+
+    /// <summary>
+    /// Asks the network for timeout (3 seconds by default) and answers the
+    /// computers that answered, by name.
+    /// </summary>
+    /// <param name="timeout">How long to listen for answers.</param>
+    /// <param name="cancellationToken">Stops looking.</param>
+    public static Task<IReadOnlyList<DiscoveredComputer>> FindAsync(TimeSpan? timeout = null, CancellationToken cancellationToken = default) =>
+        Discovery.FindAsync(timeout ?? TimeSpan.FromSeconds(3), cancellationToken);
+
     /// <inheritdoc cref="PairAsync(string, string, string, Func{string, Task{bool}}?, CancellationToken)"/>
     public static Task<Device> PairAsync(
         string address, string code, string deviceName, Func<string, bool> confirm, CancellationToken cancellationToken = default) =>
