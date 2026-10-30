@@ -129,3 +129,17 @@ println(paired.path) // HOME, DIRECT, or RELAY
 Every connection checks the computer's certificate before anything is sent. A different certificate throws `PIN_MISMATCH`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `paired.reconnect()` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
 
 Address records signed with an Ed25519 certificate need Java 15 or later (Android 13); Toskar Core's own certificates are ECDSA.
+
+## Find computers on the network
+
+Computers running Toskar announce themselves on the home network (mDNS, `_localai._tcp`). `Toskar.find` lists them, so a person can pick one instead of typing an address. It needs no other library:
+
+```kotlin
+for (computer in Toskar.find(java.time.Duration.ofSeconds(3))) {
+    println("${computer.name} ${computer.address}")
+}
+```
+
+Pair with `computer.address`. When `computer.onNetwork` is false, the computer answers only on itself: tell the person to turn on Connect a device there, rather than that it's unreachable. A computer can have addresses this device can't reach, such as a container network's; `address` is the first one that answers, and `addresses` has them all.
+
+On Android, hold a `WifiManager.MulticastLock` while it looks, and ask for the `CHANGE_WIFI_MULTICAST_STATE` permission; without the lock, the system drops the answers.
