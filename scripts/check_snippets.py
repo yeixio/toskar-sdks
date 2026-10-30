@@ -16,7 +16,8 @@ Core, which chats with the scripted model (conformance/run.py):
 - in Markdown, `<!-- snippet: run -->` on the line before the fence;
 - in a .tsx page, `// snippet: run` on the line before a `const NAME = \\`...\\``
   holding the snippet. The name says its language: PY_ for Python, GO_ for
-  Go, anything else TypeScript; *_INSTALL ones are commands, not checked.
+  Go, SWIFT_ for Swift, KT_ for Kotlin, JAVA_ for Java, anything else
+  TypeScript; *_INSTALL ones are commands, not checked.
 
 TypeScript needs typescript/ built (npm run build). Standard library only.
 """
@@ -64,7 +65,8 @@ def extract(path: Path) -> list[Snippet]:
             name = m.group(2)
             if name.endswith("INSTALL") or m.group(1) == "skip":
                 continue
-            lang = "python" if name.startswith("PY_") else "go" if name.startswith("GO_") else "ts"
+            prefixes = {"PY_": "python", "GO_": "go", "SWIFT_": "swift", "KT_": "kotlin", "JAVA_": "java"}
+            lang = next((v for k, v in prefixes.items() if name.startswith(k)), "ts")
             code = m.group(3).replace("\\`", "`").replace("\\${", "${")
             out.append(Snippet(f"{label(path)}:{name}", lang, code + "\n", m.group(1) == "run"))
     return out
