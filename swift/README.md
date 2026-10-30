@@ -13,6 +13,8 @@ targets: [
 ]
 ```
 
+Every class, function, and type: [the reference](https://github.com/yeixio/toskar-sdks/blob/main/reference/swift/README.md).
+
 ## Quick start
 
 <!-- snippet: run -->
