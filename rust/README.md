@@ -13,8 +13,6 @@ futures-util = "0.3"
 
 Every item and route: [the reference](https://github.com/yeixio/toskar-sdks/blob/main/reference/rust/README.md).
 
-It isn't on crates.io yet. Until it is, use it from this repository: `toskar = { git = "https://github.com/yeixio/toskar-sdks" }`.
-
 ## Quick start
 
 <!-- snippet: run -->

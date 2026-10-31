@@ -120,8 +120,7 @@ The first release creates the package, and it's yours. Optionally, after it: nug
 - toskar.ai/developers installs with `npm install toskar` and `pip install toskar` instead of from git (the `INSTALL` and `PY_INSTALL` snippets in yeixio/toskar.ai `app/developers/page.tsx`).
 - Toskar Core's `examples/README.md` does the same.
 - `go get github.com/yeixio/toskar-sdks/go@v0.1.0` gets a version, not a commit.
-- After the first Maven Central release: `kotlin/README.md` drops its "build it from this repository" note, and toskar.ai/developers gets a Kotlin and Java section.
-- After the first NuGet and crates.io releases: `dotnet/README.md` and `rust/README.md` drop their "isn't on … yet" notes, the root README's table drops "soon", and toskar.ai/developers gets .NET and Rust sections.
+- A new language's first release: toskar.ai/developers gets a section for it, and its README and the root README's table say where to install it from.
 
 ## Keeping up with Toskar Core
 
