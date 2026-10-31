@@ -104,3 +104,16 @@ Console.WriteLine(paired.Path); // Home, Direct, or Relay
 ```
 
 `PairAsync` also takes a `Func<string, Task<bool>>`, to ask in a dialog. Every connection checks the computer's certificate before anything is sent. A different certificate throws `PIN_MISMATCH`, and is never accepted on its own: pair again to trust a new one. Away from home, the client opens the computer's sealed address record from its relay, tries its direct ways in at once and the relay a second later, and keeps the first that answers. `await paired.ReconnectAsync()` chooses again, as after the network changes. A device key reaches the routes a device needs. Scripts and servers that need the rest use a key from API Access.
+
+## Find computers on the network
+
+Computers running Toskar announce themselves on the home network (mDNS, `_localai._tcp`). `ToskarClient.FindAsync` lists them, so a person can pick one instead of typing an address. It needs no other library:
+
+```csharp
+foreach (var computer in await ToskarClient.FindAsync(TimeSpan.FromSeconds(3)))
+{
+    Console.WriteLine($"{computer.Name} {computer.Address}");
+}
+```
+
+Pair with `computer.Address`. When `computer.OnNetwork` is false, the computer answers only on itself: tell the person to turn on Connect a device there, rather than that it's unreachable. A computer can have addresses this device can't reach, such as a container network's. `Address` is the first one that answers, and `Addresses` has them all.
