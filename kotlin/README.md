@@ -12,8 +12,6 @@ dependencies {
 
 Every class, function, and route: [the reference](https://github.com/yeixio/toskar-sdks/blob/main/reference/kotlin/README.md).
 
-It isn't on Maven Central yet. Until it is, build it from this repository with `cd kotlin && ./gradlew publishToMavenLocal`, and add `mavenLocal()` to your repositories.
-
 ## Quick start
 
 <!-- snippet: run -->

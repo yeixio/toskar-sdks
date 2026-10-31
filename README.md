@@ -8,9 +8,9 @@ Official packages for building on [Toskar](https://toskar.ai): local AI that run
 | Python | `toskar` on PyPI | [python/](python) | Preview |
 | Go | `github.com/yeixio/toskar-sdks/go` | [go/](go) | Preview |
 | Swift | `https://github.com/yeixio/toskar-sdks`, product `Toskar` | [swift/](swift) | Preview |
-| Kotlin and Java | `ai.toskar:toskar` (Maven Central soon) | [kotlin/](kotlin) | Preview |
-| C# and .NET | `Toskar` (NuGet soon) | [dotnet/](dotnet) | Preview |
-| Rust | `toskar` (crates.io soon) | [rust/](rust) | Preview |
+| Kotlin and Java | `ai.toskar:toskar` on Maven Central | [kotlin/](kotlin) | Preview |
+| C# and .NET | `Toskar` on NuGet | [dotnet/](dotnet) | Preview |
+| Rust | `toskar` on crates.io | [rust/](rust) | Preview |
 
 Docs: [toskar.ai/developers](https://toskar.ai/developers), and the [reference](reference/README.md) for every class and function.
 
