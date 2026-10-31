@@ -1,10 +1,11 @@
 name: release
 
 # A tag vX.Y.Z on main publishes every SDK at that version (RELEASING.md):
-# Python to PyPI and TypeScript to npm, both by trusted publishing (no
-# stored token once set up) with provenance; Kotlin and Java to Maven
-# Central, signed; and Go by tagging go/vX.Y.Z, as a module in a subfolder
-# needs. Swift needs nothing: SwiftPM reads the tag. Then a GitHub release.
+# Python to PyPI, TypeScript to npm, .NET to NuGet, and Rust to crates.io,
+# all by trusted publishing (no stored token once set up); Kotlin and Java to
+# Maven Central, signed; and Go by tagging go/vX.Y.Z, as a module in a
+# subfolder needs. Swift needs nothing: SwiftPM reads the tag. Then a GitHub
+# release.
 #
 # Run it by hand to rehearse: it builds the packages and checks them, and
 # publishes nothing.
@@ -36,6 +37,8 @@ jobs:
           npm_version=$(node -p "require('./typescript/package.json').version")
           py_version=$(sed -n -E 's/^version = "(.*)"/\1/p' python/pyproject.toml)
           kt_version=$(sed -n -E 's/^version = "(.*)"/\1/p' kotlin/build.gradle.kts)
+          cs_version=$(sed -n -E 's|.*<Version>(.*)</Version>.*|\1|p' dotnet/src/Toskar/Toskar.csproj)
+          rs_version=$(sed -n -E '1,/^version = /s/^version = "(.*)"/\1/p' rust/Cargo.toml)
           if [ "$GITHUB_REF_TYPE" = tag ]; then
             version="${GITHUB_REF_NAME#v}"
             git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME isn't on main"; exit 1; }
@@ -44,8 +47,9 @@ jobs:
             version="$npm_version"
             echo "publish=false" >> "$GITHUB_OUTPUT"
           fi
-          [ "$npm_version" = "$version" ] && [ "$py_version" = "$version" ] && [ "$kt_version" = "$version" ] || {
-            echo "::error::the tag says $version; typescript/package.json says $npm_version, python/pyproject.toml $py_version, and kotlin/build.gradle.kts $kt_version (scripts/set-version.sh $version)"
+          [ "$npm_version" = "$version" ] && [ "$py_version" = "$version" ] && [ "$kt_version" = "$version" ] &&
+            [ "$cs_version" = "$version" ] && [ "$rs_version" = "$version" ] || {
+            echo "::error::the tag says $version; typescript/package.json says $npm_version, python/pyproject.toml $py_version, kotlin/build.gradle.kts $kt_version, dotnet/src/Toskar/Toskar.csproj $cs_version, and rust/Cargo.toml $rs_version (scripts/set-version.sh $version)"
             exit 1
           }
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -127,6 +131,59 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
+  dotnet:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      id-token: write  # NuGet's trusted publishing
+    defaults:
+      run:
+        working-directory: dotnet
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+      - name: Build
+        run: dotnet pack src/Toskar -c Release -o out
+      # A key that lasts an hour, for this workflow, from the trusted
+      # publishing policy on nuget.org (RELEASING.md).
+      - if: needs.check.outputs.publish == 'true'
+        id: login
+        uses: NuGet/login@v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+      # The symbols package goes with it.
+      - if: needs.check.outputs.publish == 'true'
+        run: dotnet nuget push "out/Toskar.${{ needs.check.outputs.version }}.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
+
+  rust:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: crates-io
+    permissions:
+      id-token: write  # crates.io's trusted publishing
+    defaults:
+      run:
+        working-directory: rust
+    env:
+      # Only for the first publish, before the crate has a trusted publisher
+      # on crates.io; empty after (RELEASING.md).
+      FIRST_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo publish --dry-run --locked
+      - if: needs.check.outputs.publish == 'true' && env.FIRST_TOKEN == ''
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1.0.5
+      - if: needs.check.outputs.publish == 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token || env.FIRST_TOKEN }}
+        run: cargo publish --locked
+
   go:
     needs: check
     if: needs.check.outputs.publish == 'true'
@@ -144,7 +201,7 @@ jobs:
           curl -fsS "https://proxy.golang.org/github.com/yeixio/toskar-sdks/go/@v/v${{ needs.check.outputs.version }}.info" || true
 
   release:
-    needs: [check, python, typescript, kotlin, go]
+    needs: [check, python, typescript, kotlin, dotnet, rust, go]
     if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:

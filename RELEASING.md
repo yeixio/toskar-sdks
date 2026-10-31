@@ -1,6 +1,6 @@
 # Releasing
 
-One tag publishes every SDK at one version: `v0.2.0` puts `toskar` 0.2.0 on PyPI and npm and `ai.toskar:toskar` 0.2.0 on Maven Central, tags the Go module `go/v0.2.0`, and makes a GitHub release (`.github/workflows/release.yml`). PyPI and npm take the packages by trusted publishing: they trust this repository's release workflow, so no token is stored, and each package says which workflow built it (provenance).
+One tag publishes every SDK at one version: `v0.2.0` puts `toskar` 0.2.0 on PyPI, npm, and crates.io, `Toskar` 0.2.0 on NuGet, and `ai.toskar:toskar` 0.2.0 on Maven Central, tags the Go module `go/v0.2.0`, and makes a GitHub release (`.github/workflows/release.yml`). PyPI, npm, NuGet, and crates.io take the packages by trusted publishing: they trust this repository's release workflow, so no token is stored. PyPI's and npm's packages also say which workflow built them (provenance).
 
 ## A release
 
@@ -10,16 +10,16 @@ One tag publishes every SDK at one version: `v0.2.0` puts `toskar` 0.2.0 on PyPI
    scripts/set-version.sh 0.2.0
    ```
 
-   It sets `typescript/package.json` and `python/pyproject.toml`. The release fails if they don't match the tag.
+   It sets `typescript/package.json`, `python/pyproject.toml`, `kotlin/build.gradle.kts`, `dotnet/src/Toskar/Toskar.csproj`, and `rust/Cargo.toml`. The release fails if they don't match the tag.
 2. **Tag the merge commit** on main, and push the tag:
 
    ```sh
    git tag v0.2.0 <merge commit> && git push origin v0.2.0
    ```
 
-3. **Watch the release workflow.** It checks the versions and that the tag is on main, builds and checks both packages, publishes them, tags `go/v0.2.0`, and makes the GitHub release with notes from the merged pull requests.
+3. **Watch the release workflow.** It checks the versions and that the tag is on main, builds and checks every package, publishes them, tags `go/v0.2.0`, and makes the GitHub release with notes from the merged pull requests.
 
-To rehearse, run the release workflow by hand (Actions → release → Run workflow): it builds and checks both packages, and publishes nothing.
+To rehearse, run the release workflow by hand (Actions → release → Run workflow): it builds and checks every package, and publishes nothing.
 
 **Versions are the SDKs' own,** not Toskar Core's: many Core releases don't change the API, and the SDKs have fixes of their own. What says which Core an SDK works with is the client contract. Each release names the contract it was built for (`CONTRACT_VERSION`, and the release notes), and works with any Core of that contract's major version; an older Core may lack newer routes and fields. They're 0.x while the SDKs are in preview. A release after a Core sync that changes the contract's minor version is a minor release here too.
 
@@ -82,12 +82,46 @@ Every release after that publishes by trusted publishing.
 
 The release's `kotlin` job builds, signs, uploads, and releases. Central checks the upload (signatures, POM, sources, and javadoc jars) and publishes it within about half an hour; search.maven.org can take longer to show it.
 
+**NuGet** (.NET, `Toskar`) takes the package by trusted publishing: the workflow trades its GitHub identity for a NuGet key that lasts an hour.
+
+1. Sign in at [nuget.org](https://www.nuget.org) (an account with two-factor authentication).
+2. Your username → **Trusted Publishing** → **Create**, with:
+   - Policy Name: `toskar-sdks release`
+   - Package Owner: you
+   - Repository Owner: `yeixio`
+   - Repository: `toskar-sdks`
+   - Workflow File: `release.yml`
+   - Environment: `nuget`
+3. In GitHub: toskar-sdks → Settings → Environments → **New environment** `nuget`, and its **variable** (not a secret: it's your public profile name) `NUGET_USER`, your nuget.org username:
+
+   ```sh
+   gh variable set NUGET_USER --repo yeixio/toskar-sdks --env nuget --body <your nuget.org username>
+   ```
+
+The first release creates the package, and it's yours. Optionally, after it: nuget.org → **Manage Packages** → `Toskar` → reserve the `Toskar` prefix (ID prefix reservation, by email to NuGet), so packages named `Toskar.*` show they're yours.
+
+**crates.io** (Rust, `toskar`) takes a trusted publisher only for a crate that exists, so the first release publishes with a token, once.
+
+1. Sign in at [crates.io](https://crates.io) with GitHub, and verify your email (Account Settings): crates.io publishes nothing from an account without one.
+2. Account Settings → **API Tokens** → **New Token**: name `toskar-sdks first release`, expiring in 7 days, scope `publish-new`, crates `toskar`.
+3. In GitHub: toskar-sdks → Settings → Environments → **New environment** `crates-io` → **Add environment secret** `CARGO_REGISTRY_TOKEN`, the token:
+
+   ```sh
+   gh secret set CARGO_REGISTRY_TOKEN --repo yeixio/toskar-sdks --env crates-io
+   ```
+
+4. After the first release: crates.io → crate `toskar` → **Settings** → **Trusted Publishing** → **Add**, with repository owner `yeixio`, repository `toskar-sdks`, workflow `release.yml`, and environment `crates-io`.
+5. Revoke the token on crates.io, and delete the `CARGO_REGISTRY_TOKEN` secret. Every release after that uses the workflow's identity.
+
+**Optional: approve each release** for these too: `nuget` and `crates-io` → **Required reviewers**.
+
 ## After the first release
 
 - toskar.ai/developers installs with `npm install toskar` and `pip install toskar` instead of from git (the `INSTALL` and `PY_INSTALL` snippets in yeixio/toskar.ai `app/developers/page.tsx`).
 - Toskar Core's `examples/README.md` does the same.
 - `go get github.com/yeixio/toskar-sdks/go@v0.1.0` gets a version, not a commit.
 - After the first Maven Central release: `kotlin/README.md` drops its "build it from this repository" note, and toskar.ai/developers gets a Kotlin and Java section.
+- After the first NuGet and crates.io releases: `dotnet/README.md` and `rust/README.md` drop their "isn't on … yet" notes, the root README's table drops "soon", and toskar.ai/developers gets .NET and Rust sections.
 
 ## Keeping up with Toskar Core
 
