@@ -39,7 +39,7 @@ public sealed record DiscoveredComputer(
 
 internal static class Discovery
 {
-    internal const string ServiceType = "_localai._tcp";
+    internal const string ServiceType = ToskarClient.ServiceType;
     private static readonly IPEndPoint Group = new(IPAddress.Parse("224.0.0.251"), 5353);
 
     internal static async Task<IReadOnlyList<DiscoveredComputer>> FindAsync(TimeSpan timeout, CancellationToken cancellationToken)

@@ -36,7 +36,7 @@ public sealed class ToskarException : Exception
     /// <summary>The values the message needs, when Toskar sent them.</summary>
     public JsonObject? Details { get; }
 
-    /// <inheritdoc/>
+    /// <summary>The message, status, and code, for logs, such as <c>toskar: No such model (404 MODEL_NOT_FOUND)</c>.</summary>
     public override string ToString() => $"toskar: {Message} ({Status} {Code})";
 
     /// <summary>The error a response body describes, or a generic one for a body that isn't Toskar's.</summary>

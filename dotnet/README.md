@@ -7,6 +7,8 @@ The official .NET SDK for [Toskar](https://toskar.ai), for C# and any .NET langu
 dotnet add package Toskar
 ```
 
+Every type, method, and route: [the reference](https://github.com/yeixio/toskar-sdks/blob/main/reference/dotnet/README.md).
+
 It isn't on NuGet yet. Until it is, add a reference to `dotnet/src/Toskar/Toskar.csproj` from this repository.
 
 ## Quick start
