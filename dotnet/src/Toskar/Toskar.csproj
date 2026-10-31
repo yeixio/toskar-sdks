@@ -9,7 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
     <PackageId>Toskar</PackageId>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Authors>Yeix.io</Authors>
     <Description>The official .NET SDK for Toskar: local AI across your own computers.</Description>
     <PackageProjectUrl>https://toskar.ai/developers</PackageProjectUrl>

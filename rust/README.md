@@ -6,7 +6,7 @@ The official Rust SDK for [Toskar](https://toskar.ai). It's async, on Tokio and 
 ```toml
 # Cargo.toml
 [dependencies]
-toskar = "0.3"
+toskar = "0.4"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 futures-util = "0.3"
 ```

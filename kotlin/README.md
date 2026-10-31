@@ -6,7 +6,7 @@ The official Kotlin and Java SDK for [Toskar](https://toskar.ai). It needs Java 
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("ai.toskar:toskar:0.3.0")
+    implementation("ai.toskar:toskar:0.4.0")
 }
 ```
 
