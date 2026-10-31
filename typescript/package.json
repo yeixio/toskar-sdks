@@ -1,6 +1,6 @@
 {
   "name": "toskar",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "The official TypeScript and JavaScript SDK for Toskar: local AI across your computers.",
   "keywords": [
     "toskar",

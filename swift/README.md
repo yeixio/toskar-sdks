@@ -6,7 +6,7 @@ The official Swift SDK for [Toskar](https://toskar.ai). It needs Swift 5.9 or la
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/yeixio/toskar-sdks", from: "0.3.0"),
+    .package(url: "https://github.com/yeixio/toskar-sdks", from: "0.4.0"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [.product(name: "Toskar", package: "toskar-sdks")]),
