@@ -188,7 +188,7 @@ public sealed class ToskarClient : IDisposable
         Pairing.PairAsync(address, code, deviceName, confirm, cancellationToken);
 
     /// <summary>What Toskar Core advertises over mDNS.</summary>
-    public const string ServiceType = Discovery.ServiceType;
+    public const string ServiceType = "_localai._tcp";
 
     /// <summary>
     /// Asks the network for timeout (3 seconds by default) and answers the
