@@ -823,6 +823,13 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /api/v1/diagnostics/first-answers`.
     /// - Remark: Generated from `#/paths//api/v1/diagnostics/first-answers/get(getFirstAnswers)`.
     func getFirstAnswers(_ input: Operations.GetFirstAnswers.Input) async throws -> Operations.GetFirstAnswers.Output
+    /// How much of chats' later turns each model read from its prompt cache
+    ///
+    /// Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+    ///
+    /// - Remark: HTTP `GET /api/v1/diagnostics/prompt-cache`.
+    /// - Remark: Generated from `#/paths//api/v1/diagnostics/prompt-cache/get(getPromptCache)`.
+    func getPromptCache(_ input: Operations.GetPromptCache.Input) async throws -> Operations.GetPromptCache.Output
     /// OpenAI-compatible model list
     ///
     /// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
@@ -830,6 +837,27 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /v1/models`.
     /// - Remark: Generated from `#/paths//v1/models/get(openaiListModels)`.
     func openaiListModels(_ input: Operations.OpenaiListModels.Input) async throws -> Operations.OpenaiListModels.Output
+    /// Anthropic-compatible messages, for coding agents
+    ///
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    ///
+    /// - Remark: HTTP `POST /v1/messages`.
+    /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)`.
+    func anthropicMessages(_ input: Operations.AnthropicMessages.Input) async throws -> Operations.AnthropicMessages.Output
+    /// About how many tokens a Messages request's input takes
+    ///
+    /// The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+    ///
+    /// - Remark: HTTP `POST /v1/messages/count_tokens`.
+    /// - Remark: Generated from `#/paths//v1/messages/count_tokens/post(anthropicCountTokens)`.
+    func anthropicCountTokens(_ input: Operations.AnthropicCountTokens.Input) async throws -> Operations.AnthropicCountTokens.Output
+    /// OpenAI Responses, for coding agents
+    ///
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+    ///
+    /// - Remark: HTTP `POST /v1/responses`.
+    /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)`.
+    func openaiResponses(_ input: Operations.OpenaiResponses.Input) async throws -> Operations.OpenaiResponses.Output
     /// OpenAI-compatible chat completions
     ///
     /// temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
@@ -1009,6 +1037,20 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `PUT /api/v1/models/{id}/projector`.
     /// - Remark: Generated from `#/paths//api/v1/models/{id}/projector/put(setModelProjector)`.
     func setModelProjector(_ input: Operations.SetModelProjector.Input) async throws -> Operations.SetModelProjector.Output
+    /// Turn guessing ahead Auto or Off for a model
+    ///
+    /// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/speculation`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/speculation/put(setModelSpeculation)`.
+    func setModelSpeculation(_ input: Operations.SetModelSpeculation.Input) async throws -> Operations.SetModelSpeculation.Output
+    /// Set a model's context window
+    ///
+    /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/context`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/context/put(setModelContext)`.
+    func setModelContext(_ input: Operations.SetModelContext.Input) async throws -> Operations.SetModelContext.Output
     /// Rename or retag an added model
     ///
     /// For a model added from a file or a link; catalog models keep their own (#467). Tags are general, coding, reasoning, and writing; vision comes with a projector.
@@ -3129,6 +3171,21 @@ extension APIProtocol {
             headers: headers
         ))
     }
+    /// How much of chats' later turns each model read from its prompt cache
+    ///
+    /// Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+    ///
+    /// - Remark: HTTP `GET /api/v1/diagnostics/prompt-cache`.
+    /// - Remark: Generated from `#/paths//api/v1/diagnostics/prompt-cache/get(getPromptCache)`.
+    public func getPromptCache(
+        query: Operations.GetPromptCache.Input.Query = .init(),
+        headers: Operations.GetPromptCache.Input.Headers = .init()
+    ) async throws -> Operations.GetPromptCache.Output {
+        try await getPromptCache(Operations.GetPromptCache.Input(
+            query: query,
+            headers: headers
+        ))
+    }
     /// OpenAI-compatible model list
     ///
     /// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
@@ -3137,6 +3194,33 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//v1/models/get(openaiListModels)`.
     public func openaiListModels(headers: Operations.OpenaiListModels.Input.Headers = .init()) async throws -> Operations.OpenaiListModels.Output {
         try await openaiListModels(Operations.OpenaiListModels.Input(headers: headers))
+    }
+    /// Anthropic-compatible messages, for coding agents
+    ///
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    ///
+    /// - Remark: HTTP `POST /v1/messages`.
+    /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)`.
+    public func anthropicMessages(body: Operations.AnthropicMessages.Input.Body) async throws -> Operations.AnthropicMessages.Output {
+        try await anthropicMessages(Operations.AnthropicMessages.Input(body: body))
+    }
+    /// About how many tokens a Messages request's input takes
+    ///
+    /// The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+    ///
+    /// - Remark: HTTP `POST /v1/messages/count_tokens`.
+    /// - Remark: Generated from `#/paths//v1/messages/count_tokens/post(anthropicCountTokens)`.
+    public func anthropicCountTokens() async throws -> Operations.AnthropicCountTokens.Output {
+        try await anthropicCountTokens(Operations.AnthropicCountTokens.Input())
+    }
+    /// OpenAI Responses, for coding agents
+    ///
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+    ///
+    /// - Remark: HTTP `POST /v1/responses`.
+    /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)`.
+    public func openaiResponses(body: Operations.OpenaiResponses.Input.Body) async throws -> Operations.OpenaiResponses.Output {
+        try await openaiResponses(Operations.OpenaiResponses.Input(body: body))
     }
     /// OpenAI-compatible chat completions
     ///
@@ -3510,6 +3594,40 @@ extension APIProtocol {
         body: Operations.SetModelProjector.Input.Body
     ) async throws -> Operations.SetModelProjector.Output {
         try await setModelProjector(Operations.SetModelProjector.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Turn guessing ahead Auto or Off for a model
+    ///
+    /// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/speculation`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/speculation/put(setModelSpeculation)`.
+    public func setModelSpeculation(
+        path: Operations.SetModelSpeculation.Input.Path,
+        headers: Operations.SetModelSpeculation.Input.Headers = .init(),
+        body: Operations.SetModelSpeculation.Input.Body
+    ) async throws -> Operations.SetModelSpeculation.Output {
+        try await setModelSpeculation(Operations.SetModelSpeculation.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Set a model's context window
+    ///
+    /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/context`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/context/put(setModelContext)`.
+    public func setModelContext(
+        path: Operations.SetModelContext.Input.Path,
+        headers: Operations.SetModelContext.Input.Headers = .init(),
+        body: Operations.SetModelContext.Input.Body
+    ) async throws -> Operations.SetModelContext.Output {
+        try await setModelContext(Operations.SetModelContext.Input(
             path: path,
             headers: headers,
             body: body
@@ -5166,6 +5284,10 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/AssistantOptions/fallback`.
             public var fallback: Swift.Bool?
+            /// The least context window, in tokens, the request wants the named model to run with on this computer. When it runs with less, it starts again with the smallest size that holds it and still fits, else the request answers 400 CONTEXT_TOO_LONG with param toskar.context_window (#962, contract 1.70).
+            ///
+            /// - Remark: Generated from `#/components/schemas/AssistantOptions/context_window`.
+            public var contextWindow: Swift.Int?
             /// Creates a new `AssistantOptions`.
             ///
             /// - Parameters:
@@ -5177,6 +5299,7 @@ public enum Components {
             ///   - placement: Known values: `local`, `automatic`; others may be added.
             ///   - progress: Stream progress and tool activity as chunks with an empty delta and the toskar and yggdrasil fields
             ///   - fallback: When the model the request names can't answer, let another model answer instead. Off unless set, a named model answers or the request fails; auto and profiles always fall back (#871, contract 1.59)
+            ///   - contextWindow: The least context window, in tokens, the request wants the named model to run with on this computer. When it runs with less, it starts again with the smallest size that holds it and still fits, else the request answers 400 CONTEXT_TOO_LONG with param toskar.context_window (#962, contract 1.70).
             public init(
                 memory: Swift.Bool? = nil,
                 knowledge: Swift.Bool? = nil,
@@ -5185,7 +5308,8 @@ public enum Components {
                 effort: Swift.String? = nil,
                 placement: Swift.String? = nil,
                 progress: Swift.Bool? = nil,
-                fallback: Swift.Bool? = nil
+                fallback: Swift.Bool? = nil,
+                contextWindow: Swift.Int? = nil
             ) {
                 self.memory = memory
                 self.knowledge = knowledge
@@ -5195,6 +5319,7 @@ public enum Components {
                 self.placement = placement
                 self.progress = progress
                 self.fallback = fallback
+                self.contextWindow = contextWindow
             }
             public enum CodingKeys: String, CodingKey {
                 case memory
@@ -5205,6 +5330,7 @@ public enum Components {
                 case placement
                 case progress
                 case fallback
+                case contextWindow = "context_window"
             }
         }
         /// - Remark: Generated from `#/components/schemas/RuntimeSample`.
@@ -6475,6 +6601,14 @@ public enum Components {
                 public var vision: Swift.Bool
                 /// - Remark: Generated from `#/components/schemas/Model/capabilities/coding`.
                 public var coding: Swift.Bool
+                /// Thinks before it answers, such as Qwen 3, DeepSeek R1's distills, or gpt-oss (#840, contract 1.63). reasoning_effort none turns the thinking off.
+                ///
+                /// - Remark: Generated from `#/components/schemas/Model/capabilities/thinks`.
+                public var thinks: Swift.Bool?
+                /// Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none.
+                ///
+                /// - Remark: Generated from `#/components/schemas/Model/capabilities/answers_first`.
+                public var answersFirst: Swift.Bool?
                 /// Creates a new `CapabilitiesPayload`.
                 ///
                 /// - Parameters:
@@ -6482,22 +6616,30 @@ public enum Components {
                 ///   - toolCallSupport: native | compatible | limited | unsupported
                 ///   - vision:
                 ///   - coding:
+                ///   - thinks: Thinks before it answers, such as Qwen 3, DeepSeek R1's distills, or gpt-oss (#840, contract 1.63). reasoning_effort none turns the thinking off.
+                ///   - answersFirst: Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none.
                 public init(
                     toolCalling: Swift.Bool,
                     toolCallSupport: Swift.String? = nil,
                     vision: Swift.Bool,
-                    coding: Swift.Bool
+                    coding: Swift.Bool,
+                    thinks: Swift.Bool? = nil,
+                    answersFirst: Swift.Bool? = nil
                 ) {
                     self.toolCalling = toolCalling
                     self.toolCallSupport = toolCallSupport
                     self.vision = vision
                     self.coding = coding
+                    self.thinks = thinks
+                    self.answersFirst = answersFirst
                 }
                 public enum CodingKeys: String, CodingKey {
                     case toolCalling = "tool_calling"
                     case toolCallSupport = "tool_call_support"
                     case vision
                     case coding
+                    case thinks
+                    case answersFirst = "answers_first"
                 }
             }
             /// Describes model features.
@@ -6596,6 +6738,53 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/Model/support_role`.
             public var supportRole: Swift.String?
+            /// Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/speculation`.
+            public var speculation: Swift.String?
+            /// The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/context_window`.
+            public var contextWindow: Swift.Int?
+            /// The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/context_choice`.
+            public var contextChoice: Swift.Int?
+            /// A context window a model can take, and how well it fits this computer at it (#962).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/ContextOptionsPayload`.
+            public struct ContextOptionsPayloadPayload: Codable, Hashable, Sendable {
+                /// Known values: `excellent`, `good`, `tight`, `heavy`, `unsupported`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/Model/ContextOptionsPayload/fit`.
+                public var fit: Swift.String
+                /// - Remark: Generated from `#/components/schemas/Model/ContextOptionsPayload/tokens`.
+                public var tokens: Swift.Int
+                /// Creates a new `ContextOptionsPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - fit: Known values: `excellent`, `good`, `tight`, `heavy`, `unsupported`; others may be added.
+                ///   - tokens:
+                public init(
+                    fit: Swift.String,
+                    tokens: Swift.Int
+                ) {
+                    self.fit = fit
+                    self.tokens = tokens
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case fit
+                    case tokens
+                }
+            }
+            /// The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/context_options`.
+            public typealias ContextOptionsPayload = [Components.Schemas.Model.ContextOptionsPayloadPayload]
+            /// The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/context_options`.
+            public var contextOptions: Components.Schemas.Model.ContextOptionsPayload?
             /// How well a model writes a language (multilingual spec §13–14, §31). Levels are coarse on purpose: they don't imply precision the sources don't have. A language a model has no level for is unknown, and is left out.
             ///
             /// - Remark: Generated from `#/components/schemas/Model/LanguagesPayload`.
@@ -6674,6 +6863,10 @@ public enum Components {
             ///   - fit:
             ///   - dynamic: installed from browse-all / URL
             ///   - supportRole: `support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models.
+            ///   - speculation: Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added.
+            ///   - contextWindow: The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
+            ///   - contextChoice: The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).
+            ///   - contextOptions: The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
             ///   - languages: How well the model writes each language it has a level for (§13–14, §31), best first.
             public init(
                 id: Swift.String,
@@ -6698,6 +6891,10 @@ public enum Components {
                 fit: Components.Schemas.ModelFit? = nil,
                 dynamic: Swift.Bool? = nil,
                 supportRole: Swift.String? = nil,
+                speculation: Swift.String? = nil,
+                contextWindow: Swift.Int? = nil,
+                contextChoice: Swift.Int? = nil,
+                contextOptions: Components.Schemas.Model.ContextOptionsPayload? = nil,
                 languages: Components.Schemas.Model.LanguagesPayload? = nil
             ) {
                 self.id = id
@@ -6722,6 +6919,10 @@ public enum Components {
                 self.fit = fit
                 self.dynamic = dynamic
                 self.supportRole = supportRole
+                self.speculation = speculation
+                self.contextWindow = contextWindow
+                self.contextChoice = contextChoice
+                self.contextOptions = contextOptions
                 self.languages = languages
             }
             public enum CodingKeys: String, CodingKey {
@@ -6747,6 +6948,10 @@ public enum Components {
                 case fit
                 case dynamic
                 case supportRole = "support_role"
+                case speculation
+                case contextWindow = "context_window"
+                case contextChoice = "context_choice"
+                case contextOptions = "context_options"
                 case languages
             }
         }
@@ -9194,6 +9399,10 @@ public enum Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/APIKey/permissions/routes`.
                 public var routes: Swift.String?
+                /// May name raw:<model> on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it
+                ///
+                /// - Remark: Generated from `#/components/schemas/APIKey/permissions/raw`.
+                public var raw: Swift.Bool?
                 /// Creates a new `PermissionsPayload`.
                 ///
                 /// - Parameters:
@@ -9203,13 +9412,15 @@ public enum Components {
                 ///   - placement:
                 ///   - profile: The one profile the key is pinned to (#345); absent lets each request choose
                 ///   - routes: chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added.
+                ///   - raw: May name raw:<model> on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it
                 public init(
                     memory: Swift.String,
                     knowledge: Swift.String,
                     tools: Swift.String,
                     placement: Swift.Bool,
                     profile: Swift.String? = nil,
-                    routes: Swift.String? = nil
+                    routes: Swift.String? = nil,
+                    raw: Swift.Bool? = nil
                 ) {
                     self.memory = memory
                     self.knowledge = knowledge
@@ -9217,6 +9428,7 @@ public enum Components {
                     self.placement = placement
                     self.profile = profile
                     self.routes = routes
+                    self.raw = raw
                 }
                 public enum CodingKeys: String, CodingKey {
                     case memory
@@ -9225,6 +9437,7 @@ public enum Components {
                     case placement
                     case profile
                     case routes
+                    case raw
                 }
             }
             /// What the key may ask of the assistant
@@ -11349,7 +11562,7 @@ public enum Components {
             public var profileId: Swift.String?
             /// - Remark: Generated from `#/components/schemas/Run/source`.
             public var source: Swift.String?
-            /// The app that asked: phone, tablet, watch, tv, desktop, or web, or other; empty when it didn't say, such as an API call (#498).
+            /// The app that asked: phone, tablet, watch, car, tv, desktop, web, terminal, or editor, or other; empty when it didn't say, such as an API call (#498).
             ///
             /// - Remark: Generated from `#/components/schemas/Run/client`.
             public var client: Swift.String?
@@ -11463,7 +11676,7 @@ public enum Components {
             ///   - conversationId:
             ///   - profileId:
             ///   - source:
-            ///   - client: The app that asked: phone, tablet, watch, tv, desktop, or web, or other; empty when it didn't say, such as an API call (#498).
+            ///   - client: The app that asked: phone, tablet, watch, car, tv, desktop, web, terminal, or editor, or other; empty when it didn't say, such as an API call (#498).
             ///   - remote: Set when the request came from outside the home network.
             ///   - strategy:
             ///   - effort:
@@ -11612,6 +11825,14 @@ public enum Components {
             public var completionTokens: Swift.Int
             /// - Remark: Generated from `#/components/schemas/ModelUse/cached_tokens`.
             public var cachedTokens: Swift.Int
+            /// Tokens speculative decoding guessed ahead (contract 1.64).
+            ///
+            /// - Remark: Generated from `#/components/schemas/ModelUse/draft_tokens`.
+            public var draftTokens: Swift.Int?
+            /// The guessed tokens the model kept (contract 1.64).
+            ///
+            /// - Remark: Generated from `#/components/schemas/ModelUse/draft_accepted`.
+            public var draftAccepted: Swift.Int?
             /// - Remark: Generated from `#/components/schemas/ModelUse/tok_per_sec`.
             public var tokPerSec: Swift.Double?
             /// `backend` and Device ran the model, such as vulkan and "AMD Radeon RX 7900 XTX" (#317); empty when not known, such as on a paired computer.
@@ -11633,6 +11854,8 @@ public enum Components {
             ///   - promptTokens:
             ///   - completionTokens:
             ///   - cachedTokens:
+            ///   - draftTokens: Tokens speculative decoding guessed ahead (contract 1.64).
+            ///   - draftAccepted: The guessed tokens the model kept (contract 1.64).
             ///   - tokPerSec:
             ///   - backend: `backend` and Device ran the model, such as vulkan and "AMD Radeon RX 7900 XTX" (#317); empty when not known, such as on a paired computer.
             ///   - device:
@@ -11647,6 +11870,8 @@ public enum Components {
                 promptTokens: Swift.Int,
                 completionTokens: Swift.Int,
                 cachedTokens: Swift.Int,
+                draftTokens: Swift.Int? = nil,
+                draftAccepted: Swift.Int? = nil,
                 tokPerSec: Swift.Double? = nil,
                 backend: Swift.String? = nil,
                 device: Swift.String? = nil
@@ -11661,6 +11886,8 @@ public enum Components {
                 self.promptTokens = promptTokens
                 self.completionTokens = completionTokens
                 self.cachedTokens = cachedTokens
+                self.draftTokens = draftTokens
+                self.draftAccepted = draftAccepted
                 self.tokPerSec = tokPerSec
                 self.backend = backend
                 self.device = device
@@ -11676,6 +11903,8 @@ public enum Components {
                 case promptTokens = "prompt_tokens"
                 case completionTokens = "completion_tokens"
                 case cachedTokens = "cached_tokens"
+                case draftTokens = "draft_tokens"
+                case draftAccepted = "draft_accepted"
                 case tokPerSec = "tok_per_sec"
                 case backend
                 case device
@@ -11804,6 +12033,86 @@ public enum Components {
                 case firstWordMs = "first_word_ms"
                 case firstWordP90Ms = "first_word_p90_ms"
                 case loadMs = "load_ms"
+            }
+        }
+        /// How much of each chat turn's prompt the models on this computer read from their prompt cache instead of processing again (#838), over chats' later turns.
+        ///
+        /// - Remark: Generated from `#/components/schemas/PromptCache`.
+        public struct PromptCache: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/PromptCache/since`.
+            public var since: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/PromptCache/models`.
+            public var models: [Components.Schemas.PromptCacheModel]
+            /// Creates a new `PromptCache`.
+            ///
+            /// - Parameters:
+            ///   - since:
+            ///   - models:
+            public init(
+                since: Foundation.Date,
+                models: [Components.Schemas.PromptCacheModel]
+            ) {
+                self.since = since
+                self.models = models
+            }
+            public enum CodingKeys: String, CodingKey {
+                case since
+                case models
+            }
+        }
+        /// One model's later turns.
+        ///
+        /// - Remark: Generated from `#/components/schemas/PromptCacheModel`.
+        public struct PromptCacheModel: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/PromptCacheModel/model_id`.
+            public var modelId: Swift.String
+            /// The later turns of chats the model answered
+            ///
+            /// - Remark: Generated from `#/components/schemas/PromptCacheModel/turns`.
+            public var turns: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/PromptCacheModel/prompt_tokens`.
+            public var promptTokens: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/PromptCacheModel/cached_tokens`.
+            public var cachedTokens: Swift.Int
+            /// cached_tokens over prompt_tokens
+            ///
+            /// - Remark: Generated from `#/components/schemas/PromptCacheModel/reuse`.
+            public var reuse: Swift.Double
+            /// Set when
+            ///
+            /// - Remark: Generated from `#/components/schemas/PromptCacheModel/low`.
+            public var low: Swift.Bool?
+            /// Creates a new `PromptCacheModel`.
+            ///
+            /// - Parameters:
+            ///   - modelId:
+            ///   - turns: The later turns of chats the model answered
+            ///   - promptTokens:
+            ///   - cachedTokens:
+            ///   - reuse: cached_tokens over prompt_tokens
+            ///   - low: Set when
+            public init(
+                modelId: Swift.String,
+                turns: Swift.Int,
+                promptTokens: Swift.Int,
+                cachedTokens: Swift.Int,
+                reuse: Swift.Double,
+                low: Swift.Bool? = nil
+            ) {
+                self.modelId = modelId
+                self.turns = turns
+                self.promptTokens = promptTokens
+                self.cachedTokens = cachedTokens
+                self.reuse = reuse
+                self.low = low
+            }
+            public enum CodingKeys: String, CodingKey {
+                case modelId = "model_id"
+                case turns
+                case promptTokens = "prompt_tokens"
+                case cachedTokens = "cached_tokens"
+                case reuse
+                case low
             }
         }
         /// What an assistant answer used and did.
@@ -12976,6 +13285,14 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/GenerationMetrics/cached_tokens`.
             public var cachedTokens: Swift.Int?
+            /// Tokens speculative decoding guessed ahead (contract 1.64).
+            ///
+            /// - Remark: Generated from `#/components/schemas/GenerationMetrics/draft_tokens`.
+            public var draftTokens: Swift.Int?
+            /// The guessed tokens the model kept (contract 1.64).
+            ///
+            /// - Remark: Generated from `#/components/schemas/GenerationMetrics/draft_accepted`.
+            public var draftAccepted: Swift.Int?
             /// Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say
             ///
             /// - Remark: Generated from `#/components/schemas/GenerationMetrics/finish_reason`.
@@ -12997,6 +13314,8 @@ public enum Components {
             ///   - promptTokPerSec:
             ///   - evalTokPerSec:
             ///   - cachedTokens: Prompt tokens reused from the model's cache instead of processed again, when the runtime reports them.
+            ///   - draftTokens: Tokens speculative decoding guessed ahead (contract 1.64).
+            ///   - draftAccepted: The guessed tokens the model kept (contract 1.64).
             ///   - finishReason: Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say
             ///   - reasoningTokens: Tokens a reasoning model thought before it answered, part of completion_tokens (contract 1.58)
             public init(
@@ -13010,6 +13329,8 @@ public enum Components {
                 promptTokPerSec: Swift.Double,
                 evalTokPerSec: Swift.Double,
                 cachedTokens: Swift.Int? = nil,
+                draftTokens: Swift.Int? = nil,
+                draftAccepted: Swift.Int? = nil,
                 finishReason: Swift.String? = nil,
                 reasoningTokens: Swift.Int? = nil
             ) {
@@ -13023,6 +13344,8 @@ public enum Components {
                 self.promptTokPerSec = promptTokPerSec
                 self.evalTokPerSec = evalTokPerSec
                 self.cachedTokens = cachedTokens
+                self.draftTokens = draftTokens
+                self.draftAccepted = draftAccepted
                 self.finishReason = finishReason
                 self.reasoningTokens = reasoningTokens
             }
@@ -13037,6 +13360,8 @@ public enum Components {
                 case promptTokPerSec = "prompt_tok_per_sec"
                 case evalTokPerSec = "eval_tok_per_sec"
                 case cachedTokens = "cached_tokens"
+                case draftTokens = "draft_tokens"
+                case draftAccepted = "draft_accepted"
                 case finishReason = "finish_reason"
                 case reasoningTokens = "reasoning_tokens"
             }
@@ -13578,6 +13903,60 @@ public enum Components {
                 case modelId = "model_id"
                 case displayName = "display_name"
                 case tags
+            }
+        }
+        /// A model's context window choice (#962).
+        ///
+        /// - Remark: Generated from `#/components/schemas/ModelContext`.
+        public struct ModelContext: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ModelContext/model_id`.
+            public var modelId: Swift.String
+            /// 0 for Auto
+            ///
+            /// - Remark: Generated from `#/components/schemas/ModelContext/context_window`.
+            public var contextWindow: Swift.Int
+            /// Creates a new `ModelContext`.
+            ///
+            /// - Parameters:
+            ///   - modelId:
+            ///   - contextWindow: 0 for Auto
+            public init(
+                modelId: Swift.String,
+                contextWindow: Swift.Int
+            ) {
+                self.modelId = modelId
+                self.contextWindow = contextWindow
+            }
+            public enum CodingKeys: String, CodingKey {
+                case modelId = "model_id"
+                case contextWindow = "context_window"
+            }
+        }
+        /// A model's guess-ahead choice (#835).
+        ///
+        /// - Remark: Generated from `#/components/schemas/ModelSpeculation`.
+        public struct ModelSpeculation: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ModelSpeculation/model_id`.
+            public var modelId: Swift.String
+            /// Known values: `auto`, `off`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ModelSpeculation/speculation`.
+            public var speculation: Swift.String
+            /// Creates a new `ModelSpeculation`.
+            ///
+            /// - Parameters:
+            ///   - modelId:
+            ///   - speculation: Known values: `auto`, `off`; others may be added.
+            public init(
+                modelId: Swift.String,
+                speculation: Swift.String
+            ) {
+                self.modelId = modelId
+                self.speculation = speculation
+            }
+            public enum CodingKeys: String, CodingKey {
+                case modelId = "model_id"
+                case speculation
             }
         }
         /// Says a model sees pictures now, with its projector set.
@@ -20132,7 +20511,7 @@ public enum Components {
             public var gpuNote: Swift.String?
             /// - Remark: Generated from `#/components/schemas/ModelFit/known_to_run`.
             public var knownToRun: Swift.Bool?
-            /// What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).
+            /// What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751); "graphics" when it needs more than the graphics card has, with HaveBytes the card's memory (#932).
             ///
             /// - Remark: Generated from `#/components/schemas/ModelFit/short`.
             public var short: Swift.String?
@@ -20166,7 +20545,7 @@ public enum Components {
             ///   - recommendations:
             ///   - gpuNote:
             ///   - knownToRun:
-            ///   - short: What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).
+            ///   - short: What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751); "graphics" when it needs more than the graphics card has, with HaveBytes the card's memory (#932).
             ///   - needBytes:
             ///   - haveBytes:
             public init(
@@ -35685,6 +36064,10 @@ public enum Operations {
                     public var tools: Swift.String?
                     /// - Remark: Generated from `#/paths/api/v1/api-keys/{id}/permissions/PUT/requestBody/json/placement`.
                     public var placement: Swift.Bool?
+                    /// Lets requests name raw:<model> and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/api-keys/{id}/permissions/PUT/requestBody/json/raw`.
+                    public var raw: Swift.Bool?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
@@ -35692,22 +36075,26 @@ public enum Operations {
                     ///   - knowledge: Known values: `never`, `on_request`, `always`; others may be added.
                     ///   - tools: Known values: `profile`, `read_only`, `none`; others may be added.
                     ///   - placement:
+                    ///   - raw: Lets requests name raw:<model> and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile
                     public init(
                         memory: Swift.String? = nil,
                         knowledge: Swift.String? = nil,
                         tools: Swift.String? = nil,
-                        placement: Swift.Bool? = nil
+                        placement: Swift.Bool? = nil,
+                        raw: Swift.Bool? = nil
                     ) {
                         self.memory = memory
                         self.knowledge = knowledge
                         self.tools = tools
                         self.placement = placement
+                        self.raw = raw
                     }
                     public enum CodingKeys: String, CodingKey {
                         case memory
                         case knowledge
                         case tools
                         case placement
+                        case raw
                     }
                 }
                 /// - Remark: Generated from `#/paths/api/v1/api-keys/{id}/permissions/PUT/requestBody/content/application\/json`.
@@ -36131,21 +36518,29 @@ public enum Operations {
                     public var code: Swift.String
                     /// - Remark: Generated from `#/paths/api/v1/devices/pair/POST/requestBody/json/device_name`.
                     public var deviceName: Swift.String?
+                    /// Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/devices/pair/POST/requestBody/json/raw`.
+                    public var raw: Swift.Bool?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
                     ///   - code:
                     ///   - deviceName:
+                    ///   - raw: Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did.
                     public init(
                         code: Swift.String,
-                        deviceName: Swift.String? = nil
+                        deviceName: Swift.String? = nil,
+                        raw: Swift.Bool? = nil
                     ) {
                         self.code = code
                         self.deviceName = deviceName
+                        self.raw = raw
                     }
                     public enum CodingKeys: String, CodingKey {
                         case code
                         case deviceName = "device_name"
+                        case raw
                     }
                 }
                 /// - Remark: Generated from `#/paths/api/v1/devices/pair/POST/requestBody/content/application\/json`.
@@ -38444,6 +38839,138 @@ public enum Operations {
             }
         }
     }
+    /// How much of chats' later turns each model read from its prompt cache
+    ///
+    /// Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+    ///
+    /// - Remark: HTTP `GET /api/v1/diagnostics/prompt-cache`.
+    /// - Remark: Generated from `#/paths//api/v1/diagnostics/prompt-cache/get(getPromptCache)`.
+    public enum GetPromptCache {
+        public static let id: Swift.String = "getPromptCache"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/diagnostics/prompt-cache/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// How many days back to look; 7 by default, 90 at most.
+                ///
+                /// - Remark: Generated from `#/paths/api/v1/diagnostics/prompt-cache/GET/query/days`.
+                public var days: Swift.Int?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - days: How many days back to look; 7 by default, 90 at most.
+                public init(days: Swift.Int? = nil) {
+                    self.days = days
+                }
+            }
+            public var query: Operations.GetPromptCache.Input.Query
+            /// - Remark: Generated from `#/paths/api/v1/diagnostics/prompt-cache/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetPromptCache.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetPromptCache.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetPromptCache.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - query:
+            ///   - headers:
+            public init(
+                query: Operations.GetPromptCache.Input.Query = .init(),
+                headers: Operations.GetPromptCache.Input.Headers = .init()
+            ) {
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/diagnostics/prompt-cache/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/diagnostics/prompt-cache/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.PromptCache)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.PromptCache {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetPromptCache.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetPromptCache.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Prompt cache reuse
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/diagnostics/prompt-cache/get(getPromptCache)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetPromptCache.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetPromptCache.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// OpenAI-compatible model list
     ///
     /// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
@@ -38556,6 +39083,678 @@ public enum Operations {
             }
         }
     }
+    /// Anthropic-compatible messages, for coding agents
+    ///
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    ///
+    /// - Remark: HTTP `POST /v1/messages`.
+    /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)`.
+    public enum AnthropicMessages {
+        public static let id: Swift.String = "anthropicMessages"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/model`.
+                    public var model: Swift.String
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/max_tokens`.
+                    public var maxTokens: Swift.Int
+                    /// A string or text blocks
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/system`.
+                    public var system: OpenAPIRuntime.OpenAPIValueContainer?
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/MessagesPayload`.
+                    public struct MessagesPayloadPayload: Codable, Hashable, Sendable {
+                        /// Known values: `user`, `assistant`; others may be added.
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/MessagesPayload/role`.
+                        public var role: Swift.String?
+                        /// A string or a list of blocks
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/MessagesPayload/content`.
+                        public var content: OpenAPIRuntime.OpenAPIValueContainer?
+                        /// Creates a new `MessagesPayloadPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - role: Known values: `user`, `assistant`; others may be added.
+                        ///   - content: A string or a list of blocks
+                        public init(
+                            role: Swift.String? = nil,
+                            content: OpenAPIRuntime.OpenAPIValueContainer? = nil
+                        ) {
+                            self.role = role
+                            self.content = content
+                        }
+                        public enum CodingKeys: String, CodingKey {
+                            case role
+                            case content
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/messages`.
+                    public typealias MessagesPayload = [Operations.AnthropicMessages.Input.Body.JsonPayload.MessagesPayloadPayload]
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/messages`.
+                    public var messages: Operations.AnthropicMessages.Input.Body.JsonPayload.MessagesPayload
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/ToolsPayload`.
+                    public struct ToolsPayloadPayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/ToolsPayload/name`.
+                        public var name: Swift.String?
+                        /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/ToolsPayload/description`.
+                        public var description: Swift.String?
+                        /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/ToolsPayload/input_schema`.
+                        public var inputSchema: OpenAPIRuntime.OpenAPIObjectContainer?
+                        /// Creates a new `ToolsPayloadPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - name:
+                        ///   - description:
+                        ///   - inputSchema:
+                        public init(
+                            name: Swift.String? = nil,
+                            description: Swift.String? = nil,
+                            inputSchema: OpenAPIRuntime.OpenAPIObjectContainer? = nil
+                        ) {
+                            self.name = name
+                            self.description = description
+                            self.inputSchema = inputSchema
+                        }
+                        public enum CodingKeys: String, CodingKey {
+                            case name
+                            case description
+                            case inputSchema = "input_schema"
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/tools`.
+                    public typealias ToolsPayload = [Operations.AnthropicMessages.Input.Body.JsonPayload.ToolsPayloadPayload]
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/tools`.
+                    public var tools: Operations.AnthropicMessages.Input.Body.JsonPayload.ToolsPayload?
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/tool_choice`.
+                    public struct ToolChoicePayload: Codable, Hashable, Sendable {
+                        /// Known values: `auto`, `any`, `tool`, `none`; others may be added.
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/tool_choice/type`.
+                        public var _type: Swift.String?
+                        /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/tool_choice/name`.
+                        public var name: Swift.String?
+                        /// Creates a new `ToolChoicePayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - _type: Known values: `auto`, `any`, `tool`, `none`; others may be added.
+                        ///   - name:
+                        public init(
+                            _type: Swift.String? = nil,
+                            name: Swift.String? = nil
+                        ) {
+                            self._type = _type
+                            self.name = name
+                        }
+                        public enum CodingKeys: String, CodingKey {
+                            case _type = "type"
+                            case name
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/tool_choice`.
+                    public var toolChoice: Operations.AnthropicMessages.Input.Body.JsonPayload.ToolChoicePayload?
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/stop_sequences`.
+                    public var stopSequences: [Swift.String]?
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/temperature`.
+                    public var temperature: Swift.Double?
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/top_p`.
+                    public var topP: Swift.Double?
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/top_k`.
+                    public var topK: Swift.Int?
+                    /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/json/stream`.
+                    public var stream: Swift.Bool?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - model:
+                    ///   - maxTokens:
+                    ///   - system: A string or text blocks
+                    ///   - messages:
+                    ///   - tools:
+                    ///   - toolChoice:
+                    ///   - stopSequences:
+                    ///   - temperature:
+                    ///   - topP:
+                    ///   - topK:
+                    ///   - stream:
+                    public init(
+                        model: Swift.String,
+                        maxTokens: Swift.Int,
+                        system: OpenAPIRuntime.OpenAPIValueContainer? = nil,
+                        messages: Operations.AnthropicMessages.Input.Body.JsonPayload.MessagesPayload,
+                        tools: Operations.AnthropicMessages.Input.Body.JsonPayload.ToolsPayload? = nil,
+                        toolChoice: Operations.AnthropicMessages.Input.Body.JsonPayload.ToolChoicePayload? = nil,
+                        stopSequences: [Swift.String]? = nil,
+                        temperature: Swift.Double? = nil,
+                        topP: Swift.Double? = nil,
+                        topK: Swift.Int? = nil,
+                        stream: Swift.Bool? = nil
+                    ) {
+                        self.model = model
+                        self.maxTokens = maxTokens
+                        self.system = system
+                        self.messages = messages
+                        self.tools = tools
+                        self.toolChoice = toolChoice
+                        self.stopSequences = stopSequences
+                        self.temperature = temperature
+                        self.topP = topP
+                        self.topK = topK
+                        self.stream = stream
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case model
+                        case maxTokens = "max_tokens"
+                        case system
+                        case messages
+                        case tools
+                        case toolChoice = "tool_choice"
+                        case stopSequences = "stop_sequences"
+                        case temperature
+                        case topP = "top_p"
+                        case topK = "top_k"
+                        case stream
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/messages/POST/requestBody/content/application\/json`.
+                case json(Operations.AnthropicMessages.Input.Body.JsonPayload)
+            }
+            public var body: Operations.AnthropicMessages.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - body:
+            public init(body: Operations.AnthropicMessages.Input.Body) {
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// Creates a new `Ok`.
+                public init() {}
+            }
+            /// A message with text and tool_use blocks, stop_reason (end_turn, max_tokens, tool_use), and usage; or, streamed, Anthropic's events
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.AnthropicMessages.Output.Ok)
+            /// A message with text and tool_use blocks, stop_reason (end_turn, max_tokens, tool_use), and usage; or, streamed, Anthropic's events
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            public static var ok: Self {
+                .ok(.init())
+            }
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.AnthropicMessages.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// invalid_request_error, such as no max_tokens, or a request no window of the model holds
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.AnthropicMessages.Output.BadRequest)
+            /// invalid_request_error, such as no max_tokens, or a request no window of the model holds
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.AnthropicMessages.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// Creates a new `Forbidden`.
+                public init() {}
+            }
+            /// permission_error, a key without raw access
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.AnthropicMessages.Output.Forbidden)
+            /// permission_error, a key without raw access
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            public static var forbidden: Self {
+                .forbidden(.init())
+            }
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.AnthropicMessages.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// Creates a new `NotFound`.
+                public init() {}
+            }
+            /// not_found_error, a model not installed on this computer
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.AnthropicMessages.Output.NotFound)
+            /// not_found_error, a model not installed on this computer
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            public static var notFound: Self {
+                .notFound(.init())
+            }
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.AnthropicMessages.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+    }
+    /// About how many tokens a Messages request's input takes
+    ///
+    /// The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+    ///
+    /// - Remark: HTTP `POST /v1/messages/count_tokens`.
+    /// - Remark: Generated from `#/paths//v1/messages/count_tokens/post(anthropicCountTokens)`.
+    public enum AnthropicCountTokens {
+        public static let id: Swift.String = "anthropicCountTokens"
+        public struct Input: Sendable, Hashable {
+            /// Creates a new `Input`.
+            public init() {}
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// Creates a new `Ok`.
+                public init() {}
+            }
+            /// {"input_tokens": n}
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/count_tokens/post(anthropicCountTokens)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.AnthropicCountTokens.Output.Ok)
+            /// {"input_tokens": n}
+            ///
+            /// - Remark: Generated from `#/paths//v1/messages/count_tokens/post(anthropicCountTokens)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            public static var ok: Self {
+                .ok(.init())
+            }
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.AnthropicCountTokens.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+    }
+    /// OpenAI Responses, for coding agents
+    ///
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+    ///
+    /// - Remark: HTTP `POST /v1/responses`.
+    /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)`.
+    public enum OpenaiResponses {
+        public static let id: Swift.String = "openaiResponses"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/model`.
+                    public var model: Swift.String
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/instructions`.
+                    public var instructions: Swift.String?
+                    /// A string or a list of input items
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/input`.
+                    public var input: OpenAPIRuntime.OpenAPIValueContainer
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/ToolsPayload`.
+                    public struct ToolsPayloadPayload: Codable, Hashable, Sendable {
+                        /// Known values: `function`; others may be added.
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/ToolsPayload/type`.
+                        public var _type: Swift.String?
+                        /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/ToolsPayload/name`.
+                        public var name: Swift.String?
+                        /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/ToolsPayload/description`.
+                        public var description: Swift.String?
+                        /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/ToolsPayload/parameters`.
+                        public var parameters: OpenAPIRuntime.OpenAPIObjectContainer?
+                        /// Creates a new `ToolsPayloadPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - _type: Known values: `function`; others may be added.
+                        ///   - name:
+                        ///   - description:
+                        ///   - parameters:
+                        public init(
+                            _type: Swift.String? = nil,
+                            name: Swift.String? = nil,
+                            description: Swift.String? = nil,
+                            parameters: OpenAPIRuntime.OpenAPIObjectContainer? = nil
+                        ) {
+                            self._type = _type
+                            self.name = name
+                            self.description = description
+                            self.parameters = parameters
+                        }
+                        public enum CodingKeys: String, CodingKey {
+                            case _type = "type"
+                            case name
+                            case description
+                            case parameters
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/tools`.
+                    public typealias ToolsPayload = [Operations.OpenaiResponses.Input.Body.JsonPayload.ToolsPayloadPayload]
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/tools`.
+                    public var tools: Operations.OpenaiResponses.Input.Body.JsonPayload.ToolsPayload?
+                    /// auto, required, none, or {"type":"function","name"}
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/tool_choice`.
+                    public var toolChoice: OpenAPIRuntime.OpenAPIValueContainer?
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/max_output_tokens`.
+                    public var maxOutputTokens: Swift.Int?
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/temperature`.
+                    public var temperature: Swift.Double?
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/top_p`.
+                    public var topP: Swift.Double?
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/parallel_tool_calls`.
+                    public var parallelToolCalls: Swift.Bool?
+                    /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/json/stream`.
+                    public var stream: Swift.Bool?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - model:
+                    ///   - instructions:
+                    ///   - input: A string or a list of input items
+                    ///   - tools:
+                    ///   - toolChoice: auto, required, none, or {"type":"function","name"}
+                    ///   - maxOutputTokens:
+                    ///   - temperature:
+                    ///   - topP:
+                    ///   - parallelToolCalls:
+                    ///   - stream:
+                    public init(
+                        model: Swift.String,
+                        instructions: Swift.String? = nil,
+                        input: OpenAPIRuntime.OpenAPIValueContainer,
+                        tools: Operations.OpenaiResponses.Input.Body.JsonPayload.ToolsPayload? = nil,
+                        toolChoice: OpenAPIRuntime.OpenAPIValueContainer? = nil,
+                        maxOutputTokens: Swift.Int? = nil,
+                        temperature: Swift.Double? = nil,
+                        topP: Swift.Double? = nil,
+                        parallelToolCalls: Swift.Bool? = nil,
+                        stream: Swift.Bool? = nil
+                    ) {
+                        self.model = model
+                        self.instructions = instructions
+                        self.input = input
+                        self.tools = tools
+                        self.toolChoice = toolChoice
+                        self.maxOutputTokens = maxOutputTokens
+                        self.temperature = temperature
+                        self.topP = topP
+                        self.parallelToolCalls = parallelToolCalls
+                        self.stream = stream
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case model
+                        case instructions
+                        case input
+                        case tools
+                        case toolChoice = "tool_choice"
+                        case maxOutputTokens = "max_output_tokens"
+                        case temperature
+                        case topP = "top_p"
+                        case parallelToolCalls = "parallel_tool_calls"
+                        case stream
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/responses/POST/requestBody/content/application\/json`.
+                case json(Operations.OpenaiResponses.Input.Body.JsonPayload)
+            }
+            public var body: Operations.OpenaiResponses.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - body:
+            public init(body: Operations.OpenaiResponses.Input.Body) {
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// Creates a new `Ok`.
+                public init() {}
+            }
+            /// A response with message and function_call output items, status (completed, or incomplete at max_output_tokens), and usage; or, streamed, the response.* events
+            ///
+            /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OpenaiResponses.Output.Ok)
+            /// A response with message and function_call output items, status (completed, or incomplete at max_output_tokens), and usage; or, streamed, the response.* events
+            ///
+            /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            public static var ok: Self {
+                .ok(.init())
+            }
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OpenaiResponses.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// invalid_request_error, such as previous_response_id, an input item Toskar doesn't read, or a request no window of the model holds
+            ///
+            /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.OpenaiResponses.Output.BadRequest)
+            /// invalid_request_error, such as previous_response_id, an input item Toskar doesn't read, or a request no window of the model holds
+            ///
+            /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.OpenaiResponses.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// Creates a new `Forbidden`.
+                public init() {}
+            }
+            /// RAW_NOT_ALLOWED, a key without raw access
+            ///
+            /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.OpenaiResponses.Output.Forbidden)
+            /// RAW_NOT_ALLOWED, a key without raw access
+            ///
+            /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            public static var forbidden: Self {
+                .forbidden(.init())
+            }
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.OpenaiResponses.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// Creates a new `NotFound`.
+                public init() {}
+            }
+            /// MODEL_NOT_FOUND, a model not installed on this computer
+            ///
+            /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.OpenaiResponses.Output.NotFound)
+            /// MODEL_NOT_FOUND, a model not installed on this computer
+            ///
+            /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            public static var notFound: Self {
+                .notFound(.init())
+            }
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.OpenaiResponses.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+    }
     /// OpenAI-compatible chat completions
     ///
     /// temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
@@ -38581,7 +39780,7 @@ public enum Operations {
             @frozen public enum Body: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json`.
                 public struct JsonPayload: Codable, Hashable, Sendable {
-                    /// auto, profile:<id>, sai:<slug>, or a model id
+                    /// auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
                     ///
                     /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/model`.
                     public var model: Swift.String
@@ -38626,7 +39825,7 @@ public enum Operations {
                     ///
                     /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/max_completion_tokens`.
                     public var maxCompletionTokens: Swift.Int?
-                    /// Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
+                    /// Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
                     ///
                     /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/reasoning_effort`.
                     public var reasoningEffort: Swift.String?
@@ -38730,13 +39929,13 @@ public enum Operations {
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
-                    ///   - model: auto, profile:<id>, sai:<slug>, or a model id
+                    ///   - model: auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
                     ///   - messages:
                     ///   - stream:
                     ///   - temperature: For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
                     ///   - maxTokens: The most tokens each answer-writing call may use. Left out, the model's default.
                     ///   - maxCompletionTokens: OpenAI's newer name for max_tokens; wins when both are sent.
-                    ///   - reasoningEffort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
+                    ///   - reasoningEffort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
                     ///   - includeReasoning: A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default.
                     ///   - responseFormat:
                     ///   - streamOptions: include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)
@@ -44056,6 +45255,401 @@ public enum Operations {
             }
         }
     }
+    /// Turn guessing ahead Auto or Off for a model
+    ///
+    /// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/speculation`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/speculation/put(setModelSpeculation)`.
+    public enum SetModelSpeculation {
+        public static let id: Swift.String = "setModelSpeculation"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/speculation/PUT/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/speculation/PUT/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.SetModelSpeculation.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/speculation/PUT/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetModelSpeculation.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetModelSpeculation.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SetModelSpeculation.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/speculation/PUT/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/speculation/PUT/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// Known values: `auto`, `off`; others may be added.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/speculation/PUT/requestBody/json/speculation`.
+                    public var speculation: Swift.String
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - speculation: Known values: `auto`, `off`; others may be added.
+                    public init(speculation: Swift.String) {
+                        self.speculation = speculation
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case speculation
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/speculation/PUT/requestBody/content/application\/json`.
+                case json(Operations.SetModelSpeculation.Input.Body.JsonPayload)
+            }
+            public var body: Operations.SetModelSpeculation.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.SetModelSpeculation.Input.Path,
+                headers: Operations.SetModelSpeculation.Input.Headers = .init(),
+                body: Operations.SetModelSpeculation.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/speculation/PUT/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/speculation/PUT/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ModelSpeculation)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ModelSpeculation {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetModelSpeculation.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetModelSpeculation.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The choice is kept
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/speculation/put(setModelSpeculation)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.SetModelSpeculation.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.SetModelSpeculation.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// MODEL_UPDATE_FAILED, such as for a model that isn't installed here or doesn't chat
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/speculation/put(setModelSpeculation)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.SetModelSpeculation.Output.BadRequest)
+            /// MODEL_UPDATE_FAILED, such as for a model that isn't installed here or doesn't chat
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/speculation/put(setModelSpeculation)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.SetModelSpeculation.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Set a model's context window
+    ///
+    /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/context`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/context/put(setModelContext)`.
+    public enum SetModelContext {
+        public static let id: Swift.String = "setModelContext"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.SetModelContext.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetModelContext.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetModelContext.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SetModelContext.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// Tokens, up to the model's own window; 0 for Auto.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/requestBody/json/context_window`.
+                    @frozen public enum ContextWindowPayload: Int, Codable, Hashable, Sendable, CaseIterable {
+                        case _0 = 0
+                        case _4096 = 4096
+                        case _8192 = 8192
+                        case _16384 = 16384
+                        case _32768 = 32768
+                        case _65536 = 65536
+                        case _131072 = 131072
+                        case _262144 = 262144
+                    }
+                    /// Tokens, up to the model's own window; 0 for Auto.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/requestBody/json/context_window`.
+                    public var contextWindow: Operations.SetModelContext.Input.Body.JsonPayload.ContextWindowPayload
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - contextWindow: Tokens, up to the model's own window; 0 for Auto.
+                    public init(contextWindow: Operations.SetModelContext.Input.Body.JsonPayload.ContextWindowPayload) {
+                        self.contextWindow = contextWindow
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case contextWindow = "context_window"
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/requestBody/content/application\/json`.
+                case json(Operations.SetModelContext.Input.Body.JsonPayload)
+            }
+            public var body: Operations.SetModelContext.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.SetModelContext.Input.Path,
+                headers: Operations.SetModelContext.Input.Headers = .init(),
+                body: Operations.SetModelContext.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/context/PUT/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ModelContext)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ModelContext {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetModelContext.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetModelContext.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The choice is kept
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/context/put(setModelContext)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.SetModelContext.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.SetModelContext.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// INVALID_JSON, or MODEL_UPDATE_FAILED, such as for a size past the model's own window, or a model that isn't installed here or doesn't chat
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/context/put(setModelContext)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.SetModelContext.Output.BadRequest)
+            /// INVALID_JSON, or MODEL_UPDATE_FAILED, such as for a size past the model's own window, or a model that isn't installed here or doesn't chat
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/context/put(setModelContext)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.SetModelContext.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// Rename or retag an added model
     ///
     /// For a model added from a file or a link; catalog models keep their own (#467). Tags are general, coding, reasoning, and writing; vision comes with a projector.
@@ -45493,6 +47087,10 @@ public enum Operations {
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/effort`.
                     public var effort: Swift.String?
+                    /// off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/thinking`.
+                    public var thinking: Swift.String?
                     /// The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/time_zone`.
@@ -45509,7 +47107,7 @@ public enum Operations {
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/edit_of`.
                     public var editOf: Swift.String?
-                    /// The app asking; its run is traced with it, to measure how long answers take to start Known values: `phone`, `tablet`, `watch`, `tv`, `desktop`, `web`; others may be added.
+                    /// The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added.
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/client`.
                     public var client: Swift.String?
@@ -45531,11 +47129,12 @@ public enum Operations {
                     ///   - profileId:
                     ///   - modelId: A model id, auto, or sai:<slug>
                     ///   - effort: Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
+                    ///   - thinking: off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
                     ///   - timeZone: The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
                     ///   - parentId: Answer from this message in the chat, as a new version of the point after it (#447)
                     ///   - retryOf: Ask this answer's question again, as a new version of the answer; message may be empty
                     ///   - editOf: Send message in place of this one, as a new version of it
-                    ///   - client: The app asking; its run is traced with it, to measure how long answers take to start Known values: `phone`, `tablet`, `watch`, `tv`, `desktop`, `web`; others may be added.
+                    ///   - client: The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added.
                     ///   - attachments: Artifact ids from POST /api/v1/artifacts
                     ///   - execution: Where the turn runs, such as local
                     ///   - stream:
@@ -45545,6 +47144,7 @@ public enum Operations {
                         profileId: Swift.String? = nil,
                         modelId: Swift.String? = nil,
                         effort: Swift.String? = nil,
+                        thinking: Swift.String? = nil,
                         timeZone: Swift.String? = nil,
                         parentId: Swift.String? = nil,
                         retryOf: Swift.String? = nil,
@@ -45559,6 +47159,7 @@ public enum Operations {
                         self.profileId = profileId
                         self.modelId = modelId
                         self.effort = effort
+                        self.thinking = thinking
                         self.timeZone = timeZone
                         self.parentId = parentId
                         self.retryOf = retryOf
@@ -45574,6 +47175,7 @@ public enum Operations {
                         case profileId = "profile_id"
                         case modelId = "model_id"
                         case effort
+                        case thinking
                         case timeZone = "time_zone"
                         case parentId = "parent_id"
                         case retryOf = "retry_of"

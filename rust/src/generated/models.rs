@@ -66,6 +66,9 @@ pub struct AssistantOptions {
     /// When the model the request names can't answer, let another model answer instead. Off unless set, a named model answers or the request fails; auto and profiles always fall back (#871, contract 1.59)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fallback: Option<bool>,
+    /// The least context window, in tokens, the request wants the named model to run with on this computer. When it runs with less, it starts again with the smallest size that holds it and still fits, else the request answers 400 CONTEXT_TOO_LONG with param toskar.context_window (#962, contract 1.70).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -431,6 +434,18 @@ pub struct Model {
     /// `support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub support_role: Option<String>,
+    /// Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speculation: Option<String>,
+    /// The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<i64>,
+    /// The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_choice: Option<i64>,
+    /// The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_options: Option<Vec<ModelContextOptions>>,
     /// How well the model writes each language it has a level for (§13–14, §31), best first.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub languages: Option<Vec<ModelLanguages>>,
@@ -1620,7 +1635,7 @@ pub struct Run {
     pub profile_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
-    /// The app that asked: phone, tablet, watch, tv, desktop, or web, or other; empty when it didn't say, such as an API call (#498).
+    /// The app that asked: phone, tablet, watch, car, tv, desktop, web, terminal, or editor, or other; empty when it didn't say, such as an API call (#498).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client: Option<String>,
     /// Set when the request came from outside the home network.
@@ -1735,6 +1750,12 @@ pub struct ModelUse {
     pub prompt_tokens: i64,
     pub completion_tokens: i64,
     pub cached_tokens: i64,
+    /// Tokens speculative decoding guessed ahead (contract 1.64).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub draft_tokens: Option<i64>,
+    /// The guessed tokens the model kept (contract 1.64).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub draft_accepted: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tok_per_sec: Option<f64>,
     /// `backend` and Device ran the model, such as vulkan and "AMD Radeon RX 7900 XTX" (#317); empty when not known, such as on a paired computer.
@@ -1788,6 +1809,39 @@ pub struct FirstAnswersGroup {
     /// The median time spent loading models; 0 when warm.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub load_ms: Option<f64>,
+}
+
+/// How much of each chat turn's prompt the models on this computer read from their prompt cache instead of processing again (#838), over chats' later turns.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PromptCache {
+    #[serde(with = "time::serde::rfc3339")]
+    pub since: OffsetDateTime,
+    #[serde(default)]
+    pub models: Vec<PromptCacheModel>,
+}
+
+impl Default for PromptCache {
+    fn default() -> Self {
+        Self {
+            since: OffsetDateTime::UNIX_EPOCH,
+            models: Default::default(),
+        }
+    }
+}
+
+/// One model's later turns.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct PromptCacheModel {
+    pub model_id: String,
+    /// The later turns of chats the model answered
+    pub turns: i64,
+    pub prompt_tokens: i64,
+    pub cached_tokens: i64,
+    /// cached_tokens over prompt_tokens
+    pub reuse: f64,
+    /// Set when
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub low: Option<bool>,
 }
 
 /// What an assistant answer used and did.
@@ -2093,6 +2147,12 @@ pub struct GenerationMetrics {
     /// Prompt tokens reused from the model's cache instead of processed again, when the runtime reports them.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cached_tokens: Option<i64>,
+    /// Tokens speculative decoding guessed ahead (contract 1.64).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub draft_tokens: Option<i64>,
+    /// The guessed tokens the model kept (contract 1.64).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub draft_accepted: Option<i64>,
     /// Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub finish_reason: Option<String>,
@@ -2245,6 +2305,22 @@ pub struct AddedModel {
     pub display_name: String,
     #[serde(default)]
     pub tags: Vec<String>,
+}
+
+/// A model's context window choice (#962).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ModelContext {
+    pub model_id: String,
+    /// 0 for Auto
+    pub context_window: i64,
+}
+
+/// A model's guess-ahead choice (#835).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ModelSpeculation {
+    pub model_id: String,
+    /// Known values: `auto`, `off`; others may be added.
+    pub speculation: String,
 }
 
 /// Says a model sees pictures now, with its projector set.
@@ -3589,7 +3665,7 @@ pub struct ModelFit {
     pub gpu_note: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub known_to_run: Option<bool>,
-    /// What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).
+    /// What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751); "graphics" when it needs more than the graphics card has, with HaveBytes the card's memory (#932).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub short: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3636,6 +3712,9 @@ pub struct SetAPIKeyPermissionsRequest {
     pub tools: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placement: Option<bool>,
+    /// Lets requests name raw:&lt;model&gt; and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -3673,6 +3752,9 @@ pub struct ChatRequest {
     /// Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effort: Option<String>,
+    /// off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<String>,
     /// The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_zone: Option<String>,
@@ -3685,7 +3767,7 @@ pub struct ChatRequest {
     /// Send message in place of this one, as a new version of it
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub edit_of: Option<String>,
-    /// The app asking; its run is traced with it, to measure how long answers take to start Known values: `phone`, `tablet`, `watch`, `tv`, `desktop`, `web`; others may be added.
+    /// The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client: Option<String>,
     /// Artifact ids from POST /api/v1/artifacts
@@ -3749,6 +3831,9 @@ pub struct PairDeviceRequest {
     pub code: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_name: Option<String>,
+    /// Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -3989,6 +4074,12 @@ pub struct DeleteModelRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SetModelContextRequest {
+    /// Tokens, up to the model's own window; 0 for Auto.
+    pub context_window: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct InstallModelRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub node_id: Option<String>,
@@ -4011,6 +4102,12 @@ pub struct PutModelRatingRequest {
     /// Include how the model runs here in a shared rating
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub observations: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SetModelSpeculationRequest {
+    /// Known values: `auto`, `off`; others may be added.
+    pub speculation: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4316,7 +4413,7 @@ pub struct UseVideoBuildRequest {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct OpenaiChatCompletionsRequest {
-    /// auto, profile:&lt;id&gt;, sai:&lt;slug&gt;, or a model id
+    /// auto, profile:&lt;id&gt;, sai:&lt;slug&gt;, a model id, or raw:&lt;model id&gt; to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
     pub model: String,
     #[serde(default)]
     pub messages: Vec<OpenaiChatCompletionsRequestMessages>,
@@ -4331,7 +4428,7 @@ pub struct OpenaiChatCompletionsRequest {
     /// OpenAI's newer name for max_tokens; wins when both are sent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_completion_tokens: Option<i64>,
-    /// Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
+    /// Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_effort: Option<String>,
     /// A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default.
@@ -4346,6 +4443,56 @@ pub struct OpenaiChatCompletionsRequest {
     pub toskar: Option<AssistantOptions>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub yggdrasil: Option<AssistantOptions>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AnthropicMessagesRequest {
+    pub model: String,
+    pub max_tokens: i64,
+    /// A string or text blocks
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub system: Value,
+    #[serde(default)]
+    pub messages: Vec<AnthropicMessagesRequestMessages>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<AnthropicMessagesRequestTools>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<AnthropicMessagesRequestToolChoice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_sequences: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_k: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stream: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct OpenaiResponsesRequest {
+    pub model: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+    /// A string or a list of input items
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub input: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<OpenaiResponsesRequestTools>>,
+    /// auto, required, none, or {"type":"function","name"}
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub tool_choice: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_output_tokens: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parallel_tool_calls: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stream: Option<bool>,
 }
 
 /// What sharing sends besides the stars, tags, a random rating ID, and the app version
@@ -4400,6 +4547,12 @@ pub struct ModelCapabilities {
     pub tool_call_support: Option<String>,
     pub vision: bool,
     pub coding: bool,
+    /// Thinks before it answers, such as Qwen 3, DeepSeek R1's distills, or gpt-oss (#840, contract 1.63). reasoning_effort none turns the thinking off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinks: Option<bool>,
+    /// Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub answers_first: Option<bool>,
 }
 
 /// Describes where a model artifact comes from.
@@ -4417,6 +4570,14 @@ pub struct ModelSource {
 pub struct ModelInstalledOn {
     pub node_id: String,
     pub node_name: String,
+}
+
+/// A context window a model can take, and how well it fits this computer at it (#962).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ModelContextOptions {
+    /// Known values: `excellent`, `good`, `tight`, `heavy`, `unsupported`; others may be added.
+    pub fit: String,
+    pub tokens: i64,
 }
 
 /// How well a model writes a language (multilingual spec §13–14, §31). Levels are coarse on purpose: they don't imply precision the sources don't have. A language a model has no level for is unknown, and is left out.
@@ -4633,6 +4794,9 @@ pub struct APIKeyPermissions {
     /// chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub routes: Option<String>,
+    /// May name raw:&lt;model&gt; on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw: Option<bool>,
 }
 
 /// The title and body as catalog keys with their values (multilingual spec §22), so each place that shows the notification writes it in its own language. Notices whose text comes from elsewhere, such as an automation's result, may have none.
@@ -4787,6 +4951,9 @@ pub struct MyDevicePermissions {
     /// chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub routes: Option<String>,
+    /// May name raw:&lt;model&gt; on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw: Option<bool>,
 }
 
 /// How the answer was reached when its profile deliberates: the drafts compared and the outcome (#459, contract 1.23).
@@ -5603,6 +5770,48 @@ pub struct OpenaiChatCompletionsRequestResponseFormat {
 pub struct OpenaiChatCompletionsRequestStreamOptions {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub include_usage: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AnthropicMessagesRequestMessages {
+    /// Known values: `user`, `assistant`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    /// A string or a list of blocks
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub content: Value,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AnthropicMessagesRequestTools {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_schema: Option<Map<String, Value>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AnthropicMessagesRequestToolChoice {
+    /// Known values: `auto`, `any`, `tool`, `none`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct OpenaiResponsesRequestTools {
+    /// Known values: `function`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<Map<String, Value>>,
 }
 
 /// Which model a rating is about. Ratings of different formats, quantizations, runtimes, or backends are never combined.

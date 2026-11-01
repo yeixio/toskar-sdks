@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Toskar Control Plane API
-  version: "1.60"
+  version: "1.76"
   description: >-
     Local AI control plane API for Toskar, its OpenAI-compatible routes, and its MCP server.
     On the default loopback bind no key is needed. When the daemon listens on any other address,
@@ -2400,6 +2400,9 @@ paths:
                   enum: [profile, read_only, none]
                 placement:
                   type: boolean
+                raw:
+                  type: boolean
+                  description: "Lets requests name raw:<model> and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile"
       responses:
         "200":
           description: The key, with its permissions
@@ -2464,6 +2467,9 @@ paths:
                 device_name:
                   type: string
                   example: Sam's iPhone
+                raw:
+                  type: boolean
+                  description: Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did.
       responses:
         "201":
           description: The phone's key (api_key, shown once) and its record, with kind device
@@ -2758,6 +2764,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FirstAnswers"
+  /api/v1/diagnostics/prompt-cache:
+    get:
+      summary: How much of chats' later turns each model read from its prompt cache
+      description: >-
+        Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran
+        on this computer and was already running (#838). Automations are left out.
+      operationId: getPromptCache
+      tags: [Diagnostics]
+      parameters:
+        - name: days
+          in: query
+          description: How many days back to look; 7 by default, 90 at most.
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Prompt cache reuse
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptCache"
   /v1/models:
     get:
       summary: OpenAI-compatible model list
@@ -2771,6 +2798,127 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OpenAIModelList"
+  /v1/messages:
+    post:
+      summary: Anthropic-compatible messages, for coding agents
+      description: >-
+        Anthropic's Messages format, driving a chat model on this computer directly with the
+        request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72).
+        model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks,
+        tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling
+        are converted to the model's Chat Completions and back. With stream, the answer comes as
+        Anthropic's events (message_start, content_block_start, content_block_delta with
+        text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key
+        may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use
+        Anthropic's shape, {"type":"error","error":{"type","message"}}.
+      operationId: anthropicMessages
+      tags: [OpenAI-compatible]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, max_tokens, messages]
+              properties:
+                model: {type: string}
+                max_tokens: {type: integer}
+                system: {description: A string or text blocks}
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role: {type: string, enum: [user, assistant]}
+                      content: {description: A string or a list of blocks}
+                tools:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name: {type: string}
+                      description: {type: string}
+                      input_schema: {type: object}
+                tool_choice:
+                  type: object
+                  properties:
+                    type: {type: string, enum: [auto, any, tool, none]}
+                    name: {type: string}
+                stop_sequences:
+                  type: array
+                  items: {type: string}
+                temperature: {type: number}
+                top_p: {type: number}
+                top_k: {type: integer}
+                stream: {type: boolean}
+      responses:
+        "200":
+          description: A message with text and tool_use blocks, stop_reason (end_turn, max_tokens, tool_use), and usage; or, streamed, Anthropic's events
+        "400":
+          description: invalid_request_error, such as no max_tokens, or a request no window of the model holds
+        "403":
+          description: permission_error, a key without raw access
+        "404":
+          description: not_found_error, a model not installed on this computer
+  /v1/messages/count_tokens:
+    post:
+      summary: About how many tokens a Messages request's input takes
+      description: The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+      operationId: anthropicCountTokens
+      tags: [OpenAI-compatible]
+      responses:
+        "200":
+          description: "{\"input_tokens\": n}"
+  /v1/responses:
+    post:
+      summary: OpenAI Responses, for coding agents
+      description: >-
+        OpenAI's Responses format, driving a chat model on this computer directly with the request's
+        own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model
+        id, with or without raw:. instructions, input (a string, or messages with input_text,
+        input_image, and output_text parts, function_call, and function_call_output items; reasoning
+        items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and
+        parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no
+        responses, so previous_response_id is refused: send the whole conversation, as with store
+        set to false. With stream, the answer comes as the response.* events, each with a
+        sequence_number. Needs raw access, as raw:<model> does.
+      operationId: openaiResponses
+      tags: [OpenAI-compatible]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, input]
+              properties:
+                model: {type: string}
+                instructions: {type: string}
+                input: {description: A string or a list of input items}
+                tools:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type: {type: string, enum: [function]}
+                      name: {type: string}
+                      description: {type: string}
+                      parameters: {type: object}
+                tool_choice: {description: 'auto, required, none, or {"type":"function","name"}'}
+                max_output_tokens: {type: integer}
+                temperature: {type: number}
+                top_p: {type: number}
+                parallel_tool_calls: {type: boolean}
+                stream: {type: boolean}
+      responses:
+        "200":
+          description: A response with message and function_call output items, status (completed, or incomplete at max_output_tokens), and usage; or, streamed, the response.* events
+        "400":
+          description: invalid_request_error, such as previous_response_id, an input item Toskar doesn't read, or a request no window of the model holds
+        "403":
+          description: RAW_NOT_ALLOWED, a key without raw access
+        "404":
+          description: MODEL_NOT_FOUND, a model not installed on this computer
   /v1/chat/completions:
     post:
       summary: OpenAI-compatible chat completions
@@ -2791,7 +2939,7 @@ paths:
               properties:
                 model:
                   type: string
-                  description: auto, profile:<id>, sai:<slug>, or a model id
+                  description: auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
                 messages:
                   type: array
                   items:
@@ -2819,7 +2967,7 @@ paths:
                 reasoning_effort:
                   type: string
                   enum: [none, minimal, low, medium, high]
-                  description: "Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60)."
+                  description: "Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593)."
                 include_reasoning:
                   type: boolean
                   description: "A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default."
@@ -3590,6 +3738,71 @@ paths:
                 $ref: "#/components/schemas/ModelVision"
         "400":
           description: MODEL_FILE_INVALID, MODEL_FILE_NOT_PROJECTOR, MODEL_NOT_INSTALLED, or MODEL_NOT_FOUND
+  /api/v1/models/{id}/speculation:
+    put:
+      summary: Turn guessing ahead Auto or Off for a model
+      description: 'Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).'
+      operationId: setModelSpeculation
+      tags: [Models]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [speculation]
+              properties:
+                speculation:
+                  type: string
+                  enum: [auto, off]
+      responses:
+        "200":
+          description: The choice is kept
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelSpeculation"
+        "400":
+          description: MODEL_UPDATE_FAILED, such as for a model that isn't installed here or doesn't chat
+  /api/v1/models/{id}/context:
+    put:
+      summary: Set a model's context window
+      description: 'The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).'
+      operationId: setModelContext
+      tags: [Models]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [context_window]
+              properties:
+                context_window:
+                  type: integer
+                  enum: [0, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
+                  description: Tokens, up to the model's own window; 0 for Auto.
+      responses:
+        "200":
+          description: The choice is kept
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelContext"
+        "400":
+          description: INVALID_JSON, or MODEL_UPDATE_FAILED, such as for a size past the model's own window, or a model that isn't installed here or doesn't chat
   /api/v1/models/{id}:
     patch:
       summary: Rename or retag an added model
@@ -3814,6 +4027,10 @@ paths:
                 effort:
                   type: string
                   enum: [auto, fast, balanced, thorough]
+                thinking:
+                  type: string
+                  enum: ["on", "off"]
+                  description: "off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61)"
                 time_zone:
                   type: string
                   description: "The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown"
@@ -3828,8 +4045,8 @@ paths:
                   description: Send message in place of this one, as a new version of it
                 client:
                   type: string
-                  enum: [phone, tablet, watch, tv, desktop, web]
-                  description: The app asking; its run is traced with it, to measure how long answers take to start
+                  enum: [phone, tablet, watch, car, tv, desktop, web, terminal, editor]
+                  description: The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75).
                 attachments:
                   type: array
                   items:
@@ -6920,6 +7137,9 @@ components:
         fallback:
           type: boolean
           description: When the model the request names can't answer, let another model answer instead. Off unless set, a named model answers or the request fails; auto and profiles always fall back (#871, contract 1.59)
+        context_window:
+          type: integer
+          description: The least context window, in tokens, the request wants the named model to run with on this computer. When it runs with less, it starts again with the smallest size that holds it and still fits, else the request answers 400 CONTEXT_TOO_LONG with param toskar.context_window (#962, contract 1.70).
     RuntimeSample:
       type: object
       properties:
@@ -7219,6 +7439,8 @@ components:
             tool_call_support: {type: string, description: native | compatible | limited | unsupported}
             vision: {type: boolean}
             coding: {type: boolean}
+            thinks: {type: boolean, description: "Thinks before it answers, such as Qwen 3, DeepSeek R1's distills, or gpt-oss (#840, contract 1.63). reasoning_effort none turns the thinking off."}
+            answers_first: {type: boolean, description: "Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none."}
         source:
           type: object
           description: Describes where a model artifact comes from.
@@ -7255,6 +7477,19 @@ components:
         fit: {$ref: '#/components/schemas/ModelFit'}
         dynamic: {type: boolean, description: installed from browse-all / URL}
         support_role: {type: string, description: '`support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models.'}
+        speculation: {type: string, enum: [auto, off], description: 'Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models.'}
+        context_window: {type: integer, description: 'The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).'}
+        context_choice: {type: integer, description: 'The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).'}
+        context_options:
+          type: array
+          description: The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
+          items:
+            type: object
+            description: A context window a model can take, and how well it fits this computer at it (#962).
+            required: [fit, tokens]
+            properties:
+              fit: {type: string, enum: [excellent, good, tight, heavy, unsupported]}
+              tokens: {type: integer}
         languages:
           type: array
           description: How well the model writes each language it has a level for (§13–14, §31), best first.
@@ -7747,6 +7982,7 @@ components:
             placement: {type: boolean}
             profile: {type: string, description: "The one profile the key is pinned to (#345); absent lets each request choose"}
             routes: {type: string, enum: [chat], description: "chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may"}
+            raw: {type: boolean, description: "May name raw:<model> on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it"}
         kind: {type: string, enum: [device], description: "device for a key a phone or other device got by pairing (#216); absent for one made in API Access"}
         person_id: {type: string}
     Notification:
@@ -8165,7 +8401,7 @@ components:
         conversation_id: {type: string}
         profile_id: {type: string}
         source: {type: string}
-        client: {type: string, description: 'The app that asked: phone, tablet, watch, tv, desktop, or web, or other; empty when it didn''t say, such as an API call (#498).'}
+        client: {type: string, description: 'The app that asked: phone, tablet, watch, car, tv, desktop, web, terminal, or editor, or other; empty when it didn''t say, such as an API call (#498).'}
         remote: {type: boolean, description: Set when the request came from outside the home network.}
         strategy:
           type: array
@@ -8218,6 +8454,8 @@ components:
         prompt_tokens: {type: integer}
         completion_tokens: {type: integer}
         cached_tokens: {type: integer}
+        draft_tokens: {type: integer, description: Tokens speculative decoding guessed ahead (contract 1.64).}
+        draft_accepted: {type: integer, description: The guessed tokens the model kept (contract 1.64).}
         tok_per_sec: {type: number}
         backend: {type: string, description: '`backend` and Device ran the model, such as vulkan and "AMD Radeon RX 7900 XTX" (#317); empty when not known, such as on a paired computer.'}
         device: {type: string}
@@ -8251,6 +8489,26 @@ components:
         first_word_ms: {type: number, description: The median wait from the request to the first token; FirstWordP90Ms is the wait nine in ten answers beat.}
         first_word_p90_ms: {type: number}
         load_ms: {type: number, description: The median time spent loading models; 0 when warm.}
+    PromptCache:
+      type: object
+      description: How much of each chat turn's prompt the models on this computer read from their prompt cache instead of processing again (#838), over chats' later turns.
+      required: [models, since]
+      properties:
+        since: {type: string, format: date-time}
+        models:
+          type: array
+          items: {$ref: '#/components/schemas/PromptCacheModel'}
+    PromptCacheModel:
+      type: object
+      description: One model's later turns.
+      required: [cached_tokens, model_id, prompt_tokens, reuse, turns]
+      properties:
+        model_id: {type: string}
+        turns: {type: integer, description: The later turns of chats the model answered, already running.}
+        prompt_tokens: {type: integer}
+        cached_tokens: {type: integer}
+        reuse: {type: number, description: cached_tokens over prompt_tokens, 0 to 1.}
+        low: {type: boolean, description: Set when, over at least 5 turns, under half the prompt came from the cache.}
     MessageMeta:
       type: object
       description: What an assistant answer used and did.
@@ -8529,6 +8787,8 @@ components:
         prompt_tok_per_sec: {type: number}
         eval_tok_per_sec: {type: number}
         cached_tokens: {type: integer, description: 'Prompt tokens reused from the model''s cache instead of processed again, when the runtime reports them.'}
+        draft_tokens: {type: integer, description: Tokens speculative decoding guessed ahead (contract 1.64).}
+        draft_accepted: {type: integer, description: The guessed tokens the model kept (contract 1.64).}
         finish_reason: {type: string, description: "Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say"}
         reasoning_tokens: {type: integer, description: "Tokens a reasoning model thought before it answered, part of completion_tokens (contract 1.58)"}
     Recommendation:
@@ -8664,6 +8924,20 @@ components:
         tags:
           type: array
           items: {type: string}
+    ModelContext:
+      type: object
+      description: A model's context window choice (#962).
+      required: [model_id, context_window]
+      properties:
+        model_id: {type: string}
+        context_window: {type: integer, description: 0 for Auto}
+    ModelSpeculation:
+      type: object
+      description: A model's guess-ahead choice (#835).
+      required: [model_id, speculation]
+      properties:
+        model_id: {type: string}
+        speculation: {type: string, enum: [auto, off]}
     ModelVision:
       type: object
       description: Says a model sees pictures now, with its projector set.
@@ -10126,7 +10400,7 @@ components:
           items: {type: string}
         gpu_note: {type: string}
         known_to_run: {type: boolean}
-        short: {type: string, description: 'What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).'}
+        short: {type: string, description: 'What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751); "graphics" when it needs more than the graphics card has, with HaveBytes the card''s memory (#932).'}
         need_bytes: {type: integer, format: int64}
         have_bytes: {type: integer, format: int64}
     CategoryWinner:

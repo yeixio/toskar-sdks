@@ -17,6 +17,42 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for SetModelContextJSONBodyContextWindow.
+const (
+	SetModelContextJSONBodyContextWindowN0      SetModelContextJSONBodyContextWindow = 0
+	SetModelContextJSONBodyContextWindowN131072 SetModelContextJSONBodyContextWindow = 131072
+	SetModelContextJSONBodyContextWindowN16384  SetModelContextJSONBodyContextWindow = 16384
+	SetModelContextJSONBodyContextWindowN262144 SetModelContextJSONBodyContextWindow = 262144
+	SetModelContextJSONBodyContextWindowN32768  SetModelContextJSONBodyContextWindow = 32768
+	SetModelContextJSONBodyContextWindowN4096   SetModelContextJSONBodyContextWindow = 4096
+	SetModelContextJSONBodyContextWindowN65536  SetModelContextJSONBodyContextWindow = 65536
+	SetModelContextJSONBodyContextWindowN8192   SetModelContextJSONBodyContextWindow = 8192
+)
+
+// Valid indicates whether the value is a known member of the SetModelContextJSONBodyContextWindow enum.
+func (e SetModelContextJSONBodyContextWindow) Valid() bool {
+	switch e {
+	case SetModelContextJSONBodyContextWindowN0:
+		return true
+	case SetModelContextJSONBodyContextWindowN131072:
+		return true
+	case SetModelContextJSONBodyContextWindowN16384:
+		return true
+	case SetModelContextJSONBodyContextWindowN262144:
+		return true
+	case SetModelContextJSONBodyContextWindowN32768:
+		return true
+	case SetModelContextJSONBodyContextWindowN4096:
+		return true
+	case SetModelContextJSONBodyContextWindowN65536:
+		return true
+	case SetModelContextJSONBodyContextWindowN8192:
+		return true
+	default:
+		return false
+	}
+}
+
 // AIProfile defines model for AIProfile.
 type AIProfile map[string]interface{}
 
@@ -41,6 +77,9 @@ type APIKey struct {
 
 		// Profile The one profile the key is pinned to (#345); absent lets each request choose
 		Profile *string `json:"profile,omitempty"`
+
+		// Raw May name raw:<model> on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it
+		Raw *bool `json:"raw,omitempty"`
 
 		// Routes chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added.
 		Routes *string `json:"routes,omitempty"`
@@ -133,6 +172,9 @@ type Artifact struct {
 
 // AssistantOptions The assistant's own controls for an OpenAI-compatible request, sent as toskar (or yggdrasil, its name from before the rename)
 type AssistantOptions struct {
+	// ContextWindow The least context window, in tokens, the request wants the named model to run with on this computer. When it runs with less, it starts again with the smallest size that holds it and still fits, else the request answers 400 CONTEXT_TOO_LONG with param toskar.context_window (#962, contract 1.70).
+	ContextWindow *int `json:"context_window,omitempty"`
+
 	// Effort Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
 	Effort *string `json:"effort,omitempty"`
 
@@ -1234,10 +1276,16 @@ type GPUSetup struct {
 // GenerationMetrics Per-turn inference performance.
 type GenerationMetrics struct {
 	// CachedTokens Prompt tokens reused from the model's cache instead of processed again, when the runtime reports them.
-	CachedTokens     *int    `json:"cached_tokens,omitempty"`
-	CompletionTokens int     `json:"completion_tokens"`
-	EvalMs           float32 `json:"eval_ms"`
-	EvalTokPerSec    float32 `json:"eval_tok_per_sec"`
+	CachedTokens     *int `json:"cached_tokens,omitempty"`
+	CompletionTokens int  `json:"completion_tokens"`
+
+	// DraftAccepted The guessed tokens the model kept (contract 1.64).
+	DraftAccepted *int `json:"draft_accepted,omitempty"`
+
+	// DraftTokens Tokens speculative decoding guessed ahead (contract 1.64).
+	DraftTokens   *int    `json:"draft_tokens,omitempty"`
+	EvalMs        float32 `json:"eval_ms"`
+	EvalTokPerSec float32 `json:"eval_tok_per_sec"`
 
 	// FinishReason Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say
 	FinishReason    *string `json:"finish_reason,omitempty"`
@@ -1796,15 +1844,33 @@ type MessageMeta struct {
 type Model struct {
 	// Capabilities Describes model features.
 	Capabilities struct {
-		Coding bool `json:"coding"`
+		// AnswersFirst Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none.
+		AnswersFirst *bool `json:"answers_first,omitempty"`
+		Coding       bool  `json:"coding"`
+
+		// Thinks Thinks before it answers, such as Qwen 3, DeepSeek R1's distills, or gpt-oss (#840, contract 1.63). reasoning_effort none turns the thinking off.
+		Thinks *bool `json:"thinks,omitempty"`
 
 		// ToolCallSupport native | compatible | limited | unsupported
 		ToolCallSupport *string `json:"tool_call_support,omitempty"`
 		ToolCalling     bool    `json:"tool_calling"`
 		Vision          bool    `json:"vision"`
 	} `json:"capabilities"`
-	Context     *int   `json:"context,omitempty"`
-	DisplayName string `json:"display_name"`
+	Context *int `json:"context,omitempty"`
+
+	// ContextChoice The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).
+	ContextChoice *int `json:"context_choice,omitempty"`
+
+	// ContextOptions The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
+	ContextOptions *[]struct {
+		// Fit Known values: `excellent`, `good`, `tight`, `heavy`, `unsupported`; others may be added.
+		Fit    string `json:"fit"`
+		Tokens int    `json:"tokens"`
+	} `json:"context_options,omitempty"`
+
+	// ContextWindow The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
+	ContextWindow *int   `json:"context_window,omitempty"`
+	DisplayName   string `json:"display_name"`
 
 	// Dynamic installed from browse-all / URL
 	Dynamic *bool   `json:"dynamic,omitempty"`
@@ -1850,6 +1916,9 @@ type Model struct {
 		Url    string  `json:"url"`
 	} `json:"source,omitempty"`
 
+	// Speculation Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added.
+	Speculation *string `json:"speculation,omitempty"`
+
 	// Status available|downloading|installed|loading|running|stopping|error
 	Status  *string `json:"status,omitempty"`
 	Summary *string `json:"summary,omitempty"`
@@ -1860,6 +1929,13 @@ type Model struct {
 	// Tags coding, general, reasoning, vision, fast, large
 	Tags    *[]string `json:"tags,omitempty"`
 	Variant *string   `json:"variant,omitempty"`
+}
+
+// ModelContext A model's context window choice (#962).
+type ModelContext struct {
+	// ContextWindow 0 for Auto
+	ContextWindow int    `json:"context_window"`
+	ModelId       string `json:"model_id"`
 }
 
 // ModelFileDetails What a GGUF file says about its model.
@@ -1905,7 +1981,7 @@ type ModelFit struct {
 	RuntimeMemoryLowBytes *int64  `json:"runtime_memory_low_bytes,omitempty"`
 	RuntimeWarning        *string `json:"runtime_warning,omitempty"`
 
-	// Short What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).
+	// Short What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751); "graphics" when it needs more than the graphics card has, with HaveBytes the card's memory (#932).
 	Short             *string `json:"short,omitempty"`
 	TokPerSecMeasured *bool   `json:"tok_per_sec_measured,omitempty"`
 	TotalMemoryBytes  *int64  `json:"total_memory_bytes,omitempty"`
@@ -1991,6 +2067,14 @@ type ModelRating struct {
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
+// ModelSpeculation A model's guess-ahead choice (#835).
+type ModelSpeculation struct {
+	ModelId string `json:"model_id"`
+
+	// Speculation Known values: `auto`, `off`; others may be added.
+	Speculation string `json:"speculation"`
+}
+
 // ModelUse One model's part in a run.
 type ModelUse struct {
 	// Backend `backend` and Device ran the model, such as vulkan and "AMD Radeon RX 7900 XTX" (#317); empty when not known, such as on a paired computer.
@@ -1999,6 +2083,12 @@ type ModelUse struct {
 	Calls            int     `json:"calls"`
 	CompletionTokens int     `json:"completion_tokens"`
 	Device           *string `json:"device,omitempty"`
+
+	// DraftAccepted The guessed tokens the model kept (contract 1.64).
+	DraftAccepted *int `json:"draft_accepted,omitempty"`
+
+	// DraftTokens Tokens speculative decoding guessed ahead (contract 1.64).
+	DraftTokens *int `json:"draft_tokens,omitempty"`
 
 	// FirstTokenMs The wait for the first token of the first call, including loading.
 	FirstTokenMs *float32 `json:"first_token_ms,omitempty"`
@@ -2061,6 +2151,9 @@ type MyDevice struct {
 
 		// Profile The one profile the key is pinned to (#345); absent lets each request choose
 		Profile *string `json:"profile,omitempty"`
+
+		// Raw May name raw:<model> on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it
+		Raw *bool `json:"raw,omitempty"`
 
 		// Routes chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added.
 		Routes *string `json:"routes,omitempty"`
@@ -2680,6 +2773,28 @@ type ProfilePins struct {
 	Roles map[string][]string `json:"roles"`
 }
 
+// PromptCache How much of each chat turn's prompt the models on this computer read from their prompt cache instead of processing again (#838), over chats' later turns.
+type PromptCache struct {
+	Models []PromptCacheModel `json:"models"`
+	Since  time.Time          `json:"since"`
+}
+
+// PromptCacheModel One model's later turns.
+type PromptCacheModel struct {
+	CachedTokens int `json:"cached_tokens"`
+
+	// Low Set when
+	Low          *bool  `json:"low,omitempty"`
+	ModelId      string `json:"model_id"`
+	PromptTokens int    `json:"prompt_tokens"`
+
+	// Reuse cached_tokens over prompt_tokens
+	Reuse float32 `json:"reuse"`
+
+	// Turns The later turns of chats the model answered
+	Turns int `json:"turns"`
+}
+
 // PushStatus defines model for PushStatus.
 type PushStatus struct {
 	// ComputerKey This computer's Ed25519 public key, base64.
@@ -2781,7 +2896,7 @@ type Run struct {
 	// CacheHits `cache_hits` counts tool calls answered from a cache, by tool (§36).
 	CacheHits *map[string]int `json:"cache_hits,omitempty"`
 
-	// Client The app that asked: phone, tablet, watch, tv, desktop, or web, or other; empty when it didn't say, such as an API call (#498).
+	// Client The app that asked: phone, tablet, watch, car, tv, desktop, web, terminal, or editor, or other; empty when it didn't say, such as an API call (#498).
 	Client        *string    `json:"client,omitempty"`
 	CompletedAt   *time.Time `json:"completed_at,omitempty"`
 	ContextLimit  *int       `json:"context_limit,omitempty"`
@@ -3553,6 +3668,9 @@ type SetAPIKeyPermissionsJSONBody struct {
 	Memory    *string `json:"memory,omitempty"`
 	Placement *bool   `json:"placement,omitempty"`
 
+	// Raw Lets requests name raw:<model> and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile
+	Raw *bool `json:"raw,omitempty"`
+
 	// Tools Known values: `profile`, `read_only`, `none`; others may be added.
 	Tools *string `json:"tools,omitempty"`
 }
@@ -3606,7 +3724,7 @@ type ChatJSONBody struct {
 	// Attachments Artifact ids from POST /api/v1/artifacts
 	Attachments *[]string `json:"attachments,omitempty"`
 
-	// Client The app asking; its run is traced with it, to measure how long answers take to start Known values: `phone`, `tablet`, `watch`, `tv`, `desktop`, `web`; others may be added.
+	// Client The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added.
 	Client         *string `json:"client,omitempty"`
 	ConversationId *string `json:"conversation_id,omitempty"`
 
@@ -3630,6 +3748,9 @@ type ChatJSONBody struct {
 	// RetryOf Ask this answer's question again, as a new version of the answer; message may be empty
 	RetryOf *string `json:"retry_of,omitempty"`
 	Stream  *bool   `json:"stream,omitempty"`
+
+	// Thinking off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
+	Thinking *string `json:"thinking,omitempty"`
 
 	// TimeZone The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
 	TimeZone *string `json:"time_zone,omitempty"`
@@ -3683,6 +3804,9 @@ type PairDeviceJSONBody struct {
 
 	// DeviceName Example: Sam's iPhone
 	DeviceName *string `json:"device_name,omitempty"`
+
+	// Raw Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did.
+	Raw *bool `json:"raw,omitempty"`
 }
 
 // StartDevicePairingJSONBody defines parameters for StartDevicePairing.
@@ -3703,6 +3827,12 @@ type CreateDiagnosticsJSONBody struct {
 
 // GetFirstAnswersParams defines parameters for GetFirstAnswers.
 type GetFirstAnswersParams struct {
+	// Days How many days back to look; 7 by default, 90 at most.
+	Days *int `form:"days,omitempty" json:"days,omitempty"`
+}
+
+// GetPromptCacheParams defines parameters for GetPromptCache.
+type GetPromptCacheParams struct {
 	// Days How many days back to look; 7 by default, 90 at most.
 	Days *int `form:"days,omitempty" json:"days,omitempty"`
 }
@@ -3989,6 +4119,15 @@ type UpdateAddedModelJSONBody struct {
 	Tags        *[]string `json:"tags,omitempty"`
 }
 
+// SetModelContextJSONBody defines parameters for SetModelContext.
+type SetModelContextJSONBody struct {
+	// ContextWindow Tokens, up to the model's own window; 0 for Auto.
+	ContextWindow SetModelContextJSONBodyContextWindow `json:"context_window"`
+}
+
+// SetModelContextJSONBodyContextWindow defines parameters for SetModelContext.
+type SetModelContextJSONBodyContextWindow int
+
 // InstallModelJSONBody defines parameters for InstallModel.
 type InstallModelJSONBody struct {
 	NodeId *string `json:"node_id,omitempty"`
@@ -4013,6 +4152,12 @@ type PutModelRatingJSONBody struct {
 	Share        *bool        `json:"share,omitempty"`
 	Stars        int          `json:"stars"`
 	Tags         *[]RatingTag `json:"tags,omitempty"`
+}
+
+// SetModelSpeculationJSONBody defines parameters for SetModelSpeculation.
+type SetModelSpeculationJSONBody struct {
+	// Speculation Known values: `auto`, `off`; others may be added.
+	Speculation string `json:"speculation"`
 }
 
 // StartModelJSONBody defines parameters for StartModel.
@@ -4413,10 +4558,10 @@ type OpenaiChatCompletionsJSONBody struct {
 		Role    *string `json:"role,omitempty"`
 	} `json:"messages"`
 
-	// Model auto, profile:<id>, sai:<slug>, or a model id
+	// Model auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
 	Model string `json:"model"`
 
-	// ReasoningEffort Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
+	// ReasoningEffort Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
 	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
 	ResponseFormat  *struct {
 		JsonSchema *struct {
@@ -4442,6 +4587,62 @@ type OpenaiChatCompletionsJSONBody struct {
 
 	// Yggdrasil The assistant's own controls for an OpenAI-compatible request, sent as toskar (or yggdrasil, its name from before the rename)
 	Yggdrasil *AssistantOptions `json:"yggdrasil,omitempty"`
+}
+
+// AnthropicMessagesJSONBody defines parameters for AnthropicMessages.
+type AnthropicMessagesJSONBody struct {
+	MaxTokens int `json:"max_tokens"`
+	Messages  []struct {
+		// Content A string or a list of blocks
+		Content interface{} `json:"content,omitempty"`
+
+		// Role Known values: `user`, `assistant`; others may be added.
+		Role *string `json:"role,omitempty"`
+	} `json:"messages"`
+	Model         string    `json:"model"`
+	StopSequences *[]string `json:"stop_sequences,omitempty"`
+	Stream        *bool     `json:"stream,omitempty"`
+
+	// System A string or text blocks
+	System      interface{} `json:"system,omitempty"`
+	Temperature *float32    `json:"temperature,omitempty"`
+	ToolChoice  *struct {
+		Name *string `json:"name,omitempty"`
+
+		// Type Known values: `auto`, `any`, `tool`, `none`; others may be added.
+		Type *string `json:"type,omitempty"`
+	} `json:"tool_choice,omitempty"`
+	Tools *[]struct {
+		Description *string                 `json:"description,omitempty"`
+		InputSchema *map[string]interface{} `json:"input_schema,omitempty"`
+		Name        *string                 `json:"name,omitempty"`
+	} `json:"tools,omitempty"`
+	TopK *int     `json:"top_k,omitempty"`
+	TopP *float32 `json:"top_p,omitempty"`
+}
+
+// OpenaiResponsesJSONBody defines parameters for OpenaiResponses.
+type OpenaiResponsesJSONBody struct {
+	// Input A string or a list of input items
+	Input             interface{} `json:"input"`
+	Instructions      *string     `json:"instructions,omitempty"`
+	MaxOutputTokens   *int        `json:"max_output_tokens,omitempty"`
+	Model             string      `json:"model"`
+	ParallelToolCalls *bool       `json:"parallel_tool_calls,omitempty"`
+	Stream            *bool       `json:"stream,omitempty"`
+	Temperature       *float32    `json:"temperature,omitempty"`
+
+	// ToolChoice auto, required, none, or {"type":"function","name"}
+	ToolChoice interface{} `json:"tool_choice,omitempty"`
+	Tools      *[]struct {
+		Description *string                 `json:"description,omitempty"`
+		Name        *string                 `json:"name,omitempty"`
+		Parameters  *map[string]interface{} `json:"parameters,omitempty"`
+
+		// Type Known values: `function`; others may be added.
+		Type *string `json:"type,omitempty"`
+	} `json:"tools,omitempty"`
+	TopP *float32 `json:"top_p,omitempty"`
 }
 
 // CreateAPIKeyJSONRequestBody defines body for CreateAPIKey for application/json ContentType.
@@ -4579,6 +4780,9 @@ type DeleteModelJSONRequestBody DeleteModelJSONBody
 // UpdateAddedModelJSONRequestBody defines body for UpdateAddedModel for application/json ContentType.
 type UpdateAddedModelJSONRequestBody UpdateAddedModelJSONBody
 
+// SetModelContextJSONRequestBody defines body for SetModelContext for application/json ContentType.
+type SetModelContextJSONRequestBody SetModelContextJSONBody
+
 // InstallModelJSONRequestBody defines body for InstallModel for application/json ContentType.
 type InstallModelJSONRequestBody InstallModelJSONBody
 
@@ -4587,6 +4791,9 @@ type SetModelProjectorJSONRequestBody SetModelProjectorJSONBody
 
 // PutModelRatingJSONRequestBody defines body for PutModelRating for application/json ContentType.
 type PutModelRatingJSONRequestBody PutModelRatingJSONBody
+
+// SetModelSpeculationJSONRequestBody defines body for SetModelSpeculation for application/json ContentType.
+type SetModelSpeculationJSONRequestBody SetModelSpeculationJSONBody
 
 // StartModelJSONRequestBody defines body for StartModel for application/json ContentType.
 type StartModelJSONRequestBody StartModelJSONBody
@@ -4734,6 +4941,12 @@ type McpServerJSONRequestBody McpServerJSONBody
 
 // OpenaiChatCompletionsJSONRequestBody defines body for OpenaiChatCompletions for application/json ContentType.
 type OpenaiChatCompletionsJSONRequestBody OpenaiChatCompletionsJSONBody
+
+// AnthropicMessagesJSONRequestBody defines body for AnthropicMessages for application/json ContentType.
+type AnthropicMessagesJSONRequestBody AnthropicMessagesJSONBody
+
+// OpenaiResponsesJSONRequestBody defines body for OpenaiResponses for application/json ContentType.
+type OpenaiResponsesJSONRequestBody OpenaiResponsesJSONBody
 
 // Getter for additional properties for ExportStatus. Returns the specified
 // element and whether it was found
@@ -5901,6 +6114,13 @@ type ClientInterface interface {
 	// Corresponds with GET /api/v1/diagnostics/gpu (the `GetGPUSetup` operationId).
 	GetGPUSetup(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetPromptCache How much of chats' later turns each model read from its prompt cache
+	//
+	// Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+	//
+	// Corresponds with GET /api/v1/diagnostics/prompt-cache (the `GetPromptCache` operationId).
+	GetPromptCache(ctx context.Context, params *GetPromptCacheParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetReport What a problem report sends, scrubbed
 	//
 	// Versions and the kind of computer, and for an Admin Core's last 40 warnings and errors. Email addresses, keys, tokens, home folder names, the computer's name, and internet addresses are taken out first. Members and paired devices may call it.
@@ -6584,6 +6804,24 @@ type ClientInterface interface {
 	// Corresponds with PATCH /api/v1/models/{id} (the `UpdateAddedModel` operationId).
 	UpdateAddedModel(ctx context.Context, id string, body UpdateAddedModelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SetModelContextWithBody Set a model's context window
+	//
+	// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /api/v1/models/{id}/context (the `SetModelContext` operationId).
+	SetModelContextWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetModelContext Set a model's context window
+	//
+	// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /api/v1/models/{id}/context (the `SetModelContext` operationId).
+	SetModelContext(ctx context.Context, id string, body SetModelContextJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// InstallModelWithBody Download a catalog model, here or on a paired computer
 	//
 	// Takes any type of body and a specified content type.
@@ -6648,6 +6886,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/models/{id}/rating/dismiss (the `DismissModelRating` operationId).
 	DismissModelRating(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetModelSpeculationWithBody Turn guessing ahead Auto or Off for a model
+	//
+	// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /api/v1/models/{id}/speculation (the `SetModelSpeculation` operationId).
+	SetModelSpeculationWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetModelSpeculation Turn guessing ahead Auto or Off for a model
+	//
+	// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /api/v1/models/{id}/speculation (the `SetModelSpeculation` operationId).
+	SetModelSpeculation(ctx context.Context, id string, body SetModelSpeculationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StartModelWithBody Load a model
 	//
@@ -7983,12 +8239,55 @@ type ClientInterface interface {
 	// Corresponds with POST /v1/chat/completions (the `OpenaiChatCompletions` operationId).
 	OpenaiChatCompletions(ctx context.Context, body OpenaiChatCompletionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AnthropicMessagesWithBody Anthropic-compatible messages, for coding agents
+	//
+	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/messages (the `AnthropicMessages` operationId).
+	AnthropicMessagesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AnthropicMessages Anthropic-compatible messages, for coding agents
+	//
+	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/messages (the `AnthropicMessages` operationId).
+	AnthropicMessages(ctx context.Context, body AnthropicMessagesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AnthropicCountTokens About how many tokens a Messages request's input takes
+	//
+	// The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+	//
+	// Corresponds with POST /v1/messages/count_tokens (the `AnthropicCountTokens` operationId).
+	AnthropicCountTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// OpenaiListModels OpenAI-compatible model list
 	//
 	// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
 	//
 	// Corresponds with GET /v1/models (the `OpenaiListModels` operationId).
 	OpenaiListModels(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OpenaiResponsesWithBody OpenAI Responses, for coding agents
+	//
+	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/responses (the `OpenaiResponses` operationId).
+	OpenaiResponsesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OpenaiResponses OpenAI Responses, for coding agents
+	//
+	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/responses (the `OpenaiResponses` operationId).
+	OpenaiResponses(ctx context.Context, body OpenaiResponsesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetAbout AGPL corresponding-source offer
@@ -9232,6 +9531,23 @@ func (c *Client) GetFirstAnswers(ctx context.Context, params *GetFirstAnswersPar
 // Corresponds with GET /api/v1/diagnostics/gpu (the `GetGPUSetup` operationId).
 func (c *Client) GetGPUSetup(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetGPUSetupRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetPromptCache How much of chats' later turns each model read from its prompt cache
+//
+// Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+//
+// Corresponds with GET /api/v1/diagnostics/prompt-cache (the `GetPromptCache` operationId).
+func (c *Client) GetPromptCache(ctx context.Context, params *GetPromptCacheParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPromptCacheRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -10935,6 +11251,44 @@ func (c *Client) UpdateAddedModel(ctx context.Context, id string, body UpdateAdd
 	return c.Client.Do(req)
 }
 
+// SetModelContextWithBody Set a model's context window
+//
+// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /api/v1/models/{id}/context (the `SetModelContext` operationId).
+func (c *Client) SetModelContextWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetModelContextRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetModelContext Set a model's context window
+//
+// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /api/v1/models/{id}/context (the `SetModelContext` operationId).
+func (c *Client) SetModelContext(ctx context.Context, id string, body SetModelContextJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetModelContextRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // InstallModelWithBody Download a catalog model, here or on a paired computer
 //
 // Takes any type of body and a specified content type.
@@ -11080,6 +11434,44 @@ func (c *Client) PutModelRating(ctx context.Context, id string, body PutModelRat
 // Corresponds with POST /api/v1/models/{id}/rating/dismiss (the `DismissModelRating` operationId).
 func (c *Client) DismissModelRating(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDismissModelRatingRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetModelSpeculationWithBody Turn guessing ahead Auto or Off for a model
+//
+// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /api/v1/models/{id}/speculation (the `SetModelSpeculation` operationId).
+func (c *Client) SetModelSpeculationWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetModelSpeculationRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetModelSpeculation Turn guessing ahead Auto or Off for a model
+//
+// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /api/v1/models/{id}/speculation (the `SetModelSpeculation` operationId).
+func (c *Client) SetModelSpeculation(ctx context.Context, id string, body SetModelSpeculationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetModelSpeculationRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14464,6 +14856,61 @@ func (c *Client) OpenaiChatCompletions(ctx context.Context, body OpenaiChatCompl
 	return c.Client.Do(req)
 }
 
+// AnthropicMessagesWithBody Anthropic-compatible messages, for coding agents
+//
+// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/messages (the `AnthropicMessages` operationId).
+func (c *Client) AnthropicMessagesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAnthropicMessagesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AnthropicMessages Anthropic-compatible messages, for coding agents
+//
+// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/messages (the `AnthropicMessages` operationId).
+func (c *Client) AnthropicMessages(ctx context.Context, body AnthropicMessagesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAnthropicMessagesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AnthropicCountTokens About how many tokens a Messages request's input takes
+//
+// The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+//
+// Corresponds with POST /v1/messages/count_tokens (the `AnthropicCountTokens` operationId).
+func (c *Client) AnthropicCountTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAnthropicCountTokensRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // OpenaiListModels OpenAI-compatible model list
 //
 // auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
@@ -14471,6 +14918,44 @@ func (c *Client) OpenaiChatCompletions(ctx context.Context, body OpenaiChatCompl
 // Corresponds with GET /v1/models (the `OpenaiListModels` operationId).
 func (c *Client) OpenaiListModels(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOpenaiListModelsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OpenaiResponsesWithBody OpenAI Responses, for coding agents
+//
+// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/responses (the `OpenaiResponses` operationId).
+func (c *Client) OpenaiResponsesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOpenaiResponsesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OpenaiResponses OpenAI Responses, for coding agents
+//
+// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/responses (the `OpenaiResponses` operationId).
+func (c *Client) OpenaiResponses(ctx context.Context, body OpenaiResponsesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOpenaiResponsesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16703,6 +17188,60 @@ func NewGetGPUSetupRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetPromptCacheRequest constructs an http.Request for the GetPromptCache method
+func NewGetPromptCacheRequest(server string, params *GetPromptCacheParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/diagnostics/prompt-cache")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Days != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "days", *params.Days, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -19501,6 +20040,53 @@ func NewUpdateAddedModelRequestWithBody(server string, id string, contentType st
 	return req, nil
 }
 
+// NewSetModelContextRequest calls the generic SetModelContext builder with application/json body
+func NewSetModelContextRequest(server string, id string, body SetModelContextJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetModelContextRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewSetModelContextRequestWithBody constructs an http.Request for the SetModelContext method, with any body, and a specified content type
+func NewSetModelContextRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/models/%s/context", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewInstallModelRequest calls the generic InstallModel builder with application/json body
 func NewInstallModelRequest(server string, id string, params *InstallModelParams, body InstallModelJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -19779,6 +20365,53 @@ func NewDismissModelRatingRequest(server string, id string) (*http.Request, erro
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewSetModelSpeculationRequest calls the generic SetModelSpeculation builder with application/json body
+func NewSetModelSpeculationRequest(server string, id string, body SetModelSpeculationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetModelSpeculationRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewSetModelSpeculationRequestWithBody constructs an http.Request for the SetModelSpeculation method, with any body, and a specified content type
+func NewSetModelSpeculationRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/models/%s/speculation", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -25701,6 +26334,73 @@ func NewOpenaiChatCompletionsRequestWithBody(server string, contentType string, 
 	return req, nil
 }
 
+// NewAnthropicMessagesRequest calls the generic AnthropicMessages builder with application/json body
+func NewAnthropicMessagesRequest(server string, body AnthropicMessagesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAnthropicMessagesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAnthropicMessagesRequestWithBody constructs an http.Request for the AnthropicMessages method, with any body, and a specified content type
+func NewAnthropicMessagesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/messages")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAnthropicCountTokensRequest constructs an http.Request for the AnthropicCountTokens method
+func NewAnthropicCountTokensRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/messages/count_tokens")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewOpenaiListModelsRequest constructs an http.Request for the OpenaiListModels method
 func NewOpenaiListModelsRequest(server string) (*http.Request, error) {
 	var err error
@@ -25724,6 +26424,46 @@ func NewOpenaiListModelsRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewOpenaiResponsesRequest calls the generic OpenaiResponses builder with application/json body
+func NewOpenaiResponsesRequest(server string, body OpenaiResponsesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewOpenaiResponsesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewOpenaiResponsesRequestWithBody constructs an http.Request for the OpenaiResponses method, with any body, and a specified content type
+func NewOpenaiResponsesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/responses")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -26334,6 +27074,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /api/v1/diagnostics/gpu (the `GetGPUSetup` operationId).
 	GetGPUSetupWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetGPUSetupResponse, error)
+
+	// GetPromptCacheWithResponse How much of chats' later turns each model read from its prompt cache
+	//
+	// Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/diagnostics/prompt-cache (the `GetPromptCache` operationId).
+	GetPromptCacheWithResponse(ctx context.Context, params *GetPromptCacheParams, reqEditors ...RequestEditorFn) (*GetPromptCacheResponse, error)
 
 	// GetReportWithResponse What a problem report sends, scrubbed
 	//
@@ -27112,6 +27861,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /api/v1/models/{id} (the `UpdateAddedModel` operationId).
 	UpdateAddedModelWithResponse(ctx context.Context, id string, body UpdateAddedModelJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAddedModelResponse, error)
 
+	// SetModelContextWithBodyWithResponse Set a model's context window
+	//
+	// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/models/{id}/context (the `SetModelContext` operationId).
+	SetModelContextWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetModelContextResponse, error)
+
+	// SetModelContextWithResponse Set a model's context window
+	//
+	// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/models/{id}/context (the `SetModelContext` operationId).
+	SetModelContextWithResponse(ctx context.Context, id string, body SetModelContextJSONRequestBody, reqEditors ...RequestEditorFn) (*SetModelContextResponse, error)
+
 	// InstallModelWithBodyWithResponse Download a catalog model, here or on a paired computer
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -27182,6 +27949,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/models/{id}/rating/dismiss (the `DismissModelRating` operationId).
 	DismissModelRatingWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DismissModelRatingResponse, error)
+
+	// SetModelSpeculationWithBodyWithResponse Turn guessing ahead Auto or Off for a model
+	//
+	// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/models/{id}/speculation (the `SetModelSpeculation` operationId).
+	SetModelSpeculationWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetModelSpeculationResponse, error)
+
+	// SetModelSpeculationWithResponse Turn guessing ahead Auto or Off for a model
+	//
+	// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/models/{id}/speculation (the `SetModelSpeculation` operationId).
+	SetModelSpeculationWithResponse(ctx context.Context, id string, body SetModelSpeculationJSONRequestBody, reqEditors ...RequestEditorFn) (*SetModelSpeculationResponse, error)
 
 	// StartModelWithBodyWithResponse Load a model
 	//
@@ -28727,6 +29512,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /v1/chat/completions (the `OpenaiChatCompletions` operationId).
 	OpenaiChatCompletionsWithResponse(ctx context.Context, body OpenaiChatCompletionsJSONRequestBody, reqEditors ...RequestEditorFn) (*OpenaiChatCompletionsResponse, error)
 
+	// AnthropicMessagesWithBodyWithResponse Anthropic-compatible messages, for coding agents
+	//
+	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/messages (the `AnthropicMessages` operationId).
+	AnthropicMessagesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AnthropicMessagesResponse, error)
+
+	// AnthropicMessagesWithResponse Anthropic-compatible messages, for coding agents
+	//
+	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/messages (the `AnthropicMessages` operationId).
+	AnthropicMessagesWithResponse(ctx context.Context, body AnthropicMessagesJSONRequestBody, reqEditors ...RequestEditorFn) (*AnthropicMessagesResponse, error)
+
+	// AnthropicCountTokensWithResponse About how many tokens a Messages request's input takes
+	//
+	// The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/messages/count_tokens (the `AnthropicCountTokens` operationId).
+	AnthropicCountTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AnthropicCountTokensResponse, error)
+
 	// OpenaiListModelsWithResponse OpenAI-compatible model list
 	//
 	// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
@@ -28735,6 +29547,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /v1/models (the `OpenaiListModels` operationId).
 	OpenaiListModelsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OpenaiListModelsResponse, error)
+
+	// OpenaiResponsesWithBodyWithResponse OpenAI Responses, for coding agents
+	//
+	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/responses (the `OpenaiResponses` operationId).
+	OpenaiResponsesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OpenaiResponsesResponse, error)
+
+	// OpenaiResponsesWithResponse OpenAI Responses, for coding agents
+	//
+	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/responses (the `OpenaiResponses` operationId).
+	OpenaiResponsesWithResponse(ctx context.Context, body OpenaiResponsesJSONRequestBody, reqEditors ...RequestEditorFn) (*OpenaiResponsesResponse, error)
 }
 
 type GetAboutResponse struct {
@@ -31304,6 +32134,47 @@ func (r GetGPUSetupResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetGPUSetupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetPromptCacheResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PromptCache
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetPromptCacheResponse) GetJSON200() *PromptCache {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetPromptCacheResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPromptCacheResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPromptCacheResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPromptCacheResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -34302,6 +35173,47 @@ func (r UpdateAddedModelResponse) ContentType() string {
 	return ""
 }
 
+type SetModelContextResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ModelContext
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetModelContextResponse) GetJSON200() *ModelContext {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r SetModelContextResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetModelContextResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetModelContextResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetModelContextResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type InstallModelResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -34535,6 +35447,47 @@ func (r DismissModelRatingResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DismissModelRatingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetModelSpeculationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ModelSpeculation
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetModelSpeculationResponse) GetJSON200() *ModelSpeculation {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r SetModelSpeculationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetModelSpeculationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetModelSpeculationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetModelSpeculationResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -41106,6 +42059,74 @@ func (r OpenaiChatCompletionsResponse) ContentType() string {
 	return ""
 }
 
+type AnthropicMessagesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r AnthropicMessagesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AnthropicMessagesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AnthropicMessagesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AnthropicMessagesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AnthropicCountTokensResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r AnthropicCountTokensResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AnthropicCountTokensResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AnthropicCountTokensResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AnthropicCountTokensResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type OpenaiListModelsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -41141,6 +42162,40 @@ func (r OpenaiListModelsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r OpenaiListModelsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OpenaiResponsesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r OpenaiResponsesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OpenaiResponsesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OpenaiResponsesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OpenaiResponsesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -42170,6 +43225,21 @@ func (c *ClientWithResponses) GetGPUSetupWithResponse(ctx context.Context, reqEd
 		return nil, err
 	}
 	return ParseGetGPUSetupResponse(rsp)
+}
+
+// GetPromptCacheWithResponse How much of chats' later turns each model read from its prompt cache
+//
+// Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/diagnostics/prompt-cache (the `GetPromptCache` operationId).
+func (c *ClientWithResponses) GetPromptCacheWithResponse(ctx context.Context, params *GetPromptCacheParams, reqEditors ...RequestEditorFn) (*GetPromptCacheResponse, error) {
+	rsp, err := c.GetPromptCache(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPromptCacheResponse(rsp)
 }
 
 // GetReportWithResponse What a problem report sends, scrubbed
@@ -43555,6 +44625,36 @@ func (c *ClientWithResponses) UpdateAddedModelWithResponse(ctx context.Context, 
 	return ParseUpdateAddedModelResponse(rsp)
 }
 
+// SetModelContextWithBodyWithResponse Set a model's context window
+//
+// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/models/{id}/context (the `SetModelContext` operationId).
+func (c *ClientWithResponses) SetModelContextWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetModelContextResponse, error) {
+	rsp, err := c.SetModelContextWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetModelContextResponse(rsp)
+}
+
+// SetModelContextWithResponse Set a model's context window
+//
+// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/models/{id}/context (the `SetModelContext` operationId).
+func (c *ClientWithResponses) SetModelContextWithResponse(ctx context.Context, id string, body SetModelContextJSONRequestBody, reqEditors ...RequestEditorFn) (*SetModelContextResponse, error) {
+	rsp, err := c.SetModelContext(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetModelContextResponse(rsp)
+}
+
 // InstallModelWithBodyWithResponse Download a catalog model, here or on a paired computer
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -43678,6 +44778,36 @@ func (c *ClientWithResponses) DismissModelRatingWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseDismissModelRatingResponse(rsp)
+}
+
+// SetModelSpeculationWithBodyWithResponse Turn guessing ahead Auto or Off for a model
+//
+// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/models/{id}/speculation (the `SetModelSpeculation` operationId).
+func (c *ClientWithResponses) SetModelSpeculationWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetModelSpeculationResponse, error) {
+	rsp, err := c.SetModelSpeculationWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetModelSpeculationResponse(rsp)
+}
+
+// SetModelSpeculationWithResponse Turn guessing ahead Auto or Off for a model
+//
+// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/models/{id}/speculation (the `SetModelSpeculation` operationId).
+func (c *ClientWithResponses) SetModelSpeculationWithResponse(ctx context.Context, id string, body SetModelSpeculationJSONRequestBody, reqEditors ...RequestEditorFn) (*SetModelSpeculationResponse, error) {
+	rsp, err := c.SetModelSpeculation(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetModelSpeculationResponse(rsp)
 }
 
 // StartModelWithBodyWithResponse Load a model
@@ -46448,6 +47578,51 @@ func (c *ClientWithResponses) OpenaiChatCompletionsWithResponse(ctx context.Cont
 	return ParseOpenaiChatCompletionsResponse(rsp)
 }
 
+// AnthropicMessagesWithBodyWithResponse Anthropic-compatible messages, for coding agents
+//
+// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/messages (the `AnthropicMessages` operationId).
+func (c *ClientWithResponses) AnthropicMessagesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AnthropicMessagesResponse, error) {
+	rsp, err := c.AnthropicMessagesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAnthropicMessagesResponse(rsp)
+}
+
+// AnthropicMessagesWithResponse Anthropic-compatible messages, for coding agents
+//
+// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/messages (the `AnthropicMessages` operationId).
+func (c *ClientWithResponses) AnthropicMessagesWithResponse(ctx context.Context, body AnthropicMessagesJSONRequestBody, reqEditors ...RequestEditorFn) (*AnthropicMessagesResponse, error) {
+	rsp, err := c.AnthropicMessages(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAnthropicMessagesResponse(rsp)
+}
+
+// AnthropicCountTokensWithResponse About how many tokens a Messages request's input takes
+//
+// The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/messages/count_tokens (the `AnthropicCountTokens` operationId).
+func (c *ClientWithResponses) AnthropicCountTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AnthropicCountTokensResponse, error) {
+	rsp, err := c.AnthropicCountTokens(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAnthropicCountTokensResponse(rsp)
+}
+
 // OpenaiListModelsWithResponse OpenAI-compatible model list
 //
 // auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
@@ -46461,6 +47636,36 @@ func (c *ClientWithResponses) OpenaiListModelsWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseOpenaiListModelsResponse(rsp)
+}
+
+// OpenaiResponsesWithBodyWithResponse OpenAI Responses, for coding agents
+//
+// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/responses (the `OpenaiResponses` operationId).
+func (c *ClientWithResponses) OpenaiResponsesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OpenaiResponsesResponse, error) {
+	rsp, err := c.OpenaiResponsesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOpenaiResponsesResponse(rsp)
+}
+
+// OpenaiResponsesWithResponse OpenAI Responses, for coding agents
+//
+// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/responses (the `OpenaiResponses` operationId).
+func (c *ClientWithResponses) OpenaiResponsesWithResponse(ctx context.Context, body OpenaiResponsesJSONRequestBody, reqEditors ...RequestEditorFn) (*OpenaiResponsesResponse, error) {
+	rsp, err := c.OpenaiResponses(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOpenaiResponsesResponse(rsp)
 }
 
 // ParseGetAboutResponse parses an HTTP response from a GetAboutWithResponse call
@@ -48156,6 +49361,32 @@ func ParseGetGPUSetupResponse(rsp *http.Response) (*GetGPUSetupResponse, error) 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest GPUSetup
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPromptCacheResponse parses an HTTP response from a GetPromptCacheWithResponse call
+func ParseGetPromptCacheResponse(rsp *http.Response) (*GetPromptCacheResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPromptCacheResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PromptCache
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -50048,6 +51279,35 @@ func ParseUpdateAddedModelResponse(rsp *http.Response) (*UpdateAddedModelRespons
 	return response, nil
 }
 
+// ParseSetModelContextResponse parses an HTTP response from a SetModelContextWithResponse call
+func ParseSetModelContextResponse(rsp *http.Response) (*SetModelContextResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetModelContextResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ModelContext
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
 // ParseInstallModelResponse parses an HTTP response from a InstallModelWithResponse call
 func ParseInstallModelResponse(rsp *http.Response) (*InstallModelResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -50201,6 +51461,35 @@ func ParseDismissModelRatingResponse(rsp *http.Response) (*DismissModelRatingRes
 	response := &DismissModelRatingResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseSetModelSpeculationResponse parses an HTTP response from a SetModelSpeculationWithResponse call
+func ParseSetModelSpeculationResponse(rsp *http.Response) (*SetModelSpeculationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetModelSpeculationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ModelSpeculation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
 	}
 
 	return response, nil
@@ -54482,6 +55771,38 @@ func ParseOpenaiChatCompletionsResponse(rsp *http.Response) (*OpenaiChatCompleti
 	return response, nil
 }
 
+// ParseAnthropicMessagesResponse parses an HTTP response from a AnthropicMessagesWithResponse call
+func ParseAnthropicMessagesResponse(rsp *http.Response) (*AnthropicMessagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AnthropicMessagesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseAnthropicCountTokensResponse parses an HTTP response from a AnthropicCountTokensWithResponse call
+func ParseAnthropicCountTokensResponse(rsp *http.Response) (*AnthropicCountTokensResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AnthropicCountTokensResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseOpenaiListModelsResponse parses an HTTP response from a OpenaiListModelsWithResponse call
 func ParseOpenaiListModelsResponse(rsp *http.Response) (*OpenaiListModelsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -54503,6 +55824,22 @@ func ParseOpenaiListModelsResponse(rsp *http.Response) (*OpenaiListModelsRespons
 		}
 		response.JSON200 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseOpenaiResponsesResponse parses an HTTP response from a OpenaiResponsesWithResponse call
+func ParseOpenaiResponsesResponse(rsp *http.Response) (*OpenaiResponsesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OpenaiResponsesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil

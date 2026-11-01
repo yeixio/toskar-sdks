@@ -61,6 +61,8 @@ chat(request, init?): Promise<{
   metrics?: {
      cached_tokens?: number;
      completion_tokens: number;
+     draft_accepted?: number;
+     draft_tokens?: number;
      eval_ms: number;
      eval_tok_per_sec: number;
      finish_reason?: string;
@@ -92,6 +94,8 @@ Asks once and waits for the whole answer.
   `metrics?`: \{
      `cached_tokens?`: `number`;
      `completion_tokens`: `number`;
+     `draft_accepted?`: `number`;
+     `draft_tokens?`: `number`;
      `eval_ms`: `number`;
      `eval_tok_per_sec`: `number`;
      `finish_reason?`: `string`;
@@ -427,7 +431,7 @@ Milliseconds to wait for an answer to start. Default 60000; 0 waits as long as i
 ### CONTRACT\_VERSION
 
 ```ts
-const CONTRACT_VERSION: "1.60" = '1.60';
+const CONTRACT_VERSION: "1.76" = '1.76';
 ```
 
 The client contract this SDK was built for.

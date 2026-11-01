@@ -128,6 +128,8 @@ chat(request, init?): Promise<{
   metrics?: {
      cached_tokens?: number;
      completion_tokens: number;
+     draft_accepted?: number;
+     draft_tokens?: number;
      eval_ms: number;
      eval_tok_per_sec: number;
      finish_reason?: string;
@@ -159,6 +161,8 @@ Asks once and waits for the whole answer.
   `metrics?`: \{
      `cached_tokens?`: `number`;
      `completion_tokens`: `number`;
+     `draft_accepted?`: `number`;
+     `draft_tokens?`: `number`;
      `eval_ms`: `number`;
      `eval_tok_per_sec`: `number`;
      `finish_reason?`: `string`;

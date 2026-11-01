@@ -78,6 +78,26 @@ Add a person and make their invite link (Admins add Members and Visitors; the Ow
 pub async fn add_person(&self, body: &models::AddPersonRequest) -> Result<models::AddedPerson>
 ```
 
+### anthropic_count_tokens()
+
+About how many tokens a Messages request's input takes
+
+The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+
+```rust
+pub async fn anthropic_count_tokens(&self) -> Result<()>
+```
+
+### anthropic_messages(body)
+
+Anthropic-compatible messages, for coding agents
+
+Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:&lt;model&gt; does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+
+```rust
+pub async fn anthropic_messages(&self, body: &models::AnthropicMessagesRequest) -> Result<()>
+```
+
 ### approve_pairing(id, body)
 
 Approve a pairing offer
@@ -996,6 +1016,18 @@ The profiles each pinnable role is kept to (#345)
 pub async fn get_profile_pins(&self) -> Result<models::ProfilePins>
 ```
 
+### get_prompt_cache(days)
+
+How much of chats' later turns each model read from its prompt cache
+
+Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+
+- `days`: How many days back to look; 7 by default, 90 at most.
+
+```rust
+pub async fn get_prompt_cache(&self, days: Option<i64>) -> Result<models::PromptCache>
+```
+
 ### get_push_status()
 
 Push to the Toskar app on this device (#460)
@@ -1687,6 +1719,16 @@ auto, each profile as profile:&lt;id&gt;, and each deployed specialized AI as sa
 pub async fn openai_list_models(&self) -> Result<models::OpenAIModelList>
 ```
 
+### openai_responses(body)
+
+OpenAI Responses, for coding agents
+
+OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:&lt;model&gt; does.
+
+```rust
+pub async fn openai_responses(&self, body: &models::OpenaiResponsesRequest) -> Result<()>
+```
+
 ### outbound_pairing(code)
 
 The offer this computer made for a code
@@ -2106,6 +2148,16 @@ The key is stored in the secrets folder and never returned. An empty api_key kee
 pub async fn set_external_server(&self, body: &models::SetExternalServerRequest) -> Result<models::ExternalServer>
 ```
 
+### set_model_context(id, body)
+
+Set a model's context window
+
+The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+
+```rust
+pub async fn set_model_context(&self, id: &str, body: &models::SetModelContextRequest) -> Result<models::ModelContext>
+```
+
 ### set_model_projector(id, body)
 
 Give an added model its vision projector
@@ -2114,6 +2166,16 @@ A GGUF vision projector (mmproj) on this computer, copied beside the model so it
 
 ```rust
 pub async fn set_model_projector(&self, id: &str, body: &models::SetModelProjectorRequest) -> Result<models::ModelVision>
+```
+
+### set_model_speculation(id, body)
+
+Turn guessing ahead Auto or Off for a model
+
+Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+
+```rust
+pub async fn set_model_speculation(&self, id: &str, body: &models::SetModelSpeculationRequest) -> Result<models::ModelSpeculation>
 ```
 
 ### set_my_preferences(body)

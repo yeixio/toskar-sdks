@@ -78,6 +78,10 @@ class AssistantOptions(BaseModel):
     """
     When the model the request names can't answer, let another model answer instead. Off unless set, a named model answers or the request fails; auto and profiles always fall back (#871, contract 1.59)
     """
+    context_window: int | None = None
+    """
+    The least context window, in tokens, the request wants the named model to run with on this computer. When it runs with less, it starts again with the smallest size that holds it and still fits, else the request answers 400 CONTEXT_TOO_LONG with param toskar.context_window (#962, contract 1.70).
+    """
 
 
 class RuntimeSample(BaseModel):
@@ -503,6 +507,14 @@ class ModelCapabilities(BaseModel):
     """
     vision: bool
     coding: bool
+    thinks: bool | None = None
+    """
+    Thinks before it answers, such as Qwen 3, DeepSeek R1's distills, or gpt-oss (#840, contract 1.63). reasoning_effort none turns the thinking off.
+    """
+    answers_first: bool | None = None
+    """
+    Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none.
+    """
 
 
 class ModelSource(BaseModel):
@@ -530,6 +542,22 @@ class ModelInstalledOnItem(BaseModel):
     )
     node_id: str
     node_name: str
+
+
+class ModelContextOption(BaseModel):
+    """
+    A context window a model can take, and how well it fits this computer at it (#962).
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    fit: str
+    """
+    Known values: `excellent`, `good`, `tight`, `heavy`, `unsupported`; others may be added.
+    """
+    tokens: int
 
 
 class ModelLanguage(BaseModel):
@@ -1387,6 +1415,10 @@ class APIKeyPermissions(BaseModel):
     """
     chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added.
     """
+    raw: bool | None = None
+    """
+    May name raw:<model> on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it
+    """
 
 
 class APIKey(BaseModel):
@@ -2160,6 +2192,14 @@ class ModelUse(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     cached_tokens: int
+    draft_tokens: int | None = None
+    """
+    Tokens speculative decoding guessed ahead (contract 1.64).
+    """
+    draft_accepted: int | None = None
+    """
+    The guessed tokens the model kept (contract 1.64).
+    """
     tok_per_sec: float | None = None
     backend: str | None = None
     """
@@ -2210,6 +2250,32 @@ class FirstAnswersGroup(BaseModel):
     load_ms: float | None = None
     """
     The median time spent loading models; 0 when warm.
+    """
+
+
+class PromptCacheModel(BaseModel):
+    """
+    One model's later turns.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    model_id: str
+    turns: int
+    """
+    The later turns of chats the model answered
+    """
+    prompt_tokens: int
+    cached_tokens: int
+    reuse: float
+    """
+    cached_tokens over prompt_tokens
+    """
+    low: bool | None = None
+    """
+    Set when
     """
 
 
@@ -2662,6 +2728,14 @@ class GenerationMetrics(BaseModel):
     """
     Prompt tokens reused from the model's cache instead of processed again, when the runtime reports them.
     """
+    draft_tokens: int | None = None
+    """
+    Tokens speculative decoding guessed ahead (contract 1.64).
+    """
+    draft_accepted: int | None = None
+    """
+    The guessed tokens the model kept (contract 1.64).
+    """
     finish_reason: str | None = None
     """
     Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say
@@ -2803,6 +2877,38 @@ class AddedModel(BaseModel):
     model_id: str
     display_name: str
     tags: list[str]
+
+
+class ModelContext(BaseModel):
+    """
+    A model's context window choice (#962).
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    model_id: str
+    context_window: int
+    """
+    0 for Auto
+    """
+
+
+class ModelSpeculation(BaseModel):
+    """
+    A model's guess-ahead choice (#835).
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    model_id: str
+    speculation: str
+    """
+    Known values: `auto`, `off`; others may be added.
+    """
 
 
 class ModelVision(BaseModel):
@@ -5296,7 +5402,7 @@ class ModelFit(BaseModel):
     known_to_run: bool | None = None
     short: str | None = None
     """
-    What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).
+    What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751); "graphics" when it needs more than the graphics card has, with HaveBytes the card's memory (#932).
     """
     need_bytes: int | None = None
     have_bytes: int | None = None
@@ -5452,6 +5558,22 @@ class Model(BaseModel):
     support_role: str | None = None
     """
     `support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models.
+    """
+    speculation: str | None = None
+    """
+    Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added.
+    """
+    context_window: int | None = None
+    """
+    The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
+    """
+    context_choice: int | None = None
+    """
+    The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).
+    """
+    context_options: list[ModelContextOption] | None = None
+    """
+    The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
     """
     languages: list[ModelLanguage] | None = None
     """
@@ -5639,7 +5761,7 @@ class Run(BaseModel):
     source: str | None = None
     client: str | None = None
     """
-    The app that asked: phone, tablet, watch, tv, desktop, or web, or other; empty when it didn't say, such as an API call (#498).
+    The app that asked: phone, tablet, watch, car, tv, desktop, web, terminal, or editor, or other; empty when it didn't say, such as an API call (#498).
     """
     remote: bool | None = None
     """
@@ -5702,6 +5824,19 @@ class FirstAnswers(BaseModel):
     )
     since: AwareDatetime
     groups: list[FirstAnswersGroup]
+
+
+class PromptCache(BaseModel):
+    """
+    How much of each chat turn's prompt the models on this computer read from their prompt cache instead of processing again (#838), over chats' later turns.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    since: AwareDatetime
+    models: list[PromptCacheModel]
 
 
 class MessageMeta(BaseModel):
