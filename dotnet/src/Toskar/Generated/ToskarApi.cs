@@ -505,6 +505,16 @@ public sealed partial class ToskarApi
         client.CallAsync<M.GPUSetup>("GET", "/api/v1/diagnostics/gpu", NoParams, NoPairs, NoPairs, null, cancellationToken);
 
     /// <summary>
+    /// How much of chats' later turns each model read from its prompt cache
+    ///
+    /// Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+    /// </summary>
+    /// <param name="days">How many days back to look; 7 by default, 90 at most.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.PromptCache> GetPromptCacheAsync(long? days = null, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.PromptCache>("GET", "/api/v1/diagnostics/prompt-cache", NoParams, new (string, object?)[] { ("days", days) }, NoPairs, null, cancellationToken);
+
+    /// <summary>
     /// What a problem report sends, scrubbed
     ///
     /// Versions and the kind of computer, and for an Admin Core's last 40 warnings and errors. Email addresses, keys, tokens, home folder names, the computer's name, and internet addresses are taken out first. Members and paired devices may call it.
@@ -1126,6 +1136,17 @@ public sealed partial class ToskarApi
         client.SendAsync("DELETE", "/api/v1/models/{id}", new[] { id }, new (string, object?)[] { ("node_id", nodeId) }, NoPairs, Json(body), cancellationToken);
 
     /// <summary>
+    /// Set a model's context window
+    ///
+    /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.ModelContext> SetModelContextAsync(string id, M.SetModelContextRequest body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.ModelContext>("PUT", "/api/v1/models/{id}/context", new[] { id }, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
     /// Download a catalog model, here or on a paired computer
     /// </summary>
     /// <param name="id">The id.</param>
@@ -1181,6 +1202,17 @@ public sealed partial class ToskarApi
     /// <param name="cancellationToken">Cancels the request.</param>
     public Task DismissModelRatingAsync(string id, CancellationToken cancellationToken = default) =>
         client.SendAsync("POST", "/api/v1/models/{id}/rating/dismiss", new[] { id }, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Turn guessing ahead Auto or Off for a model
+    ///
+    /// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.ModelSpeculation> SetModelSpeculationAsync(string id, M.SetModelSpeculationRequest body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.ModelSpeculation>("PUT", "/api/v1/models/{id}/speculation", new[] { id }, NoPairs, NoPairs, Json(body), cancellationToken);
 
     /// <summary>
     /// Load a model
@@ -2514,6 +2546,25 @@ public sealed partial class ToskarApi
         client.CallAsync<M.OpenAIChatCompletion>("POST", "/v1/chat/completions", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
 
     /// <summary>
+    /// Anthropic-compatible messages, for coding agents
+    ///
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:&lt;model&gt; does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    /// </summary>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public Task AnthropicMessagesAsync(M.AnthropicMessagesRequest body, CancellationToken cancellationToken = default) =>
+        client.SendAsync("POST", "/v1/messages", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// About how many tokens a Messages request's input takes
+    ///
+    /// The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public Task AnthropicCountTokensAsync(CancellationToken cancellationToken = default) =>
+        client.SendAsync("POST", "/v1/messages/count_tokens", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
     /// OpenAI-compatible model list
     ///
     /// auto, each profile as profile:&lt;id&gt;, and each deployed specialized AI as sai:&lt;slug&gt;.
@@ -2521,4 +2572,14 @@ public sealed partial class ToskarApi
     /// <param name="cancellationToken">Cancels the request.</param>
     public System.Threading.Tasks.Task<M.OpenAIModelList> OpenaiListModelsAsync(CancellationToken cancellationToken = default) =>
         client.CallAsync<M.OpenAIModelList>("GET", "/v1/models", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// OpenAI Responses, for coding agents
+    ///
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:&lt;model&gt; does.
+    /// </summary>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public Task OpenaiResponsesAsync(M.OpenaiResponsesRequest body, CancellationToken cancellationToken = default) =>
+        client.SendAsync("POST", "/v1/responses", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
 }

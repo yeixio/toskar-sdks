@@ -2032,6 +2032,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/diagnostics/prompt-cache": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How much of chats' later turns each model read from its prompt cache
+         * @description Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+         */
+        get: operations["getPromptCache"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/models": {
         parameters: {
             query?: never;
@@ -2046,6 +2066,66 @@ export interface paths {
         get: operations["openaiListModels"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anthropic-compatible messages, for coding agents
+         * @description Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+         */
+        post: operations["anthropicMessages"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/messages/count_tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * About how many tokens a Messages request's input takes
+         * @description The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+         */
+        post: operations["anthropicCountTokens"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * OpenAI Responses, for coding agents
+         * @description OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+         */
+        post: operations["openaiResponses"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2544,6 +2624,46 @@ export interface paths {
          * @description A GGUF vision projector (mmproj) on this computer, copied beside the model so it can see pictures (#467).
          */
         put: operations["setModelProjector"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{id}/speculation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Turn guessing ahead Auto or Off for a model
+         * @description Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+         */
+        put: operations["setModelSpeculation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set a model's context window
+         * @description The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+         */
+        put: operations["setModelContext"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4213,6 +4333,8 @@ export interface components {
             progress?: boolean;
             /** @description When the model the request names can't answer, let another model answer instead. Off unless set, a named model answers or the request fails; auto and profiles always fall back (#871, contract 1.59) */
             fallback?: boolean;
+            /** @description The least context window, in tokens, the request wants the named model to run with on this computer. When it runs with less, it starts again with the smallest size that holds it and still fits, else the request answers 400 CONTEXT_TOO_LONG with param toskar.context_window (#962, contract 1.70). */
+            context_window?: number;
         };
         RuntimeSample: {
             /** Format: date-time */
@@ -4487,6 +4609,10 @@ export interface components {
                 tool_call_support?: string;
                 vision: boolean;
                 coding: boolean;
+                /** @description Thinks before it answers, such as Qwen 3, DeepSeek R1's distills, or gpt-oss (#840, contract 1.63). reasoning_effort none turns the thinking off. */
+                thinks?: boolean;
+                /** @description Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none. */
+                answers_first?: boolean;
             };
             /** @description Describes where a model artifact comes from. */
             source?: {
@@ -4513,6 +4639,18 @@ export interface components {
             dynamic?: boolean;
             /** @description `support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models. */
             support_role?: string;
+            /** @description Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added. */
+            speculation?: string;
+            /** @description The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69). */
+            context_window?: number;
+            /** @description The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69). */
+            context_choice?: number;
+            /** @description The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69). */
+            context_options?: {
+                /** @description Known values: `excellent`, `good`, `tight`, `heavy`, `unsupported`; others may be added. */
+                fit: string;
+                tokens: number;
+            }[];
             /** @description How well the model writes each language it has a level for (§13–14, §31), best first. */
             languages?: {
                 /** @description A BCP 47 tag, such as "de" or "zh-Hans". */
@@ -4995,6 +5133,8 @@ export interface components {
                 profile?: string;
                 /** @description chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added. */
                 routes?: string;
+                /** @description May name raw:<model> on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it */
+                raw?: boolean;
             };
             /** @description device for a key a phone or other device got by pairing (#216); absent for one made in API Access Known values: `device`; others may be added. */
             kind?: string;
@@ -5421,7 +5561,7 @@ export interface components {
             conversation_id?: string;
             profile_id?: string;
             source?: string;
-            /** @description The app that asked: phone, tablet, watch, tv, desktop, or web, or other; empty when it didn't say, such as an API call (#498). */
+            /** @description The app that asked: phone, tablet, watch, car, tv, desktop, web, terminal, or editor, or other; empty when it didn't say, such as an API call (#498). */
             client?: string;
             /** @description Set when the request came from outside the home network. */
             remote?: boolean;
@@ -5476,6 +5616,10 @@ export interface components {
             prompt_tokens: number;
             completion_tokens: number;
             cached_tokens: number;
+            /** @description Tokens speculative decoding guessed ahead (contract 1.64). */
+            draft_tokens?: number;
+            /** @description The guessed tokens the model kept (contract 1.64). */
+            draft_accepted?: number;
             tok_per_sec?: number;
             /** @description `backend` and Device ran the model, such as vulkan and "AMD Radeon RX 7900 XTX" (#317); empty when not known, such as on a paired computer. */
             backend?: string;
@@ -5507,6 +5651,24 @@ export interface components {
             first_word_p90_ms: number;
             /** @description The median time spent loading models; 0 when warm. */
             load_ms?: number;
+        };
+        /** @description How much of each chat turn's prompt the models on this computer read from their prompt cache instead of processing again (#838), over chats' later turns. */
+        PromptCache: {
+            /** Format: date-time */
+            since: string;
+            models: components["schemas"]["PromptCacheModel"][];
+        };
+        /** @description One model's later turns. */
+        PromptCacheModel: {
+            model_id: string;
+            /** @description The later turns of chats the model answered */
+            turns: number;
+            prompt_tokens: number;
+            cached_tokens: number;
+            /** @description cached_tokens over prompt_tokens */
+            reuse: number;
+            /** @description Set when */
+            low?: boolean;
         };
         /** @description What an assistant answer used and did. */
         MessageMeta: {
@@ -5760,6 +5922,10 @@ export interface components {
             eval_tok_per_sec: number;
             /** @description Prompt tokens reused from the model's cache instead of processed again, when the runtime reports them. */
             cached_tokens?: number;
+            /** @description Tokens speculative decoding guessed ahead (contract 1.64). */
+            draft_tokens?: number;
+            /** @description The guessed tokens the model kept (contract 1.64). */
+            draft_accepted?: number;
             /** @description Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say */
             finish_reason?: string;
             /** @description Tokens a reasoning model thought before it answered, part of completion_tokens (contract 1.58) */
@@ -5883,6 +6049,18 @@ export interface components {
             model_id: string;
             display_name: string;
             tags: string[];
+        };
+        /** @description A model's context window choice (#962). */
+        ModelContext: {
+            model_id: string;
+            /** @description 0 for Auto */
+            context_window: number;
+        };
+        /** @description A model's guess-ahead choice (#835). */
+        ModelSpeculation: {
+            model_id: string;
+            /** @description Known values: `auto`, `off`; others may be added. */
+            speculation: string;
         };
         /** @description Says a model sees pictures now, with its projector set. */
         ModelVision: {
@@ -7219,7 +7397,7 @@ export interface components {
             recommendations?: string[];
             gpu_note?: string;
             known_to_run?: boolean;
-            /** @description What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751). */
+            /** @description What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751); "graphics" when it needs more than the graphics card has, with HaveBytes the card's memory (#932). */
             short?: string;
             /** Format: int64 */
             need_bytes?: number;
@@ -10436,6 +10614,8 @@ export interface operations {
                     /** @description Known values: `profile`, `read_only`, `none`; others may be added. */
                     tools?: string;
                     placement?: boolean;
+                    /** @description Lets requests name raw:<model> and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile */
+                    raw?: boolean;
                 };
             };
         };
@@ -10535,6 +10715,8 @@ export interface operations {
                     code: string;
                     /** @example Sam's iPhone */
                     device_name?: string;
+                    /** @description Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did. */
+                    raw?: boolean;
                 };
             };
         };
@@ -11008,6 +11190,29 @@ export interface operations {
             };
         };
     };
+    getPromptCache: {
+        parameters: {
+            query?: {
+                /** @description How many days back to look; 7 by default, 90 at most. */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prompt cache reuse */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptCache"];
+                };
+            };
+        };
+    };
     openaiListModels: {
         parameters: {
             query?: never;
@@ -11028,6 +11233,155 @@ export interface operations {
             };
         };
     };
+    anthropicMessages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    model: string;
+                    max_tokens: number;
+                    /** @description A string or text blocks */
+                    system?: unknown;
+                    messages: {
+                        /** @description Known values: `user`, `assistant`; others may be added. */
+                        role?: string;
+                        /** @description A string or a list of blocks */
+                        content?: unknown;
+                    }[];
+                    tools?: {
+                        name?: string;
+                        description?: string;
+                        input_schema?: Record<string, never>;
+                    }[];
+                    tool_choice?: {
+                        /** @description Known values: `auto`, `any`, `tool`, `none`; others may be added. */
+                        type?: string;
+                        name?: string;
+                    };
+                    stop_sequences?: string[];
+                    temperature?: number;
+                    top_p?: number;
+                    top_k?: number;
+                    stream?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description A message with text and tool_use blocks, stop_reason (end_turn, max_tokens, tool_use), and usage; or, streamed, Anthropic's events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid_request_error, such as no max_tokens, or a request no window of the model holds */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description permission_error, a key without raw access */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found_error, a model not installed on this computer */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    anthropicCountTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description {"input_tokens": n} */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    openaiResponses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    model: string;
+                    instructions?: string;
+                    /** @description A string or a list of input items */
+                    input: unknown;
+                    tools?: {
+                        /** @description Known values: `function`; others may be added. */
+                        type?: string;
+                        name?: string;
+                        description?: string;
+                        parameters?: Record<string, never>;
+                    }[];
+                    /** @description auto, required, none, or {"type":"function","name"} */
+                    tool_choice?: unknown;
+                    max_output_tokens?: number;
+                    temperature?: number;
+                    top_p?: number;
+                    parallel_tool_calls?: boolean;
+                    stream?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description A response with message and function_call output items, status (completed, or incomplete at max_output_tokens), and usage; or, streamed, the response.* events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid_request_error, such as previous_response_id, an input item Toskar doesn't read, or a request no window of the model holds */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RAW_NOT_ALLOWED, a key without raw access */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description MODEL_NOT_FOUND, a model not installed on this computer */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     openaiChatCompletions: {
         parameters: {
             query?: never;
@@ -11038,7 +11392,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description auto, profile:<id>, sai:<slug>, or a model id */
+                    /** @description auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71) */
                     model: string;
                     messages: {
                         role?: string;
@@ -11051,7 +11405,7 @@ export interface operations {
                     max_tokens?: number;
                     /** @description OpenAI's newer name for max_tokens; wins when both are sent. */
                     max_completion_tokens?: number;
-                    /** @description Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added. */
+                    /** @description Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added. */
                     reasoning_effort?: string;
                     /** @description A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default. */
                     include_reasoning?: boolean;
@@ -12039,6 +12393,81 @@ export interface operations {
             };
         };
     };
+    setModelSpeculation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Known values: `auto`, `off`; others may be added. */
+                    speculation: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The choice is kept */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelSpeculation"];
+                };
+            };
+            /** @description MODEL_UPDATE_FAILED, such as for a model that isn't installed here or doesn't chat */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    setModelContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Tokens, up to the model's own window; 0 for Auto.
+                     * @enum {integer}
+                     */
+                    context_window: 0 | 4096 | 8192 | 16384 | 32768 | 65536 | 131072 | 262144;
+                };
+            };
+        };
+        responses: {
+            /** @description The choice is kept */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelContext"];
+                };
+            };
+            /** @description INVALID_JSON, or MODEL_UPDATE_FAILED, such as for a size past the model's own window, or a model that isn't installed here or doesn't chat */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     deleteModel: {
         parameters: {
             query?: {
@@ -12306,6 +12735,8 @@ export interface operations {
                     model_id?: string;
                     /** @description Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added. */
                     effort?: string;
+                    /** @description off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added. */
+                    thinking?: string;
                     /** @description The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown */
                     time_zone?: string;
                     /** @description Answer from this message in the chat, as a new version of the point after it (#447) */
@@ -12314,13 +12745,15 @@ export interface operations {
                     retry_of?: string;
                     /** @description Send message in place of this one, as a new version of it */
                     edit_of?: string;
-                    /** @description The app asking; its run is traced with it, to measure how long answers take to start Known values: `phone`, `tablet`, `watch`, `tv`, `desktop`, `web`; others may be added. */
+                    /** @description The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added. */
                     client?: string;
                     /** @description Artifact ids from POST /api/v1/artifacts */
                     attachments?: string[];
                     /** @description Where the turn runs, such as local */
                     execution?: string;
                     stream?: boolean;
+                    /** @description With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON. */
+                    live?: boolean;
                 };
             };
         };

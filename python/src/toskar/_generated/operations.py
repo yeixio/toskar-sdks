@@ -50,7 +50,9 @@ class Api:
             memory: Known values: `never`, `on_request`, `always`; others may be added.
             knowledge: Known values: `never`, `on_request`, `always`; others may be added.
             tools: Known values: `profile`, `read_only`, `none`; others may be added.
-            placement"""
+            placement
+            raw: Lets requests name raw:<model> and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile
+        """
         return self._client._request(
             "PUT", f"/api/v1/api-keys/{id}/permissions", query={}, body=body, answer=None, read="none"
         )
@@ -265,14 +267,17 @@ class Api:
             profile_id
             model_id: A model id, auto, or sai:<slug>
             effort: Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
+            thinking: off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
             time_zone: The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
             parent_id: Answer from this message in the chat, as a new version of the point after it (#447)
             retry_of: Ask this answer's question again, as a new version of the answer; message may be empty
             edit_of: Send message in place of this one, as a new version of it
-            client: The app asking; its run is traced with it, to measure how long answers take to start Known values: `phone`, `tablet`, `watch`, `tv`, `desktop`, `web`; others may be added.
+            client: The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added.
             attachments: Artifact ids from POST /api/v1/artifacts
             execution: Where the turn runs, such as local
-            stream"""
+            stream
+            live: With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON.
+        """
         return self._client._request(
             "POST", f"/api/v1/chat", query={}, body=body, answer=models.ChatAnswer, read="json"
         )
@@ -455,7 +460,9 @@ class Api:
 
         Body fields:
             code (required)
-            device_name"""
+            device_name
+            raw: Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did.
+        """
         return self._client._request(
             "POST", f"/api/v1/devices/pair", query={}, body=body, answer=models.PairedDevice, read="json"
         )
@@ -522,6 +529,20 @@ class Api:
         """
         return self._client._request(
             "GET", f"/api/v1/diagnostics/gpu", query={}, body=None, answer=models.GPUSetup, read="json"
+        )
+
+    def get_prompt_cache(self, *, days: int | None = None) -> models.PromptCache:
+        """How much of chats' later turns each model read from its prompt cache
+
+        Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+        """
+        return self._client._request(
+            "GET",
+            f"/api/v1/diagnostics/prompt-cache",
+            query={"days": days},
+            body=None,
+            answer=models.PromptCache,
+            read="json",
         )
 
     def get_report(self) -> models.DiagnosticsReport:
@@ -1144,6 +1165,17 @@ class Api:
             "DELETE", f"/api/v1/models/{id}", query={"node_id": node_id}, body=body, answer=None, read="none"
         )
 
+    def set_model_context(self, id: str, *, body: dict[str, Any]) -> models.ModelContext:
+        """Set a model's context window
+
+        The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+
+        Body fields:
+            context_window (required): Tokens, up to the model's own window; 0 for Auto."""
+        return self._client._request(
+            "PUT", f"/api/v1/models/{id}/context", query={}, body=body, answer=models.ModelContext, read="json"
+        )
+
     def install_model(
         self, id: str, *, body: dict[str, Any] | None = None, wait: str | None = None, node_id: str | None = None
     ) -> models.ModelInstall:
@@ -1202,6 +1234,17 @@ class Api:
         """Stop asking for a rating of a model"""
         return self._client._request(
             "POST", f"/api/v1/models/{id}/rating/dismiss", query={}, body=None, answer=None, read="none"
+        )
+
+    def set_model_speculation(self, id: str, *, body: dict[str, Any]) -> models.ModelSpeculation:
+        """Turn guessing ahead Auto or Off for a model
+
+        Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+
+        Body fields:
+            speculation (required): Known values: `auto`, `off`; others may be added."""
+        return self._client._request(
+            "PUT", f"/api/v1/models/{id}/speculation", query={}, body=body, answer=models.ModelSpeculation, read="json"
         )
 
     def start_model(self, id: str, *, body: dict[str, Any] | None = None) -> models.RunningModelView:
@@ -2503,13 +2546,13 @@ class Api:
         temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
 
         Body fields:
-            model (required): auto, profile:<id>, sai:<slug>, or a model id
+            model (required): auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
             messages (required)
             stream
             temperature: For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
             max_tokens: The most tokens each answer-writing call may use. Left out, the model's default.
             max_completion_tokens: OpenAI's newer name for max_tokens; wins when both are sent.
-            reasoning_effort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
+            reasoning_effort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
             include_reasoning: A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default.
             response_format
             stream_options: include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)
@@ -2519,6 +2562,33 @@ class Api:
             "POST", f"/v1/chat/completions", query={}, body=body, answer=models.OpenAIChatCompletion, read="json"
         )
 
+    def anthropic_messages(self, *, body: dict[str, Any]) -> None:
+        """Anthropic-compatible messages, for coding agents
+
+        Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+
+        Body fields:
+            model (required)
+            max_tokens (required)
+            system: A string or text blocks
+            messages (required)
+            tools
+            tool_choice
+            stop_sequences
+            temperature
+            top_p
+            top_k
+            stream"""
+        return self._client._request("POST", f"/v1/messages", query={}, body=body, answer=None, read="none")
+
+    def anthropic_count_tokens(self) -> None:
+        """About how many tokens a Messages request's input takes
+
+        The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72)."""
+        return self._client._request(
+            "POST", f"/v1/messages/count_tokens", query={}, body=None, answer=None, read="none"
+        )
+
     def openai_list_models(self) -> models.OpenAIModelList:
         """OpenAI-compatible model list
 
@@ -2526,6 +2596,24 @@ class Api:
         return self._client._request(
             "GET", f"/v1/models", query={}, body=None, answer=models.OpenAIModelList, read="json"
         )
+
+    def openai_responses(self, *, body: dict[str, Any]) -> None:
+        """OpenAI Responses, for coding agents
+
+        OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+
+        Body fields:
+            model (required)
+            instructions
+            input (required): A string or a list of input items
+            tools
+            tool_choice: auto, required, none, or {"type":"function","name"}
+            max_output_tokens
+            temperature
+            top_p
+            parallel_tool_calls
+            stream"""
+        return self._client._request("POST", f"/v1/responses", query={}, body=body, answer=None, read="none")
 
 
 class AsyncApi:
@@ -2571,7 +2659,9 @@ class AsyncApi:
             memory: Known values: `never`, `on_request`, `always`; others may be added.
             knowledge: Known values: `never`, `on_request`, `always`; others may be added.
             tools: Known values: `profile`, `read_only`, `none`; others may be added.
-            placement"""
+            placement
+            raw: Lets requests name raw:<model> and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile
+        """
         return await self._client._request(
             "PUT", f"/api/v1/api-keys/{id}/permissions", query={}, body=body, answer=None, read="none"
         )
@@ -2788,14 +2878,17 @@ class AsyncApi:
             profile_id
             model_id: A model id, auto, or sai:<slug>
             effort: Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
+            thinking: off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
             time_zone: The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
             parent_id: Answer from this message in the chat, as a new version of the point after it (#447)
             retry_of: Ask this answer's question again, as a new version of the answer; message may be empty
             edit_of: Send message in place of this one, as a new version of it
-            client: The app asking; its run is traced with it, to measure how long answers take to start Known values: `phone`, `tablet`, `watch`, `tv`, `desktop`, `web`; others may be added.
+            client: The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added.
             attachments: Artifact ids from POST /api/v1/artifacts
             execution: Where the turn runs, such as local
-            stream"""
+            stream
+            live: With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON.
+        """
         return await self._client._request(
             "POST", f"/api/v1/chat", query={}, body=body, answer=models.ChatAnswer, read="json"
         )
@@ -2980,7 +3073,9 @@ class AsyncApi:
 
         Body fields:
             code (required)
-            device_name"""
+            device_name
+            raw: Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did.
+        """
         return await self._client._request(
             "POST", f"/api/v1/devices/pair", query={}, body=body, answer=models.PairedDevice, read="json"
         )
@@ -3047,6 +3142,20 @@ class AsyncApi:
         """
         return await self._client._request(
             "GET", f"/api/v1/diagnostics/gpu", query={}, body=None, answer=models.GPUSetup, read="json"
+        )
+
+    async def get_prompt_cache(self, *, days: int | None = None) -> models.PromptCache:
+        """How much of chats' later turns each model read from its prompt cache
+
+        Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+        """
+        return await self._client._request(
+            "GET",
+            f"/api/v1/diagnostics/prompt-cache",
+            query={"days": days},
+            body=None,
+            answer=models.PromptCache,
+            read="json",
         )
 
     async def get_report(self) -> models.DiagnosticsReport:
@@ -3687,6 +3796,17 @@ class AsyncApi:
             "DELETE", f"/api/v1/models/{id}", query={"node_id": node_id}, body=body, answer=None, read="none"
         )
 
+    async def set_model_context(self, id: str, *, body: dict[str, Any]) -> models.ModelContext:
+        """Set a model's context window
+
+        The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+
+        Body fields:
+            context_window (required): Tokens, up to the model's own window; 0 for Auto."""
+        return await self._client._request(
+            "PUT", f"/api/v1/models/{id}/context", query={}, body=body, answer=models.ModelContext, read="json"
+        )
+
     async def install_model(
         self, id: str, *, body: dict[str, Any] | None = None, wait: str | None = None, node_id: str | None = None
     ) -> models.ModelInstall:
@@ -3745,6 +3865,17 @@ class AsyncApi:
         """Stop asking for a rating of a model"""
         return await self._client._request(
             "POST", f"/api/v1/models/{id}/rating/dismiss", query={}, body=None, answer=None, read="none"
+        )
+
+    async def set_model_speculation(self, id: str, *, body: dict[str, Any]) -> models.ModelSpeculation:
+        """Turn guessing ahead Auto or Off for a model
+
+        Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+
+        Body fields:
+            speculation (required): Known values: `auto`, `off`; others may be added."""
+        return await self._client._request(
+            "PUT", f"/api/v1/models/{id}/speculation", query={}, body=body, answer=models.ModelSpeculation, read="json"
         )
 
     async def start_model(self, id: str, *, body: dict[str, Any] | None = None) -> models.RunningModelView:
@@ -5072,13 +5203,13 @@ class AsyncApi:
         temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
 
         Body fields:
-            model (required): auto, profile:<id>, sai:<slug>, or a model id
+            model (required): auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
             messages (required)
             stream
             temperature: For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
             max_tokens: The most tokens each answer-writing call may use. Left out, the model's default.
             max_completion_tokens: OpenAI's newer name for max_tokens; wins when both are sent.
-            reasoning_effort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
+            reasoning_effort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
             include_reasoning: A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default.
             response_format
             stream_options: include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)
@@ -5088,6 +5219,33 @@ class AsyncApi:
             "POST", f"/v1/chat/completions", query={}, body=body, answer=models.OpenAIChatCompletion, read="json"
         )
 
+    async def anthropic_messages(self, *, body: dict[str, Any]) -> None:
+        """Anthropic-compatible messages, for coding agents
+
+        Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+
+        Body fields:
+            model (required)
+            max_tokens (required)
+            system: A string or text blocks
+            messages (required)
+            tools
+            tool_choice
+            stop_sequences
+            temperature
+            top_p
+            top_k
+            stream"""
+        return await self._client._request("POST", f"/v1/messages", query={}, body=body, answer=None, read="none")
+
+    async def anthropic_count_tokens(self) -> None:
+        """About how many tokens a Messages request's input takes
+
+        The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72)."""
+        return await self._client._request(
+            "POST", f"/v1/messages/count_tokens", query={}, body=None, answer=None, read="none"
+        )
+
     async def openai_list_models(self) -> models.OpenAIModelList:
         """OpenAI-compatible model list
 
@@ -5095,3 +5253,21 @@ class AsyncApi:
         return await self._client._request(
             "GET", f"/v1/models", query={}, body=None, answer=models.OpenAIModelList, read="json"
         )
+
+    async def openai_responses(self, *, body: dict[str, Any]) -> None:
+        """OpenAI Responses, for coding agents
+
+        OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+
+        Body fields:
+            model (required)
+            instructions
+            input (required): A string or a list of input items
+            tools
+            tool_choice: auto, required, none, or {"type":"function","name"}
+            max_output_tokens
+            temperature
+            top_p
+            parallel_tool_calls
+            stream"""
+        return await self._client._request("POST", f"/v1/responses", query={}, body=body, answer=None, read="none")

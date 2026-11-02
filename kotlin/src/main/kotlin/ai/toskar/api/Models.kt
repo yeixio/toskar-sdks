@@ -49,6 +49,8 @@ public data class AssistantOptions @JvmOverloads constructor(
     @SerialName("progress") public val progress: Boolean? = null,
     /** When the model the request names can't answer, let another model answer instead. Off unless set, a named model answers or the request fails; auto and profiles always fall back (#871, contract 1.59) */
     @SerialName("fallback") public val fallback: Boolean? = null,
+    /** The least context window, in tokens, the request wants the named model to run with on this computer. When it runs with less, it starts again with the smallest size that holds it and still fits, else the request answers 400 CONTEXT_TOO_LONG with param toskar.context_window (#962, contract 1.70). */
+    @SerialName("context_window") public val contextWindow: Long? = null,
 )
 
 @Serializable
@@ -305,6 +307,14 @@ public data class Model @JvmOverloads constructor(
     @SerialName("dynamic") public val dynamic: Boolean? = null,
     /** `support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models. */
     @SerialName("support_role") public val supportRole: String? = null,
+    /** Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added. */
+    @SerialName("speculation") public val speculation: String? = null,
+    /** The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69). */
+    @SerialName("context_window") public val contextWindow: Long? = null,
+    /** The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69). */
+    @SerialName("context_choice") public val contextChoice: Long? = null,
+    /** The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69). */
+    @SerialName("context_options") public val contextOptions: List<ModelContextOptions>? = null,
     /** How well the model writes each language it has a level for (§13–14, §31), best first. */
     @SerialName("languages") public val languages: List<ModelLanguages>? = null,
 )
@@ -1004,7 +1014,7 @@ public data class Run @JvmOverloads constructor(
     @SerialName("conversation_id") public val conversationId: String? = null,
     @SerialName("profile_id") public val profileId: String? = null,
     @SerialName("source") public val source: String? = null,
-    /** The app that asked: phone, tablet, watch, tv, desktop, or web, or other; empty when it didn't say, such as an API call (#498). */
+    /** The app that asked: phone, tablet, watch, car, tv, desktop, web, terminal, or editor, or other; empty when it didn't say, such as an API call (#498). */
     @SerialName("client") public val client: String? = null,
     /** Set when the request came from outside the home network. */
     @SerialName("remote") public val remote: Boolean? = null,
@@ -1045,6 +1055,10 @@ public data class ModelUse @JvmOverloads constructor(
     /** The wait for the first token of the first call, including loading. */
     @SerialName("first_token_ms") public val firstTokenMs: Double? = null,
     @SerialName("ttft_ms") public val ttftMs: Double? = null,
+    /** Tokens speculative decoding guessed ahead (contract 1.64). */
+    @SerialName("draft_tokens") public val draftTokens: Long? = null,
+    /** The guessed tokens the model kept (contract 1.64). */
+    @SerialName("draft_accepted") public val draftAccepted: Long? = null,
     @SerialName("tok_per_sec") public val tokPerSec: Double? = null,
     /** `backend` and Device ran the model, such as vulkan and "AMD Radeon RX 7900 XTX" (#317); empty when not known, such as on a paired computer. */
     @SerialName("backend") public val backend: String? = null,
@@ -1081,6 +1095,27 @@ public data class FirstAnswersGroup @JvmOverloads constructor(
     @SerialName("remote") public val remote: Long? = null,
     /** The median time spent loading models; 0 when warm. */
     @SerialName("load_ms") public val loadMs: Double? = null,
+)
+
+/** How much of each chat turn's prompt the models on this computer read from their prompt cache instead of processing again (#838), over chats' later turns. */
+@Serializable
+public data class PromptCache @JvmOverloads constructor(
+    @SerialName("since") public val since: Instant,
+    @SerialName("models") public val models: List<PromptCacheModel>,
+)
+
+/** One model's later turns. */
+@Serializable
+public data class PromptCacheModel @JvmOverloads constructor(
+    @SerialName("model_id") public val modelId: String,
+    /** The later turns of chats the model answered */
+    @SerialName("turns") public val turns: Long,
+    @SerialName("prompt_tokens") public val promptTokens: Long,
+    @SerialName("cached_tokens") public val cachedTokens: Long,
+    /** cached_tokens over prompt_tokens */
+    @SerialName("reuse") public val reuse: Double,
+    /** Set when */
+    @SerialName("low") public val low: Boolean? = null,
 )
 
 /** What an assistant answer used and did. */
@@ -1317,6 +1352,10 @@ public data class GenerationMetrics @JvmOverloads constructor(
     @SerialName("eval_tok_per_sec") public val evalTokPerSec: Double,
     /** Prompt tokens reused from the model's cache instead of processed again, when the runtime reports them. */
     @SerialName("cached_tokens") public val cachedTokens: Long? = null,
+    /** Tokens speculative decoding guessed ahead (contract 1.64). */
+    @SerialName("draft_tokens") public val draftTokens: Long? = null,
+    /** The guessed tokens the model kept (contract 1.64). */
+    @SerialName("draft_accepted") public val draftAccepted: Long? = null,
     /** Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say */
     @SerialName("finish_reason") public val finishReason: String? = null,
     /** Tokens a reasoning model thought before it answered, part of completion_tokens (contract 1.58) */
@@ -1441,6 +1480,22 @@ public data class AddedModel @JvmOverloads constructor(
     @SerialName("model_id") public val modelId: String,
     @SerialName("display_name") public val displayName: String,
     @SerialName("tags") public val tags: List<String>,
+)
+
+/** A model's context window choice (#962). */
+@Serializable
+public data class ModelContext @JvmOverloads constructor(
+    @SerialName("model_id") public val modelId: String,
+    /** 0 for Auto */
+    @SerialName("context_window") public val contextWindow: Long,
+)
+
+/** A model's guess-ahead choice (#835). */
+@Serializable
+public data class ModelSpeculation @JvmOverloads constructor(
+    @SerialName("model_id") public val modelId: String,
+    /** Known values: `auto`, `off`; others may be added. */
+    @SerialName("speculation") public val speculation: String,
 )
 
 /** Says a model sees pictures now, with its projector set. */
@@ -2313,7 +2368,7 @@ public data class ModelFit @JvmOverloads constructor(
     @SerialName("recommendations") public val recommendations: List<String>? = null,
     @SerialName("gpu_note") public val gpuNote: String? = null,
     @SerialName("known_to_run") public val knownToRun: Boolean? = null,
-    /** What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751). */
+    /** What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751); "graphics" when it needs more than the graphics card has, with HaveBytes the card's memory (#932). */
     @SerialName("short") public val short: String? = null,
     @SerialName("need_bytes") public val needBytes: Long? = null,
     @SerialName("have_bytes") public val haveBytes: Long? = null,
@@ -2349,6 +2404,8 @@ public data class SetAPIKeyPermissionsRequest @JvmOverloads constructor(
     /** Known values: `profile`, `read_only`, `none`; others may be added. */
     @SerialName("tools") public val tools: String? = null,
     @SerialName("placement") public val placement: Boolean? = null,
+    /** Lets requests name raw:<model> and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile */
+    @SerialName("raw") public val raw: Boolean? = null,
 )
 
 @Serializable
@@ -2377,6 +2434,8 @@ public data class ChatRequest @JvmOverloads constructor(
     @SerialName("model_id") public val modelId: String? = null,
     /** Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added. */
     @SerialName("effort") public val effort: String? = null,
+    /** off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added. */
+    @SerialName("thinking") public val thinking: String? = null,
     /** The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown */
     @SerialName("time_zone") public val timeZone: String? = null,
     /** Answer from this message in the chat, as a new version of the point after it (#447) */
@@ -2385,13 +2444,15 @@ public data class ChatRequest @JvmOverloads constructor(
     @SerialName("retry_of") public val retryOf: String? = null,
     /** Send message in place of this one, as a new version of it */
     @SerialName("edit_of") public val editOf: String? = null,
-    /** The app asking; its run is traced with it, to measure how long answers take to start Known values: `phone`, `tablet`, `watch`, `tv`, `desktop`, `web`; others may be added. */
+    /** The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added. */
     @SerialName("client") public val client: String? = null,
     /** Artifact ids from POST /api/v1/artifacts */
     @SerialName("attachments") public val attachments: List<String>? = null,
     /** Where the turn runs, such as local */
     @SerialName("execution") public val execution: String? = null,
     @SerialName("stream") public val stream: Boolean? = null,
+    /** With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON. */
+    @SerialName("live") public val live: Boolean? = null,
 )
 
 @Serializable
@@ -2434,6 +2495,8 @@ public data class EditConversationSummaryRequest @JvmOverloads constructor(
 public data class PairDeviceRequest @JvmOverloads constructor(
     @SerialName("code") public val code: String,
     @SerialName("device_name") public val deviceName: String? = null,
+    /** Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did. */
+    @SerialName("raw") public val raw: Boolean? = null,
 )
 
 @Serializable
@@ -2621,6 +2684,12 @@ public data class DeleteModelRequest @JvmOverloads constructor(
 )
 
 @Serializable
+public data class SetModelContextRequest @JvmOverloads constructor(
+    /** Tokens, up to the model's own window; 0 for Auto. */
+    @SerialName("context_window") public val contextWindow: Long,
+)
+
+@Serializable
 public data class InstallModelRequest @JvmOverloads constructor(
     @SerialName("node_id") public val nodeId: String? = null,
     @SerialName("wait") public val wait: Boolean? = null,
@@ -2638,6 +2707,12 @@ public data class PutModelRatingRequest @JvmOverloads constructor(
     @SerialName("share") public val share: Boolean? = null,
     /** Include how the model runs here in a shared rating */
     @SerialName("observations") public val observations: Boolean? = null,
+)
+
+@Serializable
+public data class SetModelSpeculationRequest @JvmOverloads constructor(
+    /** Known values: `auto`, `off`; others may be added. */
+    @SerialName("speculation") public val speculation: String,
 )
 
 @Serializable
@@ -2880,7 +2955,7 @@ public data class UseVideoBuildRequest @JvmOverloads constructor(
 
 @Serializable
 public data class OpenaiChatCompletionsRequest @JvmOverloads constructor(
-    /** auto, profile:<id>, sai:<slug>, or a model id */
+    /** auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71) */
     @SerialName("model") public val model: String,
     @SerialName("messages") public val messages: List<OpenaiChatCompletionsRequestMessages>,
     @SerialName("stream") public val stream: Boolean? = null,
@@ -2890,7 +2965,7 @@ public data class OpenaiChatCompletionsRequest @JvmOverloads constructor(
     @SerialName("max_tokens") public val maxTokens: Long? = null,
     /** OpenAI's newer name for max_tokens; wins when both are sent. */
     @SerialName("max_completion_tokens") public val maxCompletionTokens: Long? = null,
-    /** Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added. */
+    /** Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added. */
     @SerialName("reasoning_effort") public val reasoningEffort: String? = null,
     /** A reasoning model's thinking as reasoning_content, on the message or as stream deltas before the answer (#701, contract 1.43). Off by default. */
     @SerialName("include_reasoning") public val includeReasoning: Boolean? = null,
@@ -2899,6 +2974,38 @@ public data class OpenaiChatCompletionsRequest @JvmOverloads constructor(
     @SerialName("stream_options") public val streamOptions: OpenaiChatCompletionsRequestStreamOptions? = null,
     @SerialName("toskar") public val toskar: AssistantOptions? = null,
     @SerialName("yggdrasil") public val yggdrasil: AssistantOptions? = null,
+)
+
+@Serializable
+public data class AnthropicMessagesRequest @JvmOverloads constructor(
+    @SerialName("model") public val model: String,
+    @SerialName("max_tokens") public val maxTokens: Long,
+    @SerialName("messages") public val messages: List<AnthropicMessagesRequestMessages>,
+    /** A string or text blocks */
+    @SerialName("system") public val system: JsonElement? = null,
+    @SerialName("tools") public val tools: List<AnthropicMessagesRequestTools>? = null,
+    @SerialName("tool_choice") public val toolChoice: AnthropicMessagesRequestToolChoice? = null,
+    @SerialName("stop_sequences") public val stopSequences: List<String>? = null,
+    @SerialName("temperature") public val temperature: Double? = null,
+    @SerialName("top_p") public val topP: Double? = null,
+    @SerialName("top_k") public val topK: Long? = null,
+    @SerialName("stream") public val stream: Boolean? = null,
+)
+
+@Serializable
+public data class OpenaiResponsesRequest @JvmOverloads constructor(
+    @SerialName("model") public val model: String,
+    @SerialName("instructions") public val instructions: String? = null,
+    /** A string or a list of input items */
+    @SerialName("input") public val input: JsonElement? = null,
+    @SerialName("tools") public val tools: List<OpenaiResponsesRequestTools>? = null,
+    /** auto, required, none, or {"type":"function","name"} */
+    @SerialName("tool_choice") public val toolChoice: JsonElement? = null,
+    @SerialName("max_output_tokens") public val maxOutputTokens: Long? = null,
+    @SerialName("temperature") public val temperature: Double? = null,
+    @SerialName("top_p") public val topP: Double? = null,
+    @SerialName("parallel_tool_calls") public val parallelToolCalls: Boolean? = null,
+    @SerialName("stream") public val stream: Boolean? = null,
 )
 
 /** What sharing sends besides the stars, tags, a random rating ID, and the app version */
@@ -2946,6 +3053,10 @@ public data class ModelCapabilities @JvmOverloads constructor(
     @SerialName("coding") public val coding: Boolean,
     /** native | compatible | limited | unsupported */
     @SerialName("tool_call_support") public val toolCallSupport: String? = null,
+    /** Thinks before it answers, such as Qwen 3, DeepSeek R1's distills, or gpt-oss (#840, contract 1.63). reasoning_effort none turns the thinking off. */
+    @SerialName("thinks") public val thinks: Boolean? = null,
+    /** Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none. */
+    @SerialName("answers_first") public val answersFirst: Boolean? = null,
 )
 
 /** Describes where a model artifact comes from. */
@@ -2961,6 +3072,14 @@ public data class ModelSource @JvmOverloads constructor(
 public data class ModelInstalledOn @JvmOverloads constructor(
     @SerialName("node_id") public val nodeId: String,
     @SerialName("node_name") public val nodeName: String,
+)
+
+/** A context window a model can take, and how well it fits this computer at it (#962). */
+@Serializable
+public data class ModelContextOptions @JvmOverloads constructor(
+    /** Known values: `excellent`, `good`, `tight`, `heavy`, `unsupported`; others may be added. */
+    @SerialName("fit") public val fit: String,
+    @SerialName("tokens") public val tokens: Long,
 )
 
 /** How well a model writes a language (multilingual spec §13–14, §31). Levels are coarse on purpose: they don't imply precision the sources don't have. A language a model has no level for is unknown, and is left out. */
@@ -3131,6 +3250,8 @@ public data class APIKeyPermissions @JvmOverloads constructor(
     @SerialName("profile") public val profile: String? = null,
     /** chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added. */
     @SerialName("routes") public val routes: String? = null,
+    /** May name raw:<model> on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it */
+    @SerialName("raw") public val raw: Boolean? = null,
 )
 
 /** The title and body as catalog keys with their values (multilingual spec §22), so each place that shows the notification writes it in its own language. Notices whose text comes from elsewhere, such as an automation's result, may have none. */
@@ -3259,6 +3380,8 @@ public data class MyDevicePermissions @JvmOverloads constructor(
     @SerialName("profile") public val profile: String? = null,
     /** chat for a key that only asks (#455, contract 1.57): POST /v1/chat/completions, GET /v1/models, and health and version, and 403 KEY_CHAT_ONLY anywhere else; absent reaches whatever its person may Known values: `chat`; others may be added. */
     @SerialName("routes") public val routes: String? = null,
+    /** May name raw:<model> on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it */
+    @SerialName("raw") public val raw: Boolean? = null,
 )
 
 /** How the answer was reached when its profile deliberates: the drafts compared and the outcome (#459, contract 1.23). */
@@ -3894,6 +4017,37 @@ public data class OpenaiChatCompletionsRequestResponseFormat @JvmOverloads const
 @Serializable
 public data class OpenaiChatCompletionsRequestStreamOptions @JvmOverloads constructor(
     @SerialName("include_usage") public val includeUsage: Boolean? = null,
+)
+
+@Serializable
+public data class AnthropicMessagesRequestMessages @JvmOverloads constructor(
+    /** Known values: `user`, `assistant`; others may be added. */
+    @SerialName("role") public val role: String? = null,
+    /** A string or a list of blocks */
+    @SerialName("content") public val content: JsonElement? = null,
+)
+
+@Serializable
+public data class AnthropicMessagesRequestTools @JvmOverloads constructor(
+    @SerialName("name") public val name: String? = null,
+    @SerialName("description") public val description: String? = null,
+    @SerialName("input_schema") public val inputSchema: JsonObject? = null,
+)
+
+@Serializable
+public data class AnthropicMessagesRequestToolChoice @JvmOverloads constructor(
+    /** Known values: `auto`, `any`, `tool`, `none`; others may be added. */
+    @SerialName("type") public val type: String? = null,
+    @SerialName("name") public val name: String? = null,
+)
+
+@Serializable
+public data class OpenaiResponsesRequestTools @JvmOverloads constructor(
+    /** Known values: `function`; others may be added. */
+    @SerialName("type") public val type: String? = null,
+    @SerialName("name") public val name: String? = null,
+    @SerialName("description") public val description: String? = null,
+    @SerialName("parameters") public val parameters: JsonObject? = null,
 )
 
 /** Which model a rating is about. Ratings of different formats, quantizations, runtimes, or backends are never combined. */

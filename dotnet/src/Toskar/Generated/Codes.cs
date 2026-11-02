@@ -6,8 +6,8 @@ namespace Toskar;
 /// <summary>The client contract this SDK was built for.</summary>
 public static class Contract
 {
-    /// <summary>The contract version, such as 1.60.</summary>
-    public const string Version = "1.60";
+    /// <summary>The contract version, such as 1.77.</summary>
+    public const string Version = "1.77";
 }
 
 /// <summary>

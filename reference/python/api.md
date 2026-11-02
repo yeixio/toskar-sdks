@@ -65,6 +65,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `create_diagnostics(*, body: dict[str, Any] \| None = None)` | `POST /api/v1/diagnostics` | Create a diagnostics bundle |
 | `get_first_answers(*, days: int \| None = None)` |  | How long answers took to start, by app, cold or warm |
 | `get_gpusetup()` | `GET /api/v1/diagnostics/gpu` | What this computer still needs for Toskar to use its GPU |
+| `get_prompt_cache(*, days: int \| None = None)` |  | How much of chats' later turns each model read from its prompt cache |
 | `get_report()` | `GET /api/v1/diagnostics/report` | What a problem report sends, scrubbed |
 | `send_report()` | `POST /api/v1/diagnostics/report` | Send a problem report to Toskar (#588) |
 | `get_runtime_history()` | `GET /api/v1/diagnostics/runtime` | The daemon's memory and goroutines now and over the last day |
@@ -138,12 +139,14 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `warm_model(*, body: dict[str, Any] \| None = None)` | `POST /api/v1/models/warm` | Start loading the model a chat would use |
 | `update_added_model(id: str, *, body: dict[str, Any])` | `PATCH /api/v1/models/{id}` | Rename or retag an added model |
 | `delete_model(id: str, *, body: dict[str, Any] \| None = None, node_id: str \| None = None)` | `DELETE /api/v1/models/{id}` | Delete a model file |
+| `set_model_context(id: str, *, body: dict[str, Any])` | `PUT /api/v1/models/{id}/context` | Set a model's context window |
 | `install_model(id: str, *, body: dict[str, Any] \| None = None, wait: str \| None = None, node_id: str \| None = None)` |  | Download a catalog model, here or on a paired computer |
 | `set_model_projector(id: str, *, body: dict[str, Any])` | `PUT /api/v1/models/{id}/projector` | Give an added model its vision projector |
 | `get_model_rating(id: str)` | `GET /api/v1/models/{id}/rating` | This person's rating of a model, and exactly what sharing it would send |
 | `put_model_rating(id: str, *, body: dict[str, Any])` | `PUT /api/v1/models/{id}/rating` | Rate a model 1–5 stars, and share the rating with the community or keep it on this computer |
 | `delete_model_rating(id: str)` | `DELETE /api/v1/models/{id}/rating` | Remove this person's rating, withdrawing it first if it was shared |
 | `dismiss_model_rating(id: str)` | `POST /api/v1/models/{id}/rating/dismiss` | Stop asking for a rating of a model |
+| `set_model_speculation(id: str, *, body: dict[str, Any])` | `PUT /api/v1/models/{id}/speculation` | Turn guessing ahead Auto or Off for a model |
 | `start_model(id: str, *, body: dict[str, Any] \| None = None)` | `POST /api/v1/models/{id}/start` | Load a model |
 | `stop_model(id: str, *, body: dict[str, Any] \| None = None)` | `POST /api/v1/models/{id}/stop` | Unload a model instance |
 | `get_network()` | `GET /api/v1/network` | This computer's network, its Bifrost address and fingerprint, and the computers it trusts |
@@ -299,4 +302,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `mcp_oauth_callback()` | `GET /mcp/oauth/callback` | Where a tool source's sign-in returns; shows a page that says how it went |
 | `get_source()` | `GET /source` | AGPL corresponding-source offer |
 | `openai_chat_completions(*, body: dict[str, Any])` | `POST /v1/chat/completions` | OpenAI-compatible chat completions |
+| `anthropic_messages(*, body: dict[str, Any])` | `POST /v1/messages` | Anthropic-compatible messages, for coding agents |
+| `anthropic_count_tokens()` | `POST /v1/messages/count_tokens` | About how many tokens a Messages request's input takes |
 | `openai_list_models()` | `GET /v1/models` | OpenAI-compatible model list |
+| `openai_responses(*, body: dict[str, Any])` | `POST /v1/responses` | OpenAI Responses, for coding agents |

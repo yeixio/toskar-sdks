@@ -99,6 +99,12 @@ public sealed record AssistantOptions
     /// </summary>
     [JsonPropertyName("fallback")]
     public bool? Fallback { get; init; }
+
+    /// <summary>
+    /// The least context window, in tokens, the request wants the named model to run with on this computer. When it runs with less, it starts again with the smallest size that holds it and still fits, else the request answers 400 CONTEXT_TOO_LONG with param toskar.context_window (#962, contract 1.70).
+    /// </summary>
+    [JsonPropertyName("context_window")]
+    public long? ContextWindow { get; init; }
 }
 
 public sealed record RuntimeSample
@@ -705,6 +711,30 @@ public sealed record Model
     /// </summary>
     [JsonPropertyName("support_role")]
     public string? SupportRole { get; init; }
+
+    /// <summary>
+    /// Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added.
+    /// </summary>
+    [JsonPropertyName("speculation")]
+    public string? Speculation { get; init; }
+
+    /// <summary>
+    /// The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
+    /// </summary>
+    [JsonPropertyName("context_window")]
+    public long? ContextWindow { get; init; }
+
+    /// <summary>
+    /// The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).
+    /// </summary>
+    [JsonPropertyName("context_choice")]
+    public long? ContextChoice { get; init; }
+
+    /// <summary>
+    /// The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
+    /// </summary>
+    [JsonPropertyName("context_options")]
+    public List<ModelContextOptions>? ContextOptions { get; init; }
 
     /// <summary>
     /// How well the model writes each language it has a level for (§13–14, §31), best first.
@@ -2396,7 +2426,7 @@ public sealed record Run
     public string? Source { get; init; }
 
     /// <summary>
-    /// The app that asked: phone, tablet, watch, tv, desktop, or web, or other; empty when it didn't say, such as an API call (#498).
+    /// The app that asked: phone, tablet, watch, car, tv, desktop, web, terminal, or editor, or other; empty when it didn't say, such as an API call (#498).
     /// </summary>
     [JsonPropertyName("client")]
     public string? Client { get; init; }
@@ -2539,6 +2569,18 @@ public sealed record ModelUse
     [JsonPropertyName("cached_tokens")]
     public required long CachedTokens { get; init; }
 
+    /// <summary>
+    /// Tokens speculative decoding guessed ahead (contract 1.64).
+    /// </summary>
+    [JsonPropertyName("draft_tokens")]
+    public long? DraftTokens { get; init; }
+
+    /// <summary>
+    /// The guessed tokens the model kept (contract 1.64).
+    /// </summary>
+    [JsonPropertyName("draft_accepted")]
+    public long? DraftAccepted { get; init; }
+
     [JsonPropertyName("tok_per_sec")]
     public double? TokPerSec { get; init; }
 
@@ -2619,6 +2661,51 @@ public sealed record FirstAnswersGroup
     /// </summary>
     [JsonPropertyName("load_ms")]
     public double? LoadMs { get; init; }
+}
+
+/// <summary>
+/// How much of each chat turn's prompt the models on this computer read from their prompt cache instead of processing again (#838), over chats' later turns.
+/// </summary>
+public sealed record PromptCache
+{
+    [JsonPropertyName("since")]
+    public required DateTimeOffset Since { get; init; }
+
+    [JsonPropertyName("models")]
+    public required List<PromptCacheModel> Models { get; init; }
+}
+
+/// <summary>
+/// One model's later turns.
+/// </summary>
+public sealed record PromptCacheModel
+{
+    [JsonPropertyName("model_id")]
+    public required string ModelId { get; init; }
+
+    /// <summary>
+    /// The later turns of chats the model answered
+    /// </summary>
+    [JsonPropertyName("turns")]
+    public required long Turns { get; init; }
+
+    [JsonPropertyName("prompt_tokens")]
+    public required long PromptTokens { get; init; }
+
+    [JsonPropertyName("cached_tokens")]
+    public required long CachedTokens { get; init; }
+
+    /// <summary>
+    /// cached_tokens over prompt_tokens
+    /// </summary>
+    [JsonPropertyName("reuse")]
+    public required double Reuse { get; init; }
+
+    /// <summary>
+    /// Set when
+    /// </summary>
+    [JsonPropertyName("low")]
+    public bool? Low { get; init; }
 }
 
 /// <summary>
@@ -3149,6 +3236,18 @@ public sealed record GenerationMetrics
     public long? CachedTokens { get; init; }
 
     /// <summary>
+    /// Tokens speculative decoding guessed ahead (contract 1.64).
+    /// </summary>
+    [JsonPropertyName("draft_tokens")]
+    public long? DraftTokens { get; init; }
+
+    /// <summary>
+    /// The guessed tokens the model kept (contract 1.64).
+    /// </summary>
+    [JsonPropertyName("draft_accepted")]
+    public long? DraftAccepted { get; init; }
+
+    /// <summary>
     /// Why the model stopped (contract 1.58): stop, or length when it reached its token limit; absent when the runtime didn't say
     /// </summary>
     [JsonPropertyName("finish_reason")]
@@ -3429,6 +3528,36 @@ public sealed record AddedModel
 
     [JsonPropertyName("tags")]
     public required List<string> Tags { get; init; }
+}
+
+/// <summary>
+/// A model's context window choice (#962).
+/// </summary>
+public sealed record ModelContext
+{
+    [JsonPropertyName("model_id")]
+    public required string ModelId { get; init; }
+
+    /// <summary>
+    /// 0 for Auto
+    /// </summary>
+    [JsonPropertyName("context_window")]
+    public required long ContextWindow { get; init; }
+}
+
+/// <summary>
+/// A model's guess-ahead choice (#835).
+/// </summary>
+public sealed record ModelSpeculation
+{
+    [JsonPropertyName("model_id")]
+    public required string ModelId { get; init; }
+
+    /// <summary>
+    /// Known values: `auto`, `off`; others may be added.
+    /// </summary>
+    [JsonPropertyName("speculation")]
+    public required string Speculation { get; init; }
 }
 
 /// <summary>
@@ -5417,7 +5546,7 @@ public sealed record ModelFit
     public bool? KnownToRun { get; init; }
 
     /// <summary>
-    /// What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751).
+    /// What a model is short of when that holds it back: "shared" on Apple silicon, where the graphics may use only part of memory, with NeedBytes what it needs and HaveBytes what the graphics may use (contract 1.46, #751); "graphics" when it needs more than the graphics card has, with HaveBytes the card's memory (#932).
     /// </summary>
     [JsonPropertyName("short")]
     public string? Short { get; init; }
@@ -5496,6 +5625,12 @@ public sealed record SetAPIKeyPermissionsRequest
 
     [JsonPropertyName("placement")]
     public bool? Placement { get; init; }
+
+    /// <summary>
+    /// Lets requests name raw:&lt;model&gt; and drive the model directly with their own tools (#843, contract 1.71); not with a pinned profile
+    /// </summary>
+    [JsonPropertyName("raw")]
+    public bool? Raw { get; init; }
 }
 
 public sealed record UploadArtifactRequest
@@ -5555,6 +5690,12 @@ public sealed record ChatRequest
     public string? Effort { get; init; }
 
     /// <summary>
+    /// off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
+    /// </summary>
+    [JsonPropertyName("thinking")]
+    public string? Thinking { get; init; }
+
+    /// <summary>
     /// The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
     /// </summary>
     [JsonPropertyName("time_zone")]
@@ -5579,7 +5720,7 @@ public sealed record ChatRequest
     public string? EditOf { get; init; }
 
     /// <summary>
-    /// The app asking; its run is traced with it, to measure how long answers take to start Known values: `phone`, `tablet`, `watch`, `tv`, `desktop`, `web`; others may be added.
+    /// The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added.
     /// </summary>
     [JsonPropertyName("client")]
     public string? Client { get; init; }
@@ -5598,6 +5739,12 @@ public sealed record ChatRequest
 
     [JsonPropertyName("stream")]
     public bool? Stream { get; init; }
+
+    /// <summary>
+    /// With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON.
+    /// </summary>
+    [JsonPropertyName("live")]
+    public bool? Live { get; init; }
 }
 
 public sealed record StopChatRequest
@@ -5661,6 +5808,12 @@ public sealed record PairDeviceRequest
 
     [JsonPropertyName("device_name")]
     public string? DeviceName { get; init; }
+
+    /// <summary>
+    /// Asks for raw access, as an editor does for its coding agents (#960, contract 1.76). The key gets it when an Admin or the Owner showed the code; its permissions say whether it did.
+    /// </summary>
+    [JsonPropertyName("raw")]
+    public bool? Raw { get; init; }
 }
 
 public sealed record StartDevicePairingRequest
@@ -5981,6 +6134,15 @@ public sealed record DeleteModelRequest
     public string? NodeId { get; init; }
 }
 
+public sealed record SetModelContextRequest
+{
+    /// <summary>
+    /// Tokens, up to the model's own window; 0 for Auto.
+    /// </summary>
+    [JsonPropertyName("context_window")]
+    public required long ContextWindow { get; init; }
+}
+
 public sealed record InstallModelRequest
 {
     [JsonPropertyName("node_id")]
@@ -6012,6 +6174,15 @@ public sealed record PutModelRatingRequest
     /// </summary>
     [JsonPropertyName("observations")]
     public bool? Observations { get; init; }
+}
+
+public sealed record SetModelSpeculationRequest
+{
+    /// <summary>
+    /// Known values: `auto`, `off`; others may be added.
+    /// </summary>
+    [JsonPropertyName("speculation")]
+    public required string Speculation { get; init; }
 }
 
 public sealed record StartModelRequest
@@ -6425,7 +6596,7 @@ public sealed record UseVideoBuildRequest
 public sealed record OpenaiChatCompletionsRequest
 {
     /// <summary>
-    /// auto, profile:&lt;id&gt;, sai:&lt;slug&gt;, or a model id
+    /// auto, profile:&lt;id&gt;, sai:&lt;slug&gt;, a model id, or raw:&lt;model id&gt; to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
     /// </summary>
     [JsonPropertyName("model")]
     public required string Model { get; init; }
@@ -6455,7 +6626,7 @@ public sealed record OpenaiChatCompletionsRequest
     public long? MaxCompletionTokens { get; init; }
 
     /// <summary>
-    /// Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
+    /// Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
     /// </summary>
     [JsonPropertyName("reasoning_effort")]
     public string? ReasoningEffort { get; init; }
@@ -6480,6 +6651,84 @@ public sealed record OpenaiChatCompletionsRequest
 
     [JsonPropertyName("yggdrasil")]
     public AssistantOptions? Yggdrasil { get; init; }
+}
+
+public sealed record AnthropicMessagesRequest
+{
+    [JsonPropertyName("model")]
+    public required string Model { get; init; }
+
+    [JsonPropertyName("max_tokens")]
+    public required long MaxTokens { get; init; }
+
+    /// <summary>
+    /// A string or text blocks
+    /// </summary>
+    [JsonPropertyName("system")]
+    public JsonNode? System { get; init; }
+
+    [JsonPropertyName("messages")]
+    public required List<AnthropicMessagesRequestMessages> Messages { get; init; }
+
+    [JsonPropertyName("tools")]
+    public List<AnthropicMessagesRequestTools>? Tools { get; init; }
+
+    [JsonPropertyName("tool_choice")]
+    public AnthropicMessagesRequestToolChoice? ToolChoice { get; init; }
+
+    [JsonPropertyName("stop_sequences")]
+    public List<string>? StopSequences { get; init; }
+
+    [JsonPropertyName("temperature")]
+    public double? Temperature { get; init; }
+
+    [JsonPropertyName("top_p")]
+    public double? TopP { get; init; }
+
+    [JsonPropertyName("top_k")]
+    public long? TopK { get; init; }
+
+    [JsonPropertyName("stream")]
+    public bool? Stream { get; init; }
+}
+
+public sealed record OpenaiResponsesRequest
+{
+    [JsonPropertyName("model")]
+    public required string Model { get; init; }
+
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; init; }
+
+    /// <summary>
+    /// A string or a list of input items
+    /// </summary>
+    [JsonPropertyName("input")]
+    public JsonNode? Input { get; init; }
+
+    [JsonPropertyName("tools")]
+    public List<OpenaiResponsesRequestTools>? Tools { get; init; }
+
+    /// <summary>
+    /// auto, required, none, or {"type":"function","name"}
+    /// </summary>
+    [JsonPropertyName("tool_choice")]
+    public JsonNode? ToolChoice { get; init; }
+
+    [JsonPropertyName("max_output_tokens")]
+    public long? MaxOutputTokens { get; init; }
+
+    [JsonPropertyName("temperature")]
+    public double? Temperature { get; init; }
+
+    [JsonPropertyName("top_p")]
+    public double? TopP { get; init; }
+
+    [JsonPropertyName("parallel_tool_calls")]
+    public bool? ParallelToolCalls { get; init; }
+
+    [JsonPropertyName("stream")]
+    public bool? Stream { get; init; }
 }
 
 /// <summary>
@@ -6585,6 +6834,18 @@ public sealed record ModelCapabilities
 
     [JsonPropertyName("coding")]
     public required bool Coding { get; init; }
+
+    /// <summary>
+    /// Thinks before it answers, such as Qwen 3, DeepSeek R1's distills, or gpt-oss (#840, contract 1.63). reasoning_effort none turns the thinking off.
+    /// </summary>
+    [JsonPropertyName("thinks")]
+    public bool? Thinks { get; init; }
+
+    /// <summary>
+    /// Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none.
+    /// </summary>
+    [JsonPropertyName("answers_first")]
+    public bool? AnswersFirst { get; init; }
 }
 
 /// <summary>
@@ -6612,6 +6873,21 @@ public sealed record ModelInstalledOn
 
     [JsonPropertyName("node_name")]
     public required string NodeName { get; init; }
+}
+
+/// <summary>
+/// A context window a model can take, and how well it fits this computer at it (#962).
+/// </summary>
+public sealed record ModelContextOptions
+{
+    /// <summary>
+    /// Known values: `excellent`, `good`, `tight`, `heavy`, `unsupported`; others may be added.
+    /// </summary>
+    [JsonPropertyName("fit")]
+    public required string Fit { get; init; }
+
+    [JsonPropertyName("tokens")]
+    public required long Tokens { get; init; }
 }
 
 /// <summary>
@@ -7005,6 +7281,12 @@ public sealed record APIKeyPermissions
     /// </summary>
     [JsonPropertyName("routes")]
     public string? Routes { get; init; }
+
+    /// <summary>
+    /// May name raw:&lt;model&gt; on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it
+    /// </summary>
+    [JsonPropertyName("raw")]
+    public bool? Raw { get; init; }
 }
 
 /// <summary>
@@ -7272,6 +7554,12 @@ public sealed record MyDevicePermissions
     /// </summary>
     [JsonPropertyName("routes")]
     public string? Routes { get; init; }
+
+    /// <summary>
+    /// May name raw:&lt;model&gt; on /v1/chat/completions, driving the model directly with the request's own tools, without the assistant (#843, contract 1.71). Only Admins manage keys, so only they can allow it
+    /// </summary>
+    [JsonPropertyName("raw")]
+    public bool? Raw { get; init; }
 }
 
 /// <summary>
@@ -8709,6 +8997,63 @@ public sealed record OpenaiChatCompletionsRequestStreamOptions
 {
     [JsonPropertyName("include_usage")]
     public bool? IncludeUsage { get; init; }
+}
+
+public sealed record AnthropicMessagesRequestMessages
+{
+    /// <summary>
+    /// Known values: `user`, `assistant`; others may be added.
+    /// </summary>
+    [JsonPropertyName("role")]
+    public string? Role { get; init; }
+
+    /// <summary>
+    /// A string or a list of blocks
+    /// </summary>
+    [JsonPropertyName("content")]
+    public JsonNode? Content { get; init; }
+}
+
+public sealed record AnthropicMessagesRequestTools
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("input_schema")]
+    public JsonObject? InputSchema { get; init; }
+}
+
+public sealed record AnthropicMessagesRequestToolChoice
+{
+    /// <summary>
+    /// Known values: `auto`, `any`, `tool`, `none`; others may be added.
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; init; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+}
+
+public sealed record OpenaiResponsesRequestTools
+{
+    /// <summary>
+    /// Known values: `function`; others may be added.
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; init; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("parameters")]
+    public JsonObject? Parameters { get; init; }
 }
 
 /// <summary>

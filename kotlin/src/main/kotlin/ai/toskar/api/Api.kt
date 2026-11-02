@@ -311,6 +311,17 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("GET", "/api/v1/diagnostics/gpu", listOf())
 
     /**
+     * How much of chats' later turns each model read from its prompt cache
+     *
+     * Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+     *
+     * @param days How many days back to look; 7 by default, 90 at most.
+     */
+    @JvmOverloads
+    public fun getPromptCache(days: Long? = null): PromptCache =
+        toskar.call("GET", "/api/v1/diagnostics/prompt-cache", listOf(), query = listOf("days" to days))
+
+    /**
      * What a problem report sends, scrubbed
      *
      * Versions and the kind of computer, and for an Admin Core's last 40 warnings and errors. Email addresses, keys, tokens, home folder names, the computer's name, and internet addresses are taken out first. Members and paired devices may call it.
@@ -715,6 +726,14 @@ public class Api internal constructor(private val toskar: Toskar) {
     public fun deleteModel(id: String, body: DeleteModelRequest? = null, nodeId: String? = null): Unit =
         toskar.call("DELETE", "/api/v1/models/{id}", listOf(id), query = listOf("node_id" to nodeId), body = toskar.json(body))
 
+    /**
+     * Set a model's context window
+     *
+     * The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+     */
+    public fun setModelContext(id: String, body: SetModelContextRequest): ModelContext =
+        toskar.call("PUT", "/api/v1/models/{id}/context", listOf(id), body = toskar.json(body))
+
     /** Download a catalog model, here or on a paired computer */
     @JvmOverloads
     public fun installModel(id: String, body: InstallModelRequest? = null, wait: String? = null, nodeId: String? = null): ModelInstall =
@@ -747,6 +766,14 @@ public class Api internal constructor(private val toskar: Toskar) {
     /** Stop asking for a rating of a model */
     public fun dismissModelRating(id: String): Unit =
         toskar.call("POST", "/api/v1/models/{id}/rating/dismiss", listOf(id))
+
+    /**
+     * Turn guessing ahead Auto or Off for a model
+     *
+     * Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+     */
+    public fun setModelSpeculation(id: String, body: SetModelSpeculationRequest): ModelSpeculation =
+        toskar.call("PUT", "/api/v1/models/{id}/speculation", listOf(id), body = toskar.json(body))
 
     /** Load a model */
     @JvmOverloads
@@ -1660,10 +1687,34 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("POST", "/v1/chat/completions", listOf(), body = toskar.json(body))
 
     /**
+     * Anthropic-compatible messages, for coding agents
+     *
+     * Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+     */
+    public fun anthropicMessages(body: AnthropicMessagesRequest): Unit =
+        toskar.call("POST", "/v1/messages", listOf(), body = toskar.json(body))
+
+    /**
+     * About how many tokens a Messages request's input takes
+     *
+     * The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+     */
+    public fun anthropicCountTokens(): Unit =
+        toskar.call("POST", "/v1/messages/count_tokens", listOf())
+
+    /**
      * OpenAI-compatible model list
      *
      * auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
      */
     public fun openaiListModels(): OpenAIModelList =
         toskar.call("GET", "/v1/models", listOf())
+
+    /**
+     * OpenAI Responses, for coding agents
+     *
+     * OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+     */
+    public fun openaiResponses(body: OpenaiResponsesRequest): Unit =
+        toskar.call("POST", "/v1/responses", listOf(), body = toskar.json(body))
 }

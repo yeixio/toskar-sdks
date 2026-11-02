@@ -630,5 +630,5 @@ pub on_network: bool
 The client contract this SDK was built for.
 
 ```rust
-pub const CONTRACT_VERSION: &str = "1.60"
+pub const CONTRACT_VERSION: &str = "1.77"
 ```

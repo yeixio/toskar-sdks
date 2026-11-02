@@ -108,6 +108,30 @@ Parameters:
 Task<M.AddedPerson> AddPersonAsync(M.AddPersonRequest body, CancellationToken cancellationToken = default)
 ```
 
+### AnthropicCountTokensAsync()
+
+About how many tokens a Messages request's input takes
+
+The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+
+```csharp
+Task AnthropicCountTokensAsync(CancellationToken cancellationToken = default)
+```
+
+### AnthropicMessagesAsync(body)
+
+Anthropic-compatible messages, for coding agents
+
+Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+
+Parameters:
+
+- `body`: The request.
+
+```csharp
+Task AnthropicMessagesAsync(M.AnthropicMessagesRequest body, CancellationToken cancellationToken = default)
+```
+
 ### ApprovePairingAsync(id, body)
 
 Approve a pairing offer
@@ -1330,6 +1354,20 @@ The profiles each pinnable role is kept to (#345)
 Task<M.ProfilePins> GetProfilePinsAsync(CancellationToken cancellationToken = default)
 ```
 
+### GetPromptCacheAsync(days)
+
+How much of chats' later turns each model read from its prompt cache
+
+Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+
+Parameters:
+
+- `days`: How many days back to look; 7 by default, 90 at most.
+
+```csharp
+Task<M.PromptCache> GetPromptCacheAsync(long? days = null, CancellationToken cancellationToken = default)
+```
+
 ### GetPushStatusAsync()
 
 Push to the Toskar app on this device (#460)
@@ -2165,6 +2203,20 @@ auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slu
 Task<M.OpenAIModelList> OpenaiListModelsAsync(CancellationToken cancellationToken = default)
 ```
 
+### OpenaiResponsesAsync(body)
+
+OpenAI Responses, for coding agents
+
+OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+
+Parameters:
+
+- `body`: The request.
+
+```csharp
+Task OpenaiResponsesAsync(M.OpenaiResponsesRequest body, CancellationToken cancellationToken = default)
+```
+
 ### OutboundPairingAsync(code)
 
 The offer this computer made for a code
@@ -2762,6 +2814,21 @@ Parameters:
 Task<M.ExternalServer> SetExternalServerAsync(M.SetExternalServerRequest body, CancellationToken cancellationToken = default)
 ```
 
+### SetModelContextAsync(id, body)
+
+Set a model's context window
+
+The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+
+Parameters:
+
+- `id`: The id.
+- `body`: The request.
+
+```csharp
+Task<M.ModelContext> SetModelContextAsync(string id, M.SetModelContextRequest body, CancellationToken cancellationToken = default)
+```
+
 ### SetModelProjectorAsync(id, body)
 
 Give an added model its vision projector
@@ -2775,6 +2842,21 @@ Parameters:
 
 ```csharp
 Task<M.ModelVision> SetModelProjectorAsync(string id, M.SetModelProjectorRequest body, CancellationToken cancellationToken = default)
+```
+
+### SetModelSpeculationAsync(id, body)
+
+Turn guessing ahead Auto or Off for a model
+
+Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+
+Parameters:
+
+- `id`: The id.
+- `body`: The request.
+
+```csharp
+Task<M.ModelSpeculation> SetModelSpeculationAsync(string id, M.SetModelSpeculationRequest body, CancellationToken cancellationToken = default)
 ```
 
 ### SetMyPreferencesAsync(body)

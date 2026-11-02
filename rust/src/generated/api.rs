@@ -391,6 +391,16 @@ impl Api<'_> {
         self.client.call("GET", "/api/v1/diagnostics/gpu", &[], &[], &[], None).await
     }
 
+    /// How much of chats' later turns each model read from its prompt cache
+    ///
+    /// Per model, the prompt and cached tokens of chat turns after a chat's first, where the model ran on this computer and was already running (#838). Automations are left out.
+    ///
+    /// - `days`: How many days back to look; 7 by default, 90 at most.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn get_prompt_cache(&self, days: Option<i64>) -> Result<models::PromptCache> {
+        self.client.call("GET", "/api/v1/diagnostics/prompt-cache", &[], &[("days", days.map(|v| v.to_string()))], &[], None).await
+    }
+
     /// What a problem report sends, scrubbed
     ///
     /// Versions and the kind of computer, and for an Admin Core's last 40 warnings and errors. Email addresses, keys, tokens, home folder names, the computer's name, and internet addresses are taken out first. Members and paired devices may call it.
@@ -879,6 +889,14 @@ impl Api<'_> {
         self.client.send("DELETE", "/api/v1/models/{id}", &[id], &[("node_id", node_id.map(|v| v.to_string()))], &[], body.map(json).transpose()?).await
     }
 
+    /// Set a model's context window
+    ///
+    /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn set_model_context(&self, id: &str, body: &models::SetModelContextRequest) -> Result<models::ModelContext> {
+        self.client.call("PUT", "/api/v1/models/{id}/context", &[id], &[], &[], Some(json(body)?)).await
+    }
+
     /// Download a catalog model, here or on a paired computer
     #[allow(clippy::too_many_arguments)]
     pub async fn install_model(&self, id: &str, body: Option<&models::InstallModelRequest>, wait: Option<&str>, node_id: Option<&str>) -> Result<models::ModelInstall> {
@@ -917,6 +935,14 @@ impl Api<'_> {
     #[allow(clippy::too_many_arguments)]
     pub async fn dismiss_model_rating(&self, id: &str) -> Result<()> {
         self.client.send("POST", "/api/v1/models/{id}/rating/dismiss", &[id], &[], &[], None).await
+    }
+
+    /// Turn guessing ahead Auto or Off for a model
+    ///
+    /// Speculative decoding for a chat model installed on this computer: auto (on where this llama-server has it) or off. A loaded model changes when it next starts (#835, contract 1.67).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn set_model_speculation(&self, id: &str, body: &models::SetModelSpeculationRequest) -> Result<models::ModelSpeculation> {
+        self.client.call("PUT", "/api/v1/models/{id}/speculation", &[id], &[], &[], Some(json(body)?)).await
     }
 
     /// Load a model
@@ -1990,12 +2016,36 @@ impl Api<'_> {
         self.client.call("POST", "/v1/chat/completions", &[], &[], &[], Some(json(body)?)).await
     }
 
+    /// Anthropic-compatible messages, for coding agents
+    ///
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:&lt;model&gt; does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn anthropic_messages(&self, body: &models::AnthropicMessagesRequest) -> Result<()> {
+        self.client.send("POST", "/v1/messages", &[], &[], &[], Some(json(body)?)).await
+    }
+
+    /// About how many tokens a Messages request's input takes
+    ///
+    /// The same body as /v1/messages; answers {"input_tokens"} from an estimate (#843, contract 1.72).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn anthropic_count_tokens(&self, ) -> Result<()> {
+        self.client.send("POST", "/v1/messages/count_tokens", &[], &[], &[], None).await
+    }
+
     /// OpenAI-compatible model list
     ///
     /// auto, each profile as profile:&lt;id&gt;, and each deployed specialized AI as sai:&lt;slug&gt;.
     #[allow(clippy::too_many_arguments)]
     pub async fn openai_list_models(&self, ) -> Result<models::OpenAIModelList> {
         self.client.call("GET", "/v1/models", &[], &[], &[], None).await
+    }
+
+    /// OpenAI Responses, for coding agents
+    ///
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:&lt;model&gt; does.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn openai_responses(&self, body: &models::OpenaiResponsesRequest) -> Result<()> {
+        self.client.send("POST", "/v1/responses", &[], &[], &[], Some(json(body)?)).await
     }
 }
 
