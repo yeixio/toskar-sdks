@@ -118,7 +118,13 @@ async fn passes_on_what_replaces_a_live_answer() {
         .respond_with(sse(body))
         .mount(&core)
         .await;
-    let events: Vec<_> = toskar(&core).chat_stream(&hi()).await.unwrap().map(|e| e.unwrap()).collect().await;
+    let events: Vec<_> = toskar(&core)
+        .chat_stream(&hi())
+        .await
+        .unwrap()
+        .map(|e| e.unwrap())
+        .collect()
+        .await;
     assert_eq!(
         events,
         vec![

@@ -83,6 +83,7 @@ class ClientTest {
             for (event in events) {
                 when (event) {
                     is ChatEvent.Token -> text += event.text
+                    is ChatEvent.Replace -> text = event.text
                     is ChatEvent.Done -> metrics = event.metrics
                 }
             }
