@@ -29,6 +29,12 @@ Releases: [RELEASING.md](RELEASING.md). One tag publishes every SDK at one versi
 
 Each SDK release names the client contract it was built for (`CONTRACT_VERSION`, now 1.59) and sends it as `Toskar-Client-Contract`. Toskar Core answers `426 CONTRACT_MISMATCH` to a client built for another major version. A Core with an older minor version may lack newer routes and fields.
 
+## Support Toskar
+
+The Toskar SDKs are free and open source. If they're useful to you, you can [donate to Toskar](https://yeix.io/donate/toskar), once or monthly, by card. Donations pay for its development. Nothing is held back for donors.
+
+[![Donate to Toskar](https://img.shields.io/badge/Donate-Support_Toskar-ff6a55?style=for-the-badge&logo=stripe&logoColor=white)](https://yeix.io/donate/toskar)
+
 ## License
 
 Apache 2.0. Toskar Core itself is AGPL-3.0; these client packages are Apache 2.0 so you can use them in any app.
