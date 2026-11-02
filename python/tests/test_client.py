@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from toskar import CONTRACT_VERSION, AsyncToskar, Done, ErrorCodes, Token, Toskar, ToskarError, models, read_events
+from toskar import CONTRACT_VERSION, AsyncToskar, Done, ErrorCodes, Replace, Token, Toskar, ToskarError, models, read_events
 
 BASE = "http://127.0.0.1:7331"
 
@@ -44,6 +44,12 @@ def test_chats_waiting_for_the_whole_answer():
 def test_streams_an_answer_as_it_is_written():
     respx.post(f"{BASE}/api/v1/chat").mock(return_value=sse('event: token\ndata: {"content":"Hel"}\n\n', ": ping\n\n", 'event: token\ndata: {"content":"lo"}\n\n', "event: done\ndata: {}\n\n"))
     assert list(Toskar().chat_stream("Hi")) == [Token("Hel"), Token("lo"), Done()]
+
+
+@respx.mock
+def test_passes_on_what_replaces_a_live_answer():
+    respx.post(f"{BASE}/api/v1/chat").mock(return_value=sse('event: token\ndata: {"content":"Let me"}\n\n', 'event: replace\ndata: {"content":""}\n\n', 'event: token\ndata: {"content":"Clean"}\n\n', 'event: replace\ndata: {"content":"All clean"}\n\n', "event: done\ndata: {}\n\n"))
+    assert list(Toskar().chat_stream("Hi", live=True)) == [Token("Let me"), Replace(""), Token("Clean"), Replace("All clean"), Done()]
 
 
 @respx.mock

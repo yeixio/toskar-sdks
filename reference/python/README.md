@@ -18,7 +18,7 @@ The routes themselves, with every field: [toskar.ai/developers/api](https://tosk
 ## Contents
 
 - **Connecting:** [Toskar](#toskar), [AsyncToskar](#asynctoskar)
-- **Streamed answers:** [ChatStreamEvent](#chatstreamevent), [Token](#token), [Done](#done)
+- **Streamed answers:** [ChatStreamEvent](#chatstreamevent), [Token](#token), [Replace](#replace), [Done](#done)
 - **Errors:** [ToskarError](#toskarerror), [ErrorCodes](#errorcodes)
 - **Pairing and reaching a computer from anywhere:** [pair](#pair), [apair](#apair), [Device](#device), [Route](#route), [TOSKAR_RELAY](#toskar_relay), [NotConfirmed](#notconfirmed), [PinMismatch](#pinmismatch), [Unreachable](#unreachable), [pin_of](#pin_of), [short_pin](#short_pin), [route_id](#route_id), [open_record](#open_record), [Record](#record), [RecordError](#recorderror)
 - **Finding computers on the network:** [discover](#discover), [Computer](#computer)
@@ -189,7 +189,7 @@ Every route of the API, one method each, such as `toskar.api.list_models()`: [ap
 ### ChatStreamEvent
 
 ```python
-ChatStreamEvent = toskar._client.Token | toskar._client.Done
+ChatStreamEvent = toskar._client.Token | toskar._client.Replace | toskar._client.Done
 ```
 
 
@@ -202,6 +202,15 @@ The next piece of a streamed answer.
 | --- | --- | --- |
 | `content` | `str` |  |
 | `type` | `Literal['token']` |  |
+
+### Replace
+
+With live: takes the place of everything so far, empty to take it all back.
+
+| Field | Type | |
+| --- | --- | --- |
+| `content` | `str` |  |
+| `type` | `Literal['replace']` |  |
 
 ### Done
 

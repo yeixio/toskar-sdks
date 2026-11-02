@@ -160,6 +160,7 @@ public class Toskar internal constructor(
                     ?: throw ToskarException(200, "CONNECTION_LOST", "The answer stopped before it finished")
                 when (event.name) {
                     "token" -> return@EventStream ChatEvent.Token(JSON.decodeFromString<ChatToken>(event.data).content)
+                    "replace" -> return@EventStream ChatEvent.Replace(JSON.decodeFromString<ChatToken>(event.data).content)
                     "done" -> {
                         finished = true
                         val done = runCatching { JSON.decodeFromString<ChatDone>(event.data) }.getOrNull()
@@ -361,6 +362,9 @@ public class Toskar internal constructor(
 public sealed class ChatEvent {
     /** The next piece of the answer. */
     public data class Token(public val text: String) : ChatEvent()
+
+    /** With `live`: takes the place of everything so far, empty to take it all back. */
+    public data class Replace(public val text: String) : ChatEvent()
 
     /** The answer is finished and saved, with what the runtime measured when it reported it. */
     public data class Done(public val metrics: GenerationMetrics?) : ChatEvent()

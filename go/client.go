@@ -187,7 +187,9 @@ func (c *Client) Chat(ctx context.Context, req api.ChatJSONRequestBody) (*api.Ch
 }
 
 // ChatStreamEvent is one event of a streamed chat: a token with the next
-// piece of the answer (Type "token", Content), or done once it's finished
+// piece of the answer (Type "token", Content), a replace with what takes the
+// place of everything so far, empty to take it all back (Type "replace",
+// Content, only when the request asks for Live), or done once it's finished
 // and saved (Type "done", Metrics when the runtime reported them).
 type ChatStreamEvent struct {
 	Type    string
@@ -225,6 +227,15 @@ func (c *Client) ChatStream(ctx context.Context, req api.ChatJSONRequestBody) it
 					return
 				}
 				if !yield(ChatStreamEvent{Type: "token", Content: t.Content}, nil) {
+					return
+				}
+			case "replace":
+				var t api.ChatToken
+				if err := json.Unmarshal([]byte(e.Data), &t); err != nil {
+					yield(ChatStreamEvent{}, err)
+					return
+				}
+				if !yield(ChatStreamEvent{Type: "replace", Content: t.Content}, nil) {
 					return
 				}
 			case "done":

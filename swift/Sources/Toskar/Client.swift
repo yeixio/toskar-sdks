@@ -129,6 +129,9 @@ public final class Toskar: Sendable {
     public enum ChatEvent: Sendable, Hashable {
         /// The next piece of the answer.
         case token(String)
+        /// With `live`: takes the place of everything so far, empty to take
+        /// it all back.
+        case replace(String)
         /// The answer is finished and saved, with what the runtime
         /// measured when it reported it.
         case done(Components.Schemas.GenerationMetrics?)
@@ -152,6 +155,8 @@ public final class Toskar: Sendable {
                         switch event.event {
                         case "token":
                             continuation.yield(.token(try decoder.decode(Components.Schemas.ChatToken.self, from: data).content))
+                        case "replace":
+                            continuation.yield(.replace(try decoder.decode(Components.Schemas.ChatToken.self, from: data).content))
                         case "done":
                             let done = try? decoder.decode(Components.Schemas.ChatDone.self, from: data)
                             continuation.yield(.done(done?.metrics))

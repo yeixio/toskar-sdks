@@ -133,6 +133,14 @@ The next piece of the answer.
 data class Token(val text: String) : ChatEvent()
 ```
 
+#### ChatEvent.Replace
+
+With `live`: takes the place of everything so far, empty to take it all back.
+
+```kotlin
+data class Replace(val text: String) : ChatEvent()
+```
+
 #### ChatEvent.Done
 
 The answer is finished and saved, with what the runtime measured when it reported it.

@@ -74,6 +74,15 @@ measured when it reported it.
 case done(Components.Schemas.GenerationMetrics?)
 ```
 
+##### Toskar.ChatEvent.replace(_:)
+
+With `live`: takes the place of everything so far, empty to take
+it all back.
+
+```swift
+case replace(String)
+```
+
 ##### Toskar.ChatEvent.token(_:)
 
 The next piece of the answer.

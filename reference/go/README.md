@@ -750,9 +750,9 @@ func (e *APIError) Error() string
 
 
 <a name="ChatStreamEvent"></a>
-## type [ChatStreamEvent](<https://github.com/yeixio/toskar-sdks/blob/main/go/client.go#L192-L196>)
+## type [ChatStreamEvent](<https://github.com/yeixio/toskar-sdks/blob/main/go/client.go#L194-L198>)
 
-ChatStreamEvent is one event of a streamed chat: a token with the next piece of the answer \(Type "token", Content\), or done once it's finished and saved \(Type "done", Metrics when the runtime reported them\).
+ChatStreamEvent is one event of a streamed chat: a token with the next piece of the answer \(Type "token", Content\), a replace with what takes the place of everything so far, empty to take it all back \(Type "replace", Content, only when the request asks for Live\), or done once it's finished and saved \(Type "done", Metrics when the runtime reported them\).
 
 ```go
 type ChatStreamEvent struct {
@@ -802,7 +802,7 @@ func (c *Client) Chat(ctx context.Context, req api.ChatJSONRequestBody) (*api.Ch
 Chat asks once and waits for the whole answer. Stream is set for you.
 
 <a name="Client.ChatStream"></a>
-### func \(\*Client\) [ChatStream](<https://github.com/yeixio/toskar-sdks/blob/main/go/client.go#L206>)
+### func \(\*Client\) [ChatStream](<https://github.com/yeixio/toskar-sdks/blob/main/go/client.go#L208>)
 
 ```go
 func (c *Client) ChatStream(ctx context.Context, req api.ChatJSONRequestBody) iter.Seq2[ChatStreamEvent, error]
@@ -818,7 +818,7 @@ for e, err := range c.ChatStream(ctx, toskar.ChatJSONRequestBody{Message: "Hi"})
 ```
 
 <a name="Client.Events"></a>
-### func \(\*Client\) [Events](<https://github.com/yeixio/toskar-sdks/blob/main/go/client.go#L256>)
+### func \(\*Client\) [Events](<https://github.com/yeixio/toskar-sdks/blob/main/go/client.go#L267>)
 
 ```go
 func (c *Client) Events(ctx context.Context) iter.Seq2[api.Event, error]
@@ -845,7 +845,7 @@ func (c *Client) Reconnect(ctx context.Context) (Path, error)
 Reconnect chooses the way in again, as after the network changed, and says which it found.
 
 <a name="Client.Version"></a>
-### func \(\*Client\) [Version](<https://github.com/yeixio/toskar-sdks/blob/main/go/client.go#L295>)
+### func \(\*Client\) [Version](<https://github.com/yeixio/toskar-sdks/blob/main/go/client.go#L306>)
 
 ```go
 func (c *Client) Version(ctx context.Context) (api.VersionResponse, error)

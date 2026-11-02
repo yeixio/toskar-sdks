@@ -26,7 +26,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
-const val USAGE = "usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream <model> <message> | events <model> <message> <until> | upload <file> | download <id>"
+const val USAGE = "usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream|live <model> <message> | events <model> <message> <until> | upload <file> | download <id>"
 
 fun run(args: List<String>): JsonElement {
     when (args.firstOrNull() to args.size) {
@@ -55,6 +55,27 @@ fun run(args: List<String>): JsonElement {
             "chat" to 3 -> buildJsonObject {
                 put("content", toskar.chat(ChatRequest(message = args[2], modelId = args[1])).content)
             }
+            "live" to 3 -> {
+                var content = ""
+                var tokens = 0
+                var replaces = 0
+                var done = false
+                toskar.chatStream(ChatRequest(message = args[2], modelId = args[1], live = true)).use { events ->
+                    for (event in events) {
+                        when (event) {
+                            is ChatEvent.Token -> { tokens++; content += event.text }
+                            is ChatEvent.Replace -> { replaces++; content = event.text }
+                            is ChatEvent.Done -> done = true
+                        }
+                    }
+                }
+                buildJsonObject {
+                    put("content", content)
+                    put("tokens", tokens)
+                    put("replaces", replaces)
+                    put("done", done)
+                }
+            }
             "stream" to 3 -> {
                 val content = StringBuilder()
                 var tokens = 0
@@ -63,6 +84,7 @@ fun run(args: List<String>): JsonElement {
                     for (event in events) {
                         when (event) {
                             is ChatEvent.Token -> { tokens++; content.append(event.text) }
+                            is ChatEvent.Replace -> {}
                             is ChatEvent.Done -> done = true
                         }
                     }

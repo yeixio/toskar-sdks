@@ -315,12 +315,51 @@ type ChatStreamEvent =
   type: "token";
 }
   | {
+  content: string;
+  type: "replace";
+}
+  | {
   metrics?: Schemas["GenerationMetrics"];
   type: "done";
 };
 ```
 
 One event of a streamed chat. A failure is thrown as a ToskarError instead.
+
+#### Union Members
+
+##### Type Literal
+
+```ts
+{
+  content: string;
+  type: "token";
+}
+```
+
+***
+
+##### Type Literal
+
+```ts
+{
+  content: string;
+  type: "replace";
+}
+```
+
+With `live`: content takes the place of everything so far, empty to take it all back.
+
+***
+
+##### Type Literal
+
+```ts
+{
+  metrics?: Schemas["GenerationMetrics"];
+  type: "done";
+}
+```
 
 ***
 

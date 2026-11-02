@@ -8,7 +8,7 @@
             print(event.content, end="", flush=True)
 """
 
-from ._client import AsyncToskar, ChatStreamEvent, Done, Token, Toskar
+from ._client import AsyncToskar, ChatStreamEvent, Done, Replace, Token, Toskar
 from ._connect import (
     TOSKAR_RELAY,
     Device,
@@ -54,6 +54,7 @@ __all__ = [
     "Done",
     "ErrorCodes",
     "ServerSentEvent",
+    "Replace",
     "Token",
     "Toskar",
     "ToskarError",

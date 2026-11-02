@@ -191,6 +191,14 @@ The next piece of the answer.
 Token(String)
 ```
 
+#### ChatEvent::Replace
+
+With `live`: takes the place of everything so far, empty to take it all back.
+
+```rust
+Replace(String)
+```
+
 #### ChatEvent::Done
 
 The answer is finished and saved, with what the runtime measured when it reported it.

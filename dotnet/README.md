@@ -35,6 +35,28 @@ var answer = await toskar.ChatAsync(new ChatRequest { Message = "Summarize this 
 Console.WriteLine(answer.Content);
 ```
 
+### Live answers
+
+A streamed answer normally comes whole, once it's ready. Ask for `live` to get it while the model writes it. Toskar can then change what it already sent, such as taking back a sentence before it uses a tool, so a replace event takes the place of everything so far. An empty one takes it all back.
+
+<!-- snippet: run -->
+```csharp
+var answer = "";
+await foreach (var e in toskar.ChatStreamAsync(new ChatRequest { Message = "Plan a three-day trip to Juneau", Live = true }))
+{
+    switch (e)
+    {
+        case ChatEvent.Token token:
+            answer += token.Text;
+            break;
+        case ChatEvent.Replace replace:
+            answer = replace.Text;
+            break;
+    }
+}
+Console.WriteLine(answer);
+```
+
 ## Every route, typed
 
 `toskar.Api` is generated from Toskar Core's API spec, so every operation is an async method named after it, and every answer is a record in `Toskar.Models`:

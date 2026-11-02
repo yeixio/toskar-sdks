@@ -82,6 +82,7 @@ async fn streams_an_answer_as_it_is_written() {
     while let Some(event) = events.next().await {
         match event.unwrap() {
             ChatEvent::Token(t) => text += &t,
+            ChatEvent::Replace(t) => text = t,
             ChatEvent::Done(m) => metrics = m,
         }
     }
@@ -106,6 +107,34 @@ async fn a_streamed_failure_has_its_code() {
     assert_eq!(e.code, error_codes::NO_MODEL_INSTALLED);
     assert_eq!(e.message, "Install a model");
     assert!(events.next().await.is_none());
+}
+
+#[tokio::test]
+async fn passes_on_what_replaces_a_live_answer() {
+    let core = MockServer::start().await;
+    let body = "event: token\ndata: {\"content\":\"Let me\"}\n\nevent: replace\ndata: {\"content\":\"\"}\n\nevent: token\ndata: {\"content\":\"Clean\"}\n\nevent: replace\ndata: {\"content\":\"All clean\"}\n\nevent: done\ndata: {}\n\n";
+    Mock::given(method("POST"))
+        .and(path("/api/v1/chat"))
+        .respond_with(sse(body))
+        .mount(&core)
+        .await;
+    let events: Vec<_> = toskar(&core)
+        .chat_stream(&hi())
+        .await
+        .unwrap()
+        .map(|e| e.unwrap())
+        .collect()
+        .await;
+    assert_eq!(
+        events,
+        vec![
+            ChatEvent::Token("Let me".into()),
+            ChatEvent::Replace(String::new()),
+            ChatEvent::Token("Clean".into()),
+            ChatEvent::Replace("All clean".into()),
+            ChatEvent::Done(None),
+        ]
+    );
 }
 
 #[tokio::test]

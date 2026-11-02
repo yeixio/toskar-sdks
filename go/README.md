@@ -50,6 +50,44 @@ func main() {
 }
 ```
 
+### Live answers
+
+A streamed answer normally comes whole, once it's ready. Ask for `live` to get it while the model writes it. Toskar can then change what it already sent, such as taking back a sentence before it uses a tool, so a replace event takes the place of everything so far. An empty one takes it all back.
+
+<!-- snippet: run -->
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	toskar "github.com/yeixio/toskar-sdks/go"
+	"github.com/yeixio/toskar-sdks/go/api"
+)
+
+func main() {
+	c, err := toskar.New()
+	if err != nil {
+		panic(err)
+	}
+	live := true
+	answer := ""
+	for e, err := range c.ChatStream(context.Background(), api.ChatJSONRequestBody{Message: "Plan a three-day trip to Juneau", Live: &live}) {
+		if err != nil {
+			panic(err)
+		}
+		switch e.Type {
+		case "token":
+			answer += e.Content
+		case "replace":
+			answer = e.Content
+		}
+	}
+	fmt.Println(answer)
+}
+```
+
 ## Every route, typed
 
 Package `api` is generated from Toskar Core's API spec. `Client` embeds its client, so every operation is a method, and `toskar.Data` returns the answer, or the error:

@@ -83,6 +83,7 @@ class ClientTest {
             for (event in events) {
                 when (event) {
                     is ChatEvent.Token -> text += event.text
+                    is ChatEvent.Replace -> text = event.text
                     is ChatEvent.Done -> metrics = event.metrics
                 }
             }
@@ -98,6 +99,20 @@ class ClientTest {
         val e = assertFailsWith<ToskarException> { toskar().chatStream(ChatRequest(message = "Hi")).toList() }
         assertEquals(ErrorCodes.NO_MODEL_INSTALLED, e.code)
         assertEquals("Install a model", e.message)
+    }
+
+    @Test
+    fun passesOnWhatReplacesALiveAnswer() {
+        answer(
+            "event: token\ndata: {\"content\":\"Let me\"}\n\nevent: replace\ndata: {\"content\":\"\"}\n\n" +
+                "event: token\ndata: {\"content\":\"Clean\"}\n\nevent: replace\ndata: {\"content\":\"All clean\"}\n\nevent: done\ndata: {}\n\n",
+            type = SSE,
+        )
+        val events = toskar().chatStream(ChatRequest(message = "Hi", live = true)).toList()
+        assertEquals(
+            listOf(ChatEvent.Token("Let me"), ChatEvent.Replace(""), ChatEvent.Token("Clean"), ChatEvent.Replace("All clean"), ChatEvent.Done(null)),
+            events,
+        )
     }
 
     @Test
