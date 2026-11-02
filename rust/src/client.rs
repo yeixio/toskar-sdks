@@ -37,6 +37,8 @@ pub struct Client {
 pub enum ChatEvent {
     /// The next piece of the answer.
     Token(String),
+    /// With `live`: takes the place of everything so far, empty to take it all back.
+    Replace(String),
     /// The answer is finished and saved, with what the runtime measured when it reported it.
     Done(Option<GenerationMetrics>),
 }
@@ -249,6 +251,12 @@ impl Client {
                     "token" => {
                         return match serde_json::from_str::<ChatToken>(&event.data) {
                             Ok(t) => Some((Ok(ChatEvent::Token(t.content)), (events, false))),
+                            Err(e) => Some((Err(bad_answer(e)), (events, true))),
+                        };
+                    }
+                    "replace" => {
+                        return match serde_json::from_str::<ChatToken>(&event.data) {
+                            Ok(t) => Some((Ok(ChatEvent::Replace(t.content)), (events, false))),
                             Err(e) => Some((Err(bad_answer(e)), (events, true))),
                         };
                     }

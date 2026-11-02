@@ -41,11 +41,31 @@ func run(_ args: [String]) async throws -> [String: Any] {
             case .token(let t):
                 tokens += 1
                 content += t
+            case .replace:
+                break
             case .done:
                 done = true
             }
         }
         return ["content": content, "tokens": tokens, "done": done]
+    case ("live", 3):
+        var content = ""
+        var tokens = 0
+        var replaces = 0
+        var done = false
+        for try await event in toskar.chatStream(ChatRequest(message: args[2], modelId: args[1], live: true)) {
+            switch event {
+            case .token(let t):
+                tokens += 1
+                content += t
+            case .replace(let t):
+                replaces += 1
+                content = t
+            case .done:
+                done = true
+            }
+        }
+        return ["content": content, "tokens": tokens, "replaces": replaces, "done": done]
     case ("events", 4):
         return try await events(toskar, model: args[1], message: args[2], until: args[3])
     case ("upload", 2):
@@ -63,7 +83,7 @@ func run(_ args: [String]) async throws -> [String: Any] {
     default:
         throw ToskarError(
             status: 0, code: .init("ERROR"),
-            message: "usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream <model> <message> | events <model> <message> <until> | upload <file> | download <id>")
+            message: "usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream|live <model> <message> | events <model> <message> <until> | upload <file> | download <id>")
     }
 }
 

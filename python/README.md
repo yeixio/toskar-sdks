@@ -45,6 +45,24 @@ async def main():
 asyncio.run(main())
 ```
 
+### Live answers
+
+A streamed answer normally comes whole, once it's ready. Ask for `live` to get it while the model writes it. Toskar can then change what it already sent, such as taking back a sentence before it uses a tool, so a replace event takes the place of everything so far. An empty one takes it all back.
+
+<!-- snippet: run -->
+```python
+from toskar import Toskar
+
+toskar = Toskar()
+answer = ""
+for event in toskar.chat_stream("Plan a three-day trip to Juneau", live=True):
+    if event.type == "token":
+        answer += event.content
+    elif event.type == "replace":
+        answer = event.content
+print(answer)
+```
+
 ## Every route, typed
 
 `toskar.api` has a method for each operation of the API, named after its `operationId`. Answers are Pydantic models from Toskar Core's spec:

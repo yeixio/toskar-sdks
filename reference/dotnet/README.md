@@ -172,7 +172,7 @@ IReadOnlyDictionary<string, string>? Headers { get; init; }
 
 ### ChatEvent
 
-One event of a streamed chat: a `Token`, then `Done`.
+One event of a streamed chat: a `Token` or a `Replace`, then `Done`.
 
 ```csharp
 abstract record ChatEvent
@@ -184,6 +184,14 @@ The next piece of the answer.
 
 ```csharp
 sealed record Token(string Text) : ChatEvent
+```
+
+#### ChatEvent.Replace
+
+With `Live`: takes the place of everything so far, empty to take it all back.
+
+```csharp
+sealed record Replace(string Text) : ChatEvent
 ```
 
 #### ChatEvent.Done

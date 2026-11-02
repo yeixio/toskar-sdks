@@ -79,6 +79,22 @@ func TestStreamsAnAnswerAsItIsWritten(t *testing.T) {
 	}
 }
 
+func TestALiveAnswerCanBeReplaced(t *testing.T) {
+	c := core(t, func(w http.ResponseWriter, r *http.Request) {
+		sse(w, "event: token\ndata: {\"content\":\"Let me\"}\n\nevent: replace\ndata: {\"content\":\"\"}\n\nevent: token\ndata: {\"content\":\"Clean\"}\n\nevent: replace\ndata: {\"content\":\"All clean\"}\n\nevent: done\ndata: {}\n\n")
+	})
+	var got []string
+	for e, err := range c.ChatStream(context.Background(), api.ChatJSONRequestBody{Message: "Hi"}) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, e.Type+":"+e.Content)
+	}
+	if strings.Join(got, ",") != "token:Let me,replace:,token:Clean,replace:All clean,done:" {
+		t.Fatalf("events: %v", got)
+	}
+}
+
 func TestAStreamedFailureHasItsCode(t *testing.T) {
 	c := core(t, func(w http.ResponseWriter, r *http.Request) {
 		sse(w, "event: error_code\ndata: {\"code\":\"MODEL_NOT_INSTALLED\",\"message\":\"model x is not installed\",\"details\":{\"model_id\":\"x\"}}\n\n", "event: error\ndata: model x is not installed\n\n")

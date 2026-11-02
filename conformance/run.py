@@ -9,7 +9,8 @@ every SDK's conformance program, and checks each answers the same.
 Core chats with a scripted model: an OpenAI-compatible server here that
 answers "You said: <message>", a word at a time when streaming. Keep the
 messages short: a long one makes Core plan, and the model then echoes
-the plan's prompts too. So the
+the plan's prompts too. Asked to change its mind, it first narrates and
+calls a tool, so a live answer has something to take back. So the
 cases need no model, and their answers are known. Standard library only.
 """
 
@@ -33,6 +34,7 @@ from typing import Any, Callable
 
 MODEL = "ext:echo"
 NODE_NAME = "conformance"
+CHANGE_YOUR_MIND = "change your mind"
 
 
 class ScriptedModel(BaseHTTPRequestHandler):
@@ -58,6 +60,11 @@ class ScriptedModel(BaseHTTPRequestHandler):
         if isinstance(last, list):
             last = " ".join(p.get("text", "") for p in last if isinstance(p, dict))
         text = "You said: " + last
+        # The default profile can't use this tool, and Core says so: the next message is that.
+        if last == CHANGE_YOUR_MIND:
+            text = 'Let me check. {"tool_call":{"id":"git.status","args":{}}}'
+        elif any(m["role"] == "user" and m["content"] == CHANGE_YOUR_MIND for m in req["messages"]):
+            text = "All clean."
         usage = {"prompt_tokens": 3, "completion_tokens": len(text.split()), "total_tokens": 3 + len(text.split())}
         if not req.get("stream"):
             message = {"role": "assistant", "content": text}
@@ -164,6 +171,15 @@ def stream(p: Program, core: Core, work: Path) -> None:
     expect(out.get("tokens", 0) >= 1 and out.get("done") is True, "tokens, then done", out)
 
 
+def live(p: Program, core: Core, work: Path) -> None:
+    out = p("live", MODEL, "one two three")
+    expect(out.get("content") == "You said: one two three" and out.get("replaces") == 0, "the tokens, joined, are the answer", out)
+    expect(out.get("tokens", 0) > 1 and out.get("done") is True, "a token at a time, then done", out)
+    out = p("live", MODEL, CHANGE_YOUR_MIND)
+    expect(out.get("replaces", 0) >= 1, "the narration is taken back", out)
+    expect(out.get("content") == "All clean." and out.get("done") is True, "what's left is the answer", out)
+
+
 def events(p: Program, core: Core, work: Path) -> None:
     out = p("events", MODEL, "ping", "chat.complete")
     types = out.get("types", [])
@@ -214,7 +230,7 @@ def pair_with(p: Program, core: Core, work: Path) -> None:
 
 
 CASES: list[tuple[str, Callable[[Program, Core, Path], None]]] = [
-    ("chat", chat), ("stream", stream), ("events", events), ("files", files), ("errors", errors), ("pairing", pairing),
+    ("chat", chat), ("stream", stream), ("live", live), ("events", events), ("files", files), ("errors", errors), ("pairing", pairing),
 ]
 
 

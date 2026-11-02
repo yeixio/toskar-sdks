@@ -39,6 +39,26 @@ let request = ChatRequest { message: "Summarize this in one line: …".into(), .
 println!("{}", toskar.chat(&request).await?.content);
 ```
 
+### Live answers
+
+A streamed answer normally comes whole, once it's ready. Ask for `live` to get it while the model writes it. Toskar can then change what it already sent, such as taking back a sentence before it uses a tool, so a replace event takes the place of everything so far. An empty one takes it all back.
+
+<!-- snippet: run -->
+```rust
+let toskar = Client::new()?;
+let request = ChatRequest { message: "Plan a three-day trip to Juneau".into(), live: Some(true), ..Default::default() };
+let mut answer = String::new();
+let mut events = toskar.chat_stream(&request).await?;
+while let Some(event) = events.next().await {
+    match event? {
+        ChatEvent::Token(text) => answer += &text,
+        ChatEvent::Replace(text) => answer = text,
+        ChatEvent::Done(_) => {}
+    }
+}
+println!("{answer}");
+```
+
 ## Every route, typed
 
 `toskar.api()` is generated from Toskar Core's API spec, so every operation is an async method named after it, and every answer is a struct in `toskar::models`:

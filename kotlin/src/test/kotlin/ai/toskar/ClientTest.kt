@@ -101,6 +101,20 @@ class ClientTest {
     }
 
     @Test
+    fun passesOnWhatReplacesALiveAnswer() {
+        answer(
+            "event: token\ndata: {\"content\":\"Let me\"}\n\nevent: replace\ndata: {\"content\":\"\"}\n\n" +
+                "event: token\ndata: {\"content\":\"Clean\"}\n\nevent: replace\ndata: {\"content\":\"All clean\"}\n\nevent: done\ndata: {}\n\n",
+            type = SSE,
+        )
+        val events = toskar().chatStream(ChatRequest(message = "Hi", live = true)).toList()
+        assertEquals(
+            listOf(ChatEvent.Token("Let me"), ChatEvent.Replace(""), ChatEvent.Token("Clean"), ChatEvent.Replace("All clean"), ChatEvent.Done(null)),
+            events,
+        )
+    }
+
+    @Test
     fun aCutOffStreamSaysSo() {
         answer("event: token\ndata: {\"content\":\"Hel\"}\n\n", type = SSE)
         val e = assertFailsWith<ToskarException> { toskar().chatStream(ChatRequest(message = "Hi")).toList() }

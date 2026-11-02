@@ -36,6 +36,18 @@ async function run([command, ...args]) {
     }
     return { content, tokens, done }
   }
+  if (command === 'live' && args.length === 2) {
+    let content = ''
+    let tokens = 0
+    let replaces = 0
+    let done = false
+    for await (const e of toskar.chatStream({ model_id: args[0], message: args[1], live: true })) {
+      if (e.type === 'token') (content += e.content), tokens++
+      if (e.type === 'replace') (content = e.content), replaces++
+      if (e.type === 'done') done = true
+    }
+    return { content, tokens, replaces, done }
+  }
   if (command === 'events' && args.length === 3) return events(toskar, ...args)
   if (command === 'upload' && args.length === 1) {
     const content_base64 = readFileSync(args[0]).toString('base64')
@@ -49,7 +61,7 @@ async function run([command, ...args]) {
     return { sha256: createHash('sha256').update(bytes).digest('hex'), size_bytes: bytes.length }
   }
   throw new Error(
-    'usage: conformance.mjs pair <address> <code> | call <device.json> | chat|stream <model> <message> | events <model> <message> <until> | upload <file> | download <id>',
+    'usage: conformance.mjs pair <address> <code> | call <device.json> | chat|stream|live <model> <message> | events <model> <message> <until> | upload <file> | download <id>',
   )
 }
 

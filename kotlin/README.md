@@ -61,6 +61,31 @@ try (Toskar toskar = new Toskar()) {
 
 Every call waits for its answer, so on Android, or anywhere a thread mustn't block, call it from a background thread or a coroutine on `Dispatchers.IO`.
 
+### Live answers
+
+A streamed answer normally comes whole, once it's ready. Ask for `live` to get it while the model writes it. Toskar can then change what it already sent, such as taking back a sentence before it uses a tool, so a replace event takes the place of everything so far. An empty one takes it all back.
+
+<!-- snippet: run -->
+```kotlin
+import ai.toskar.ChatEvent
+import ai.toskar.Toskar
+import ai.toskar.api.ChatRequest
+
+val toskar = Toskar()
+var answer = ""
+toskar.chatStream(ChatRequest(message = "Plan a three-day trip to Juneau", live = true)).use { events ->
+    for (event in events) {
+        when (event) {
+            is ChatEvent.Token -> answer += event.text
+            is ChatEvent.Replace -> answer = event.text
+            is ChatEvent.Done -> {}
+        }
+    }
+}
+println(answer)
+toskar.close()
+```
+
 ## Every route, typed
 
 `toskar.api` is generated from Toskar Core's API spec, so every operation is a method named after it, and every answer is a data class:

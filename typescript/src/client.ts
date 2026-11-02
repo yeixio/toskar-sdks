@@ -15,6 +15,8 @@ export type ChatRequest = Omit<NonNullable<paths['/api/v1/chat']['post']['reques
 /** One event of a streamed chat. A failure is thrown as a ToskarError instead. */
 export type ChatStreamEvent =
   | { type: 'token'; content: string }
+  /** With `live`: content takes the place of everything so far, empty to take it all back. */
+  | { type: 'replace'; content: string }
   | { type: 'done'; metrics?: Schemas['GenerationMetrics'] }
 
 export type ToskarOptions = {
@@ -91,6 +93,9 @@ export class Toskar {
       switch (event) {
         case 'token':
           yield { type: 'token', content: (JSON.parse(data) as Schemas['ChatToken']).content }
+          break
+        case 'replace':
+          yield { type: 'replace', content: (JSON.parse(data) as Schemas['ChatToken']).content }
           break
         case 'done':
           finished = true

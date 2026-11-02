@@ -87,6 +87,25 @@ func run(args []string) (any, error) {
 			}
 		}
 		return map[string]any{"content": content.String(), "tokens": tokens, "done": done}, nil
+	case len(args) == 3 && args[0] == "live":
+		content, tokens, replaces, done := "", 0, 0, false
+		live := true
+		for e, err := range c.ChatStream(ctx, api.ChatJSONRequestBody{ModelId: &args[1], Message: args[2], Live: &live}) {
+			if err != nil {
+				return nil, err
+			}
+			switch e.Type {
+			case "token":
+				tokens++
+				content += e.Content
+			case "replace":
+				replaces++
+				content = e.Content
+			case "done":
+				done = true
+			}
+		}
+		return map[string]any{"content": content, "tokens": tokens, "replaces": replaces, "done": done}, nil
 	case len(args) == 4 && args[0] == "events":
 		return events(ctx, c, args[1], args[2], args[3])
 	case len(args) == 2 && args[0] == "upload":
@@ -108,7 +127,7 @@ func run(args []string) (any, error) {
 		sum := sha256.Sum256(r.Body)
 		return map[string]any{"sha256": hex.EncodeToString(sum[:]), "size_bytes": len(r.Body)}, nil
 	}
-	return nil, errors.New("usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream <model> <message> | events <model> <message> <until> | upload <file> | download <id>")
+	return nil, errors.New("usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream|live <model> <message> | events <model> <message> <until> | upload <file> | download <id>")
 }
 
 // events listens to the events stream, asks once, and lists the events'

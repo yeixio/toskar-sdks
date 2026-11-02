@@ -23,7 +23,7 @@ OUT = ROOT.parent / "reference" / "python"
 # The hand-written API, in the order a reader meets it.
 SECTIONS = [
     ("Connecting", ["Toskar", "AsyncToskar"]),
-    ("Streamed answers", ["ChatStreamEvent", "Token", "Done"]),
+    ("Streamed answers", ["ChatStreamEvent", "Token", "Replace", "Done"]),
     ("Errors", ["ToskarError", "ErrorCodes"]),
     ("Pairing and reaching a computer from anywhere", [
         "pair", "apair", "Device", "Route", "TOSKAR_RELAY", "NotConfirmed", "PinMismatch", "Unreachable",

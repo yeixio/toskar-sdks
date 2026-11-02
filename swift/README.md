@@ -38,6 +38,26 @@ let answer = try await toskar.chat(ChatRequest(message: "Summarize this in one l
 print(answer.content)
 ```
 
+### Live answers
+
+A streamed answer normally comes whole, once it's ready. Ask for `live` to get it while the model writes it. Toskar can then change what it already sent, such as taking back a sentence before it uses a tool, so a replace event takes the place of everything so far. An empty one takes it all back.
+
+<!-- snippet: run -->
+```swift
+import Toskar
+
+let toskar = try Toskar()
+var answer = ""
+for try await event in toskar.chatStream(ChatRequest(message: "Plan a three-day trip to Juneau", live: true)) {
+    switch event {
+    case .token(let text): answer += text
+    case .replace(let text): answer = text
+    case .done: break
+    }
+}
+print(answer)
+```
+
 ## Every route, typed
 
 `toskar.api` is generated from Toskar Core's API spec by [Swift OpenAPI Generator](https://github.com/apple/swift-openapi-generator), so every operation is a method, and each answer is an enum of what it can be:

@@ -29,6 +29,23 @@ const answer = await toskar.chat({ message: 'Summarize this in one line: …' })
 console.log(answer.content)
 ```
 
+### Live answers
+
+A streamed answer normally comes whole, once it's ready. Ask for `live` to get it while the model writes it. Toskar can then change what it already sent, such as taking back a sentence before it uses a tool, so a replace event takes the place of everything so far. An empty one takes it all back.
+
+<!-- snippet: run -->
+```ts
+import { Toskar } from 'toskar'
+
+const toskar = new Toskar()
+let answer = ''
+for await (const event of toskar.chatStream({ message: 'Plan a three-day trip to Juneau', live: true })) {
+  if (event.type === 'token') answer += event.content
+  if (event.type === 'replace') answer = event.content
+}
+console.log(answer)
+```
+
 ## Every route, typed
 
 `toskar.api` reaches every route of the API, with request and answer types from Toskar Core's spec. `unwrap` returns the data, or throws the error:

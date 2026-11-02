@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use toskar::models::{ChatRequest, UploadArtifactRequest};
 use toskar::{ChatEvent, Client, Device, Error, Result};
 
-const USAGE: &str = "usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream <model> <message> | events <model> <message> <until> | upload <file> | download <id>";
+const USAGE: &str = "usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream|live <model> <message> | events <model> <message> <until> | upload <file> | download <id>";
 
 fn ask(model: &str, message: &str) -> ChatRequest {
     ChatRequest {
@@ -58,10 +58,30 @@ async fn run(args: &[String]) -> Result<Value> {
                         tokens += 1;
                         content += &text;
                     }
+                    ChatEvent::Replace(_) => {}
                     ChatEvent::Done(_) => done = true,
                 }
             }
             Ok(json!({ "content": content, "tokens": tokens, "done": done }))
+        }
+        ["live", model, message] => {
+            let (mut content, mut tokens, mut replaces, mut done) = (String::new(), 0, 0, false);
+            let request = ChatRequest { live: Some(true), ..ask(model, message) };
+            let mut events = toskar.chat_stream(&request).await?;
+            while let Some(event) = events.next().await {
+                match event? {
+                    ChatEvent::Token(text) => {
+                        tokens += 1;
+                        content += &text;
+                    }
+                    ChatEvent::Replace(text) => {
+                        replaces += 1;
+                        content = text;
+                    }
+                    ChatEvent::Done(_) => done = true,
+                }
+            }
+            Ok(json!({ "content": content, "tokens": tokens, "replaces": replaces, "done": done }))
         }
         ["events", model, message, until] => {
             // Listens to the events stream, asks once, and lists the events' types until one of type until.

@@ -70,6 +70,7 @@ The rest connect as `TOSKAR_URL` and `TOSKAR_API_KEY` say:
 
 - `chat <model> <message>` prints `{"content"}`, the whole answer.
 - `stream <model> <message>` prints `{"content", "tokens", "done"}`: the tokens joined, how many there were, and whether the stream ended with done.
+- `live <model> <message>` asks for a live answer and prints `{"content", "tokens", "replaces", "done"}`: the answer as it stands at the end, with each token added and each replace taking the place of everything so far, how many of each there were, and whether the stream ended with done.
 - `events <model> <message> <type>` listens to the events stream, asks, and prints `{"types"}`, every event's type up to the first of `type`.
 - `upload <file>` prints the file Core keeps: `{"id", "name", "size_bytes"}`.
 - `download <id>` prints `{"sha256", "size_bytes"}` of the file's content.

@@ -57,6 +57,21 @@ describe('Toskar', () => {
     expect(events).toEqual([{ type: 'token', content: 'Hel' }, { type: 'token', content: 'lo' }, { type: 'done' }])
   })
 
+  it('passes on what replaces a live answer', async () => {
+    const { fetch } = fake(() =>
+      stream('event: token\ndata: {"content":"Let me"}\n\nevent: replace\ndata: {"content":""}\n\n', 'event: token\ndata: {"content":"Clean"}\n\nevent: replace\ndata: {"content":"All clean"}\n\nevent: done\ndata: {}\n\n'),
+    )
+    const events = []
+    for await (const e of new Toskar({ fetch }).chatStream({ message: 'Hi', live: true })) events.push(e)
+    expect(events).toEqual([
+      { type: 'token', content: 'Let me' },
+      { type: 'replace', content: '' },
+      { type: 'token', content: 'Clean' },
+      { type: 'replace', content: 'All clean' },
+      { type: 'done' },
+    ])
+  })
+
   it('throws a streamed failure with its code', async () => {
     const { fetch } = fake(() =>
       stream(

@@ -229,6 +229,9 @@ public sealed class ToskarClient : IDisposable
                 case "token":
                     yield return new ChatEvent.Token(JsonSerializer.Deserialize<ChatToken>(e.Data, CoreJson.Options)!.Content);
                     break;
+                case "replace":
+                    yield return new ChatEvent.Replace(JsonSerializer.Deserialize<ChatToken>(e.Data, CoreJson.Options)!.Content);
+                    break;
                 case "done":
                     ChatDone? done = null;
                     try

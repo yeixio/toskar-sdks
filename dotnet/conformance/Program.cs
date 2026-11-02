@@ -9,7 +9,7 @@ using System.Text.Json.Nodes;
 using Toskar;
 using Toskar.Models;
 
-const string Usage = "usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream <model> <message> | events <model> <message> <until> | upload <file> | download <id>";
+const string Usage = "usage: toskar-conformance pair <address> <code> | call <device.json> | chat|stream|live <model> <message> | events <model> <message> <until> | upload <file> | download <id>";
 
 try
 {
@@ -58,6 +58,31 @@ static async Task<JsonNode> Run(string[] args)
     {
         case ["chat", var model, var message]:
             return new JsonObject { ["content"] = (await client.ChatAsync(new ChatRequest { Message = message, ModelId = model })).Content };
+        case ["live", var model, var message]:
+        {
+            var content = "";
+            var tokens = 0;
+            var replaces = 0;
+            var done = false;
+            await foreach (var e in client.ChatStreamAsync(new ChatRequest { Message = message, ModelId = model, Live = true }))
+            {
+                switch (e)
+                {
+                    case ChatEvent.Token t:
+                        tokens++;
+                        content += t.Text;
+                        break;
+                    case ChatEvent.Replace r:
+                        replaces++;
+                        content = r.Text;
+                        break;
+                    case ChatEvent.Done:
+                        done = true;
+                        break;
+                }
+            }
+            return new JsonObject { ["content"] = content, ["tokens"] = tokens, ["replaces"] = replaces, ["done"] = done };
+        }
         case ["stream", var model, var message]:
         {
             var content = new StringBuilder();

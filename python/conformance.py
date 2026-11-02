@@ -42,6 +42,16 @@ def run(args: list[str]) -> Any:
                 elif event.type == "done":
                     done = True
             return {"content": content, "tokens": tokens, "done": done}
+        if len(args) == 3 and args[0] == "live":
+            content, tokens, replaces, done = "", 0, 0, False
+            for event in toskar.chat_stream(args[2], model_id=args[1], live=True):
+                if event.type == "token":
+                    content, tokens = content + event.content, tokens + 1
+                elif event.type == "replace":
+                    content, replaces = event.content, replaces + 1
+                elif event.type == "done":
+                    done = True
+            return {"content": content, "tokens": tokens, "replaces": replaces, "done": done}
         if len(args) == 4 and args[0] == "events":
             return events(toskar, *args[1:])
         if len(args) == 2 and args[0] == "upload":
@@ -52,7 +62,7 @@ def run(args: list[str]) -> Any:
             data = toskar.api.get_artifact_content(args[1])
             return {"sha256": hashlib.sha256(data).hexdigest(), "size_bytes": len(data)}
     raise SystemExit(
-        "usage: conformance.py pair <address> <code> | call <device.json> | chat|stream <model> <message>"
+        "usage: conformance.py pair <address> <code> | call <device.json> | chat|stream|live <model> <message>"
         " | events <model> <message> <until> | upload <file> | download <id>"
     )
 

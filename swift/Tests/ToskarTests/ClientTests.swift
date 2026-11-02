@@ -79,6 +79,7 @@ let sse = "text/event-stream"
     for try await event in try toskar(core).chatStream(ChatRequest(message: "Hi")) {
         switch event {
         case .token(let t): text += t
+        case .replace(let t): text = t
         case .done(let m): metrics = m
         }
     }
@@ -93,6 +94,16 @@ let sse = "text/event-stream"
     await #expect {
         for try await _ in try toskar(core).chatStream(ChatRequest(message: "Hi")) {}
     } throws: { ($0 as? ToskarError)?.code == .noModelInstalled }
+}
+
+@Test func passesOnWhatReplacesALiveAnswer() async throws {
+    let body = "event: token\ndata: {\"content\":\"Let me\"}\n\nevent: replace\ndata: {\"content\":\"\"}\n\nevent: token\ndata: {\"content\":\"Clean\"}\n\nevent: replace\ndata: {\"content\":\"All clean\"}\n\nevent: done\ndata: {}\n\n"
+    let core = FakeCore([.init(contentType: sse, body: body)])
+    var events: [Toskar.ChatEvent] = []
+    for try await event in try toskar(core).chatStream(ChatRequest(message: "Hi", live: true)) {
+        events.append(event)
+    }
+    #expect(events == [.token("Let me"), .replace(""), .token("Clean"), .replace("All clean"), .done(nil)])
 }
 
 @Test func aCutOffStreamSaysSo() async throws {

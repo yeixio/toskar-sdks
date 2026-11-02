@@ -34,6 +34,14 @@ class Token:
 
 
 @dataclass(frozen=True)
+class Replace:
+    """With live: takes the place of everything so far, empty to take it all back."""
+
+    content: str
+    type: Literal["replace"] = "replace"
+
+
+@dataclass(frozen=True)
 class Done:
     """A streamed answer finished and was saved."""
 
@@ -41,7 +49,7 @@ class Done:
     type: Literal["done"] = "done"
 
 
-ChatStreamEvent = Union[Token, Done]
+ChatStreamEvent = Union[Token, Replace, Done]
 """One event of a streamed chat. A failure is raised as a ToskarError instead."""
 
 
@@ -79,6 +87,8 @@ def _chat_body(message: str, fields: dict[str, Any], stream: bool) -> dict[str, 
 def _stream_event(event: str, data: str, status: int) -> ChatStreamEvent | None:
     if event == "token":
         return Token(content=json.loads(data)["content"])
+    if event == "replace":
+        return Replace(content=json.loads(data)["content"])
     if event == "done":
         return Done(metrics=models.ChatDone.model_validate_json(data or "{}").metrics)
     if event == "error_code":

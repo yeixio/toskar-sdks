@@ -130,6 +130,22 @@ public class ClientTests
     }
 
     [Fact]
+    public async Task PassesOnWhatReplacesALiveAnswer()
+    {
+        var body = "event: token\ndata: {\"content\":\"Let me\"}\n\nevent: replace\ndata: {\"content\":\"\"}\n\n"
+            + "event: token\ndata: {\"content\":\"Clean\"}\n\nevent: replace\ndata: {\"content\":\"All clean\"}\n\nevent: done\ndata: {}\n\n";
+        var core = new FakeCore(new FakeCore.Answer(Body: body, Type: Sse));
+        var events = new List<ChatEvent>();
+        await foreach (var e in Toskar(core).ChatStreamAsync(new ChatRequest { Message = "Hi", Live = true }))
+        {
+            events.Add(e);
+        }
+        Assert.Equal(
+            new ChatEvent[] { new ChatEvent.Token("Let me"), new ChatEvent.Replace(""), new ChatEvent.Token("Clean"), new ChatEvent.Replace("All clean"), new ChatEvent.Done(null) },
+            events);
+    }
+
+    [Fact]
     public async Task ACutOffStreamSaysSo()
     {
         var core = new FakeCore(new FakeCore.Answer(Body: "event: token\ndata: {\"content\":\"Hel\"}\n\n", Type: Sse));
