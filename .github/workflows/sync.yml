@@ -69,7 +69,7 @@ jobs:
           (cd go && go generate ./...)
           (cd typescript && npm run reference)
           # Swift's generator runs in the swift image; this runner has no Swift.
-          docker run --rm -v "$PWD":/w -w /w swift:6.2 swift/scripts/generate.sh
+          docker run --rm -v "$PWD":/w -w /w -e SWIFT_SCRATCH=/tmp/swift-generator swift:6.2 swift/scripts/generate.sh
           python kotlin/scripts/generate.py && python kotlin/scripts/reference.py
           python dotnet/scripts/generate.py && python dotnet/scripts/reference.py
           python rust/scripts/generate.py && python rust/scripts/reference.py
