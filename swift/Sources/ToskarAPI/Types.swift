@@ -895,6 +895,20 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /api/v1/models/fit`.
     /// - Remark: Generated from `#/paths//api/v1/models/fit/get(modelsFit)`.
     func modelsFit(_ input: Operations.ModelsFit.Input) async throws -> Operations.ModelsFit.Output
+    /// Toskar's public quality results
+    ///
+    /// What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+    ///
+    /// - Remark: HTTP `GET /api/v1/models/results`.
+    /// - Remark: Generated from `#/paths//api/v1/models/results/get(qualityResults)`.
+    func qualityResults(_ input: Operations.QualityResults.Input) async throws -> Operations.QualityResults.Output
+    /// The model store's front page for this computer
+    ///
+    /// Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+    ///
+    /// - Remark: HTTP `GET /api/v1/models/store`.
+    /// - Remark: Generated from `#/paths//api/v1/models/store/get(modelStore)`.
+    func modelStore(_ input: Operations.ModelStore.Input) async throws -> Operations.ModelStore.Output
     /// Search Hugging Face for GGUF models
     ///
     /// - Remark: HTTP `GET /api/v1/models/browse`.
@@ -3302,6 +3316,24 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//api/v1/models/fit/get(modelsFit)`.
     public func modelsFit(headers: Operations.ModelsFit.Input.Headers = .init()) async throws -> Operations.ModelsFit.Output {
         try await modelsFit(Operations.ModelsFit.Input(headers: headers))
+    }
+    /// Toskar's public quality results
+    ///
+    /// What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+    ///
+    /// - Remark: HTTP `GET /api/v1/models/results`.
+    /// - Remark: Generated from `#/paths//api/v1/models/results/get(qualityResults)`.
+    public func qualityResults(headers: Operations.QualityResults.Input.Headers = .init()) async throws -> Operations.QualityResults.Output {
+        try await qualityResults(Operations.QualityResults.Input(headers: headers))
+    }
+    /// The model store's front page for this computer
+    ///
+    /// Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+    ///
+    /// - Remark: HTTP `GET /api/v1/models/store`.
+    /// - Remark: Generated from `#/paths//api/v1/models/store/get(modelStore)`.
+    public func modelStore(headers: Operations.ModelStore.Input.Headers = .init()) async throws -> Operations.ModelStore.Output {
+        try await modelStore(Operations.ModelStore.Input(headers: headers))
     }
     /// Search Hugging Face for GGUF models
     ///
@@ -13503,6 +13535,436 @@ public enum Components {
                 case memoryBytes = "memory_bytes"
                 case fits
                 case winners
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/QualityResults`.
+        public struct QualityResults: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/QualityResults/live`.
+            public var live: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/QualityResults/note`.
+            public var note: Swift.String?
+            /// How the results are measured
+            ///
+            /// - Remark: Generated from `#/components/schemas/QualityResults/method`.
+            public var method: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/QualityResults/suites`.
+            public struct SuitesPayload: Codable, Hashable, Sendable {
+                /// A container of undocumented properties.
+                public var additionalProperties: [String: Swift.String]
+                /// Creates a new `SuitesPayload`.
+                ///
+                /// - Parameters:
+                ///   - additionalProperties: A container of undocumented properties.
+                public init(additionalProperties: [String: Swift.String] = .init()) {
+                    self.additionalProperties = additionalProperties
+                }
+                public init(from decoder: any Decoder) throws {
+                    additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                }
+                public func encode(to encoder: any Encoder) throws {
+                    try encoder.encodeAdditionalProperties(additionalProperties)
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/QualityResults/suites`.
+            public var suites: Components.Schemas.QualityResults.SuitesPayload?
+            /// - Remark: Generated from `#/components/schemas/QualityResults/results`.
+            public var results: [Components.Schemas.QualityResult]
+            /// Creates a new `QualityResults`.
+            ///
+            /// - Parameters:
+            ///   - live:
+            ///   - note:
+            ///   - method: How the results are measured
+            ///   - suites:
+            ///   - results:
+            public init(
+                live: Swift.Bool,
+                note: Swift.String? = nil,
+                method: Swift.String? = nil,
+                suites: Components.Schemas.QualityResults.SuitesPayload? = nil,
+                results: [Components.Schemas.QualityResult]
+            ) {
+                self.live = live
+                self.note = note
+                self.method = method
+                self.suites = suites
+                self.results = results
+            }
+            public enum CodingKeys: String, CodingKey {
+                case live
+                case note
+                case method
+                case suites
+                case results
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/QualityResult`.
+        public struct QualityResult: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/QualityResult/model`.
+            public var model: Swift.String
+            /// - Remark: Generated from `#/components/schemas/QualityResult/name`.
+            public var name: Swift.String
+            /// - Remark: Generated from `#/components/schemas/QualityResult/date`.
+            public var date: Swift.String
+            /// - Remark: Generated from `#/components/schemas/QualityResult/hardware`.
+            public var hardware: Swift.String
+            /// 0 is before versions existed
+            ///
+            /// - Remark: Generated from `#/components/schemas/QualityResult/method_version`.
+            public var methodVersion: Swift.Int
+            /// Sent by someone outside the project
+            ///
+            /// - Remark: Generated from `#/components/schemas/QualityResult/submitted`.
+            public var submitted: Swift.Bool?
+            /// - Remark: Generated from `#/components/schemas/QualityResult/submitted_by`.
+            public var submittedBy: Swift.String?
+            /// Where the run can be read
+            ///
+            /// - Remark: Generated from `#/components/schemas/QualityResult/source`.
+            public var source: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/QualityResult/scores`.
+            public struct ScoresPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/QualityResult/scores/additionalProperties`.
+                public struct AdditionalPropertiesPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/scores/additionalProperties/passed`.
+                    public var passed: Swift.Int
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/scores/additionalProperties/of`.
+                    public var of: Swift.Int
+                    /// Creates a new `AdditionalPropertiesPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - passed:
+                    ///   - of:
+                    public init(
+                        passed: Swift.Int,
+                        of: Swift.Int
+                    ) {
+                        self.passed = passed
+                        self.of = of
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case passed
+                        case of
+                    }
+                }
+                /// A container of undocumented properties.
+                public var additionalProperties: [String: Components.Schemas.QualityResult.ScoresPayload.AdditionalPropertiesPayload]
+                /// Creates a new `ScoresPayload`.
+                ///
+                /// - Parameters:
+                ///   - additionalProperties: A container of undocumented properties.
+                public init(additionalProperties: [String: Components.Schemas.QualityResult.ScoresPayload.AdditionalPropertiesPayload] = .init()) {
+                    self.additionalProperties = additionalProperties
+                }
+                public init(from decoder: any Decoder) throws {
+                    additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                }
+                public func encode(to encoder: any Encoder) throws {
+                    try encoder.encodeAdditionalProperties(additionalProperties)
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/QualityResult/scores`.
+            public var scores: Components.Schemas.QualityResult.ScoresPayload
+            /// - Remark: Generated from `#/components/schemas/QualityResult/seconds_per_question`.
+            public var secondsPerQuestion: Swift.Double?
+            /// How the model ran on that computer. A row that says no has no scores (contract 1.82) Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/QualityResult/runs`.
+            public var runs: Swift.String?
+            /// Why it's short of full
+            ///
+            /// - Remark: Generated from `#/components/schemas/QualityResult/why`.
+            public var why: Swift.String?
+            /// How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+            ///
+            /// - Remark: Generated from `#/components/schemas/QualityResult/performance`.
+            public struct PerformancePayload: Codable, Hashable, Sendable {
+                /// The prompt it was measured with
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/prompt_tokens`.
+                public var promptTokens: Swift.Int
+                /// How fast it read the prompt
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/prompt_tokens_per_second`.
+                public var promptTokensPerSecond: Swift.Double
+                /// How fast it wrote the answer
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/tokens_per_second`.
+                public var tokensPerSecond: Swift.Double
+                /// From sending to the first token
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/first_token_ms`.
+                public var firstTokenMs: Swift.Double
+                /// The answer's tokens over the time from sending to the last one
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/effective_tokens_per_second`.
+                public var effectiveTokensPerSecond: Swift.Double
+                /// What it ran on, such as vulkan, metal, cuda, or cpu
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/backend`.
+                public var backend: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/gpu_layers`.
+                public var gpuLayers: Swift.Int
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/gpu_layers_total`.
+                public var gpuLayersTotal: Swift.Int
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/gpu_memory_bytes`.
+                public var gpuMemoryBytes: Swift.Int64?
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/context_window`.
+                public var contextWindow: Swift.Int?
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/quantization`.
+                public var quantization: Swift.String?
+                /// Creates a new `PerformancePayload`.
+                ///
+                /// - Parameters:
+                ///   - promptTokens: The prompt it was measured with
+                ///   - promptTokensPerSecond: How fast it read the prompt
+                ///   - tokensPerSecond: How fast it wrote the answer
+                ///   - firstTokenMs: From sending to the first token
+                ///   - effectiveTokensPerSecond: The answer's tokens over the time from sending to the last one
+                ///   - backend: What it ran on, such as vulkan, metal, cuda, or cpu
+                ///   - gpuLayers:
+                ///   - gpuLayersTotal:
+                ///   - gpuMemoryBytes:
+                ///   - contextWindow:
+                ///   - quantization:
+                public init(
+                    promptTokens: Swift.Int,
+                    promptTokensPerSecond: Swift.Double,
+                    tokensPerSecond: Swift.Double,
+                    firstTokenMs: Swift.Double,
+                    effectiveTokensPerSecond: Swift.Double,
+                    backend: Swift.String? = nil,
+                    gpuLayers: Swift.Int,
+                    gpuLayersTotal: Swift.Int,
+                    gpuMemoryBytes: Swift.Int64? = nil,
+                    contextWindow: Swift.Int? = nil,
+                    quantization: Swift.String? = nil
+                ) {
+                    self.promptTokens = promptTokens
+                    self.promptTokensPerSecond = promptTokensPerSecond
+                    self.tokensPerSecond = tokensPerSecond
+                    self.firstTokenMs = firstTokenMs
+                    self.effectiveTokensPerSecond = effectiveTokensPerSecond
+                    self.backend = backend
+                    self.gpuLayers = gpuLayers
+                    self.gpuLayersTotal = gpuLayersTotal
+                    self.gpuMemoryBytes = gpuMemoryBytes
+                    self.contextWindow = contextWindow
+                    self.quantization = quantization
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case promptTokens = "prompt_tokens"
+                    case promptTokensPerSecond = "prompt_tokens_per_second"
+                    case tokensPerSecond = "tokens_per_second"
+                    case firstTokenMs = "first_token_ms"
+                    case effectiveTokensPerSecond = "effective_tokens_per_second"
+                    case backend
+                    case gpuLayers = "gpu_layers"
+                    case gpuLayersTotal = "gpu_layers_total"
+                    case gpuMemoryBytes = "gpu_memory_bytes"
+                    case contextWindow = "context_window"
+                    case quantization
+                }
+            }
+            /// How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+            ///
+            /// - Remark: Generated from `#/components/schemas/QualityResult/performance`.
+            public var performance: Components.Schemas.QualityResult.PerformancePayload?
+            /// Creates a new `QualityResult`.
+            ///
+            /// - Parameters:
+            ///   - model:
+            ///   - name:
+            ///   - date:
+            ///   - hardware:
+            ///   - methodVersion: 0 is before versions existed
+            ///   - submitted: Sent by someone outside the project
+            ///   - submittedBy:
+            ///   - source: Where the run can be read
+            ///   - scores:
+            ///   - secondsPerQuestion:
+            ///   - runs: How the model ran on that computer. A row that says no has no scores (contract 1.82) Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+            ///   - why: Why it's short of full
+            ///   - performance: How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+            public init(
+                model: Swift.String,
+                name: Swift.String,
+                date: Swift.String,
+                hardware: Swift.String,
+                methodVersion: Swift.Int,
+                submitted: Swift.Bool? = nil,
+                submittedBy: Swift.String? = nil,
+                source: Swift.String? = nil,
+                scores: Components.Schemas.QualityResult.ScoresPayload,
+                secondsPerQuestion: Swift.Double? = nil,
+                runs: Swift.String? = nil,
+                why: Swift.String? = nil,
+                performance: Components.Schemas.QualityResult.PerformancePayload? = nil
+            ) {
+                self.model = model
+                self.name = name
+                self.date = date
+                self.hardware = hardware
+                self.methodVersion = methodVersion
+                self.submitted = submitted
+                self.submittedBy = submittedBy
+                self.source = source
+                self.scores = scores
+                self.secondsPerQuestion = secondsPerQuestion
+                self.runs = runs
+                self.why = why
+                self.performance = performance
+            }
+            public enum CodingKeys: String, CodingKey {
+                case model
+                case name
+                case date
+                case hardware
+                case methodVersion = "method_version"
+                case submitted
+                case submittedBy = "submitted_by"
+                case source
+                case scores
+                case secondsPerQuestion = "seconds_per_question"
+                case runs
+                case why
+                case performance
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ModelStore`.
+        public struct ModelStore: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ModelStore/shelves`.
+            public var shelves: [Components.Schemas.StoreShelf]
+            /// Hugging Face answered. When false, only models Toskar already knows are there.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ModelStore/live`.
+            public var live: Swift.Bool
+            /// Creates a new `ModelStore`.
+            ///
+            /// - Parameters:
+            ///   - shelves:
+            ///   - live: Hugging Face answered. When false, only models Toskar already knows are there.
+            public init(
+                shelves: [Components.Schemas.StoreShelf],
+                live: Swift.Bool
+            ) {
+                self.shelves = shelves
+                self.live = live
+            }
+            public enum CodingKeys: String, CodingKey {
+                case shelves
+                case live
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/StoreShelf`.
+        public struct StoreShelf: Codable, Hashable, Sendable {
+            /// What it's for. Known values: `picks`, `popular`, `top_rated`, `new`, `everyday`, `code`, `sees`, `small`, `tested`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/StoreShelf/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/StoreShelf/models`.
+            public var models: [Components.Schemas.StoreModel]
+            /// Creates a new `StoreShelf`.
+            ///
+            /// - Parameters:
+            ///   - id: What it's for. Known values: `picks`, `popular`, `top_rated`, `new`, `everyday`, `code`, `sees`, `small`, `tested`; others may be added.
+            ///   - models:
+            public init(
+                id: Swift.String,
+                models: [Components.Schemas.StoreModel]
+            ) {
+                self.id = id
+                self.models = models
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case models
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/StoreModel`.
+        public struct StoreModel: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/StoreModel/value1`.
+            public var value1: Components.Schemas.BrowseModel
+            /// - Remark: Generated from `#/components/schemas/StoreModel/value2`.
+            public struct Value2Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/StoreModel/value2/likes`.
+                public var likes: Swift.Int?
+                /// - Remark: Generated from `#/components/schemas/StoreModel/value2/created_at`.
+                public var createdAt: Foundation.Date?
+                /// The license Hugging Face lists, such as apache-2.0
+                ///
+                /// - Remark: Generated from `#/components/schemas/StoreModel/value2/license`.
+                public var license: Swift.String?
+                /// The model's page
+                ///
+                /// - Remark: Generated from `#/components/schemas/StoreModel/value2/details_url`.
+                public var detailsUrl: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/StoreModel/value2/fit`.
+                public var fit: Components.Schemas.ModelFit?
+                /// Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else.
+                ///
+                /// - Remark: Generated from `#/components/schemas/StoreModel/value2/catalog_id`.
+                public var catalogId: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/StoreModel/value2/installed`.
+                public var installed: Swift.Bool?
+                /// Creates a new `Value2Payload`.
+                ///
+                /// - Parameters:
+                ///   - likes:
+                ///   - createdAt:
+                ///   - license: The license Hugging Face lists, such as apache-2.0
+                ///   - detailsUrl: The model's page
+                ///   - fit:
+                ///   - catalogId: Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else.
+                ///   - installed:
+                public init(
+                    likes: Swift.Int? = nil,
+                    createdAt: Foundation.Date? = nil,
+                    license: Swift.String? = nil,
+                    detailsUrl: Swift.String? = nil,
+                    fit: Components.Schemas.ModelFit? = nil,
+                    catalogId: Swift.String? = nil,
+                    installed: Swift.Bool? = nil
+                ) {
+                    self.likes = likes
+                    self.createdAt = createdAt
+                    self.license = license
+                    self.detailsUrl = detailsUrl
+                    self.fit = fit
+                    self.catalogId = catalogId
+                    self.installed = installed
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case likes
+                    case createdAt = "created_at"
+                    case license
+                    case detailsUrl = "details_url"
+                    case fit
+                    case catalogId = "catalog_id"
+                    case installed
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/StoreModel/value2`.
+            public var value2: Components.Schemas.StoreModel.Value2Payload
+            /// Creates a new `StoreModel`.
+            ///
+            /// - Parameters:
+            ///   - value1:
+            ///   - value2:
+            public init(
+                value1: Components.Schemas.BrowseModel,
+                value2: Components.Schemas.StoreModel.Value2Payload
+            ) {
+                self.value1 = value1
+                self.value2 = value2
+            }
+            public init(from decoder: any Decoder) throws {
+                self.value1 = try .init(from: decoder)
+                self.value2 = try .init(from: decoder)
+            }
+            public func encode(to encoder: any Encoder) throws {
+                try self.value1.encode(to: encoder)
+                try self.value2.encode(to: encoder)
             }
         }
         /// A Hugging Face browse-all hit (GGUF filtered).
@@ -41225,6 +41687,230 @@ public enum Operations {
             }
         }
     }
+    /// Toskar's public quality results
+    ///
+    /// What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+    ///
+    /// - Remark: HTTP `GET /api/v1/models/results`.
+    /// - Remark: Generated from `#/paths//api/v1/models/results/get(qualityResults)`.
+    public enum QualityResults {
+        public static let id: Swift.String = "qualityResults"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/models/results/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.QualityResults.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.QualityResults.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.QualityResults.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.QualityResults.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/results/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/models/results/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.QualityResults)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.QualityResults {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.QualityResults.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.QualityResults.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The results
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/results/get(qualityResults)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.QualityResults.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.QualityResults.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// The model store's front page for this computer
+    ///
+    /// Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+    ///
+    /// - Remark: HTTP `GET /api/v1/models/store`.
+    /// - Remark: Generated from `#/paths//api/v1/models/store/get(modelStore)`.
+    public enum ModelStore {
+        public static let id: Swift.String = "modelStore"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/models/store/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ModelStore.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ModelStore.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ModelStore.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.ModelStore.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/store/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/models/store/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ModelStore)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ModelStore {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ModelStore.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ModelStore.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The store
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/store/get(modelStore)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ModelStore.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ModelStore.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// Search Hugging Face for GGUF models
     ///
     /// - Remark: HTTP `GET /api/v1/models/browse`.
@@ -47059,12 +47745,21 @@ public enum Operations {
         public struct Input: Sendable, Hashable {
             /// - Remark: Generated from `#/paths/api/v1/chat/POST/header`.
             public struct Headers: Sendable, Hashable {
+                /// The folder a client on this computer is working in, path-escaped: where a turn's commands run and what its file tools reach. Ignored from another computer.
+                ///
+                /// - Remark: Generated from `#/paths/api/v1/chat/POST/header/X-Toskar-Project`.
+                public var xToskarProject: Swift.String?
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.Chat.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
+                ///   - xToskarProject: The folder a client on this computer is working in, path-escaped: where a turn's commands run and what its file tools reach. Ignored from another computer.
                 ///   - accept:
-                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.Chat.AcceptableContentType>] = .defaultValues()) {
+                public init(
+                    xToskarProject: Swift.String? = nil,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.Chat.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xToskarProject = xToskarProject
                     self.accept = accept
                 }
             }

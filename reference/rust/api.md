@@ -174,14 +174,16 @@ The Owner's role is fixed and they can't be disabled; nobody changes their own r
 pub async fn change_person(&self, id: &str, body: &models::ChangePersonRequest) -> Result<models::Person>
 ```
 
-### chat(body)
+### chat(body, x_toskar_project)
 
 Send a chat message
 
 Without stream, returns {content, metrics}. With stream, a server-sent event stream of token events, then done; an error event ends it early.
 
+- `x_toskar_project`: The folder a client on this computer is working in, path-escaped: where a turn's commands run and what its file tools reach. Ignored from another computer.
+
 ```rust
-pub async fn chat(&self, body: &models::ChatRequest) -> Result<models::ChatAnswer>
+pub async fn chat(&self, body: &models::ChatRequest, x_toskar_project: Option<&str>) -> Result<models::ChatAnswer>
 ```
 
 ### check_connector(id)
@@ -1681,6 +1683,16 @@ The address and command other apps use to reach Toskar's MCP server
 pub async fn mcp_share(&self) -> Result<()>
 ```
 
+### model_store()
+
+The model store's front page for this computer
+
+Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+
+```rust
+pub async fn model_store(&self) -> Result<models::ModelStore>
+```
+
 ### models_fit()
 
 How well each catalog model fits this computer
@@ -1902,6 +1914,16 @@ Update settings (same as PATCH)
 
 ```rust
 pub async fn put_settings(&self, body: &Map<String, Value>) -> Result<Map<String, Value>>
+```
+
+### quality_results()
+
+Toskar's public quality results
+
+What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+
+```rust
+pub async fn quality_results(&self) -> Result<models::QualityResults>
 ```
 
 ### read_aloud(body)

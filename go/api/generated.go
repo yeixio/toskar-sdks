@@ -2075,6 +2075,13 @@ type ModelSpeculation struct {
 	Speculation string `json:"speculation"`
 }
 
+// ModelStore defines model for ModelStore.
+type ModelStore struct {
+	// Live Hugging Face answered. When false, only models Toskar already knows are there.
+	Live    bool         `json:"live"`
+	Shelves []StoreShelf `json:"shelves"`
+}
+
 // ModelUse One model's part in a run.
 type ModelUse struct {
 	// Backend `backend` and Device ran the model, such as vulkan and "AMD Radeon RX 7900 XTX" (#317); empty when not known, such as on a paired computer.
@@ -2806,6 +2813,72 @@ type PushStatus struct {
 	Relay *string `json:"relay,omitempty"`
 }
 
+// QualityResult defines model for QualityResult.
+type QualityResult struct {
+	Date     string `json:"date"`
+	Hardware string `json:"hardware"`
+
+	// MethodVersion 0 is before versions existed
+	MethodVersion int    `json:"method_version"`
+	Model         string `json:"model"`
+	Name          string `json:"name"`
+
+	// Performance How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+	Performance *struct {
+		// Backend What it ran on, such as vulkan, metal, cuda, or cpu
+		Backend       *string `json:"backend,omitempty"`
+		ContextWindow *int    `json:"context_window,omitempty"`
+
+		// EffectiveTokensPerSecond The answer's tokens over the time from sending to the last one
+		EffectiveTokensPerSecond float32 `json:"effective_tokens_per_second"`
+
+		// FirstTokenMs From sending to the first token
+		FirstTokenMs   float32 `json:"first_token_ms"`
+		GpuLayers      int     `json:"gpu_layers"`
+		GpuLayersTotal int     `json:"gpu_layers_total"`
+		GpuMemoryBytes *int64  `json:"gpu_memory_bytes,omitempty"`
+
+		// PromptTokens The prompt it was measured with
+		PromptTokens int `json:"prompt_tokens"`
+
+		// PromptTokensPerSecond How fast it read the prompt
+		PromptTokensPerSecond float32 `json:"prompt_tokens_per_second"`
+		Quantization          *string `json:"quantization,omitempty"`
+
+		// TokensPerSecond How fast it wrote the answer
+		TokensPerSecond float32 `json:"tokens_per_second"`
+	} `json:"performance,omitempty"`
+
+	// Runs How the model ran on that computer. A row that says no has no scores (contract 1.82) Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+	Runs   *string `json:"runs,omitempty"`
+	Scores map[string]struct {
+		Of     int `json:"of"`
+		Passed int `json:"passed"`
+	} `json:"scores"`
+	SecondsPerQuestion *float32 `json:"seconds_per_question,omitempty"`
+
+	// Source Where the run can be read
+	Source *string `json:"source,omitempty"`
+
+	// Submitted Sent by someone outside the project
+	Submitted   *bool   `json:"submitted,omitempty"`
+	SubmittedBy *string `json:"submitted_by,omitempty"`
+
+	// Why Why it's short of full
+	Why *string `json:"why,omitempty"`
+}
+
+// QualityResults defines model for QualityResults.
+type QualityResults struct {
+	Live bool `json:"live"`
+
+	// Method How the results are measured
+	Method  *string            `json:"method,omitempty"`
+	Note    *string            `json:"note,omitempty"`
+	Results []QualityResult    `json:"results"`
+	Suites  *map[string]string `json:"suites,omitempty"`
+}
+
 // QuietHours Hold notices from channels outside the app overnight (§24–25). Held notices are in the notification center at once and go out when quiet hours end.
 type QuietHours struct {
 	// Allow errors lets errors through; nothing holds everything Known values: `errors`, `nothing`; others may be added.
@@ -3173,6 +3246,42 @@ type SpokenText struct {
 // Status The answer of a route that only says it's done.
 type Status struct {
 	Status string `json:"status"`
+}
+
+// StoreModel defines model for StoreModel.
+type StoreModel struct {
+	// CatalogId Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else.
+	CatalogId *string    `json:"catalog_id,omitempty"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+
+	// DetailsUrl The model's page
+	DetailsUrl  *string `json:"details_url,omitempty"`
+	DisplayName string  `json:"display_name"`
+	Downloads   *int    `json:"downloads,omitempty"`
+	Filename    string  `json:"filename"`
+
+	// Fit Describes how well a model fits a node's hardware.
+	Fit       *ModelFit `json:"fit,omitempty"`
+	Id        string    `json:"id"`
+	Installed *bool     `json:"installed,omitempty"`
+
+	// License The license Hugging Face lists, such as apache-2.0
+	License    *string   `json:"license,omitempty"`
+	Likes      *int      `json:"likes,omitempty"`
+	Parameters *string   `json:"parameters,omitempty"`
+	RepoId     string    `json:"repo_id"`
+	SizeBytes  *int64    `json:"size_bytes,omitempty"`
+	SourceUrl  string    `json:"source_url"`
+	Summary    *string   `json:"summary,omitempty"`
+	Tags       *[]string `json:"tags,omitempty"`
+	Variant    *string   `json:"variant,omitempty"`
+}
+
+// StoreShelf defines model for StoreShelf.
+type StoreShelf struct {
+	// Id What it's for. Known values: `picks`, `popular`, `top_rated`, `new`, `everyday`, `code`, `sees`, `small`, `tested`; others may be added.
+	Id     string       `json:"id"`
+	Models []StoreModel `json:"models"`
 }
 
 // TLSInfo How the API speaks HTTPS.
@@ -3757,6 +3866,12 @@ type ChatJSONBody struct {
 
 	// TimeZone The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
 	TimeZone *string `json:"time_zone,omitempty"`
+}
+
+// ChatParams defines parameters for Chat.
+type ChatParams struct {
+	// XToskarProject The folder a client on this computer is working in, path-escaped: where a turn's commands run and what its file tools reach. Ignored from another computer.
+	XToskarProject *string `json:"X-Toskar-Project,omitempty"`
 }
 
 // StopChatJSONBody defines parameters for StopChat.
@@ -5879,7 +5994,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /api/v1/chat (the `Chat` operationId).
-	ChatWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ChatWithBody(ctx context.Context, params *ChatParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Chat Send a chat message
 	//
@@ -5888,7 +6003,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /api/v1/chat (the `Chat` operationId).
-	Chat(ctx context.Context, body ChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	Chat(ctx context.Context, params *ChatParams, body ChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StopChatWithBody Stop a conversation's running turn
 	//
@@ -6752,10 +6867,24 @@ type ClientInterface interface {
 	// Corresponds with GET /api/v1/models/recommend (the `RecommendModels` operationId).
 	RecommendModels(ctx context.Context, params *RecommendModelsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// QualityResults Toskar's public quality results
+	//
+	// What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+	//
+	// Corresponds with GET /api/v1/models/results (the `QualityResults` operationId).
+	QualityResults(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListRunningModels Loaded model instances on this and paired computers
 	//
 	// Corresponds with GET /api/v1/models/running (the `ListRunningModels` operationId).
 	ListRunningModels(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ModelStore The model store's front page for this computer
+	//
+	// Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+	//
+	// Corresponds with GET /api/v1/models/store (the `ModelStore` operationId).
+	ModelStore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// WarmModelWithBody Start loading the model a chat would use
 	//
@@ -8936,8 +9065,8 @@ func (c *Client) GetModelPlacement(ctx context.Context, id string, reqEditors ..
 // Takes any type of body and a specified content type.
 //
 // Corresponds with POST /api/v1/chat (the `Chat` operationId).
-func (c *Client) ChatWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewChatRequestWithBody(c.Server, contentType, body)
+func (c *Client) ChatWithBody(ctx context.Context, params *ChatParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewChatRequestWithBody(c.Server, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -8955,8 +9084,8 @@ func (c *Client) ChatWithBody(ctx context.Context, contentType string, body io.R
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /api/v1/chat (the `Chat` operationId).
-func (c *Client) Chat(ctx context.Context, body ChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewChatRequest(c.Server, body)
+func (c *Client) Chat(ctx context.Context, params *ChatParams, body ChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewChatRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11129,11 +11258,45 @@ func (c *Client) RecommendModels(ctx context.Context, params *RecommendModelsPar
 	return c.Client.Do(req)
 }
 
+// QualityResults Toskar's public quality results
+//
+// What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+//
+// Corresponds with GET /api/v1/models/results (the `QualityResults` operationId).
+func (c *Client) QualityResults(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQualityResultsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListRunningModels Loaded model instances on this and paired computers
 //
 // Corresponds with GET /api/v1/models/running (the `ListRunningModels` operationId).
 func (c *Client) ListRunningModels(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListRunningModelsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ModelStore The model store's front page for this computer
+//
+// Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+//
+// Corresponds with GET /api/v1/models/store (the `ModelStore` operationId).
+func (c *Client) ModelStore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModelStoreRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -16171,18 +16334,18 @@ func NewGetModelPlacementRequest(server string, id string) (*http.Request, error
 }
 
 // NewChatRequest calls the generic Chat builder with application/json body
-func NewChatRequest(server string, body ChatJSONRequestBody) (*http.Request, error) {
+func NewChatRequest(server string, params *ChatParams, body ChatJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewChatRequestWithBody(server, "application/json", bodyReader)
+	return NewChatRequestWithBody(server, params, "application/json", bodyReader)
 }
 
 // NewChatRequestWithBody constructs an http.Request for the Chat method, with any body, and a specified content type
-func NewChatRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewChatRequestWithBody(server string, params *ChatParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -16206,6 +16369,21 @@ func NewChatRequestWithBody(server string, contentType string, body io.Reader) (
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.XToskarProject != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Toskar-Project", *params.XToskarProject, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-Toskar-Project", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -19855,6 +20033,33 @@ func NewRecommendModelsRequest(server string, params *RecommendModelsParams) (*h
 	return req, nil
 }
 
+// NewQualityResultsRequest constructs an http.Request for the QualityResults method
+func NewQualityResultsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/models/results")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListRunningModelsRequest constructs an http.Request for the ListRunningModels method
 func NewListRunningModelsRequest(server string) (*http.Request, error) {
 	var err error
@@ -19865,6 +20070,33 @@ func NewListRunningModelsRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/models/running")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewModelStoreRequest constructs an http.Request for the ModelStore method
+func NewModelStoreRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/models/store")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -26806,7 +27038,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /api/v1/chat (the `Chat` operationId).
-	ChatWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChatResponse, error)
+	ChatWithBodyWithResponse(ctx context.Context, params *ChatParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChatResponse, error)
 
 	// ChatWithResponse Send a chat message
 	//
@@ -26815,7 +27047,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /api/v1/chat (the `Chat` operationId).
-	ChatWithResponse(ctx context.Context, body ChatJSONRequestBody, reqEditors ...RequestEditorFn) (*ChatResponse, error)
+	ChatWithResponse(ctx context.Context, params *ChatParams, body ChatJSONRequestBody, reqEditors ...RequestEditorFn) (*ChatResponse, error)
 
 	// StopChatWithBodyWithResponse Stop a conversation's running turn
 	//
@@ -27807,12 +28039,30 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /api/v1/models/recommend (the `RecommendModels` operationId).
 	RecommendModelsWithResponse(ctx context.Context, params *RecommendModelsParams, reqEditors ...RequestEditorFn) (*RecommendModelsResponse, error)
 
+	// QualityResultsWithResponse Toskar's public quality results
+	//
+	// What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/models/results (the `QualityResults` operationId).
+	QualityResultsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*QualityResultsResponse, error)
+
 	// ListRunningModelsWithResponse Loaded model instances on this and paired computers
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /api/v1/models/running (the `ListRunningModels` operationId).
 	ListRunningModelsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListRunningModelsResponse, error)
+
+	// ModelStoreWithResponse The model store's front page for this computer
+	//
+	// Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/models/store (the `ModelStore` operationId).
+	ModelStoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ModelStoreResponse, error)
 
 	// WarmModelWithBodyWithResponse Start loading the model a chat would use
 	//
@@ -35012,6 +35262,47 @@ func (r RecommendModelsResponse) ContentType() string {
 	return ""
 }
 
+type QualityResultsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QualityResults
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QualityResultsResponse) GetJSON200() *QualityResults {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r QualityResultsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QualityResultsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QualityResultsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QualityResultsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListRunningModelsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -35047,6 +35338,47 @@ func (r ListRunningModelsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListRunningModelsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ModelStoreResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ModelStore
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ModelStoreResponse) GetJSON200() *ModelStore {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ModelStoreResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ModelStoreResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ModelStoreResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ModelStoreResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -42736,8 +43068,8 @@ func (c *ClientWithResponses) GetModelPlacementWithResponse(ctx context.Context,
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /api/v1/chat (the `Chat` operationId).
-func (c *ClientWithResponses) ChatWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChatResponse, error) {
-	rsp, err := c.ChatWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) ChatWithBodyWithResponse(ctx context.Context, params *ChatParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChatResponse, error) {
+	rsp, err := c.ChatWithBody(ctx, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -42751,8 +43083,8 @@ func (c *ClientWithResponses) ChatWithBodyWithResponse(ctx context.Context, cont
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /api/v1/chat (the `Chat` operationId).
-func (c *ClientWithResponses) ChatWithResponse(ctx context.Context, body ChatJSONRequestBody, reqEditors ...RequestEditorFn) (*ChatResponse, error) {
-	rsp, err := c.Chat(ctx, body, reqEditors...)
+func (c *ClientWithResponses) ChatWithResponse(ctx context.Context, params *ChatParams, body ChatJSONRequestBody, reqEditors ...RequestEditorFn) (*ChatResponse, error) {
+	rsp, err := c.Chat(ctx, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -44529,6 +44861,21 @@ func (c *ClientWithResponses) RecommendModelsWithResponse(ctx context.Context, p
 	return ParseRecommendModelsResponse(rsp)
 }
 
+// QualityResultsWithResponse Toskar's public quality results
+//
+// What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/models/results (the `QualityResults` operationId).
+func (c *ClientWithResponses) QualityResultsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*QualityResultsResponse, error) {
+	rsp, err := c.QualityResults(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQualityResultsResponse(rsp)
+}
+
 // ListRunningModelsWithResponse Loaded model instances on this and paired computers
 //
 // Returns a wrapper object for the known response body format(s).
@@ -44540,6 +44887,21 @@ func (c *ClientWithResponses) ListRunningModelsWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseListRunningModelsResponse(rsp)
+}
+
+// ModelStoreWithResponse The model store's front page for this computer
+//
+// Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/models/store (the `ModelStore` operationId).
+func (c *ClientWithResponses) ModelStoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ModelStoreResponse, error) {
+	rsp, err := c.ModelStore(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModelStoreResponse(rsp)
 }
 
 // WarmModelWithBodyWithResponse Start loading the model a chat would use
@@ -51172,6 +51534,32 @@ func ParseRecommendModelsResponse(rsp *http.Response) (*RecommendModelsResponse,
 	return response, nil
 }
 
+// ParseQualityResultsResponse parses an HTTP response from a QualityResultsWithResponse call
+func ParseQualityResultsResponse(rsp *http.Response) (*QualityResultsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QualityResultsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QualityResults
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListRunningModelsResponse parses an HTTP response from a ListRunningModelsWithResponse call
 func ParseListRunningModelsResponse(rsp *http.Response) (*ListRunningModelsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -51188,6 +51576,32 @@ func ParseListRunningModelsResponse(rsp *http.Response) (*ListRunningModelsRespo
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest []RunningModelView
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseModelStoreResponse parses an HTTP response from a ModelStoreWithResponse call
+func ParseModelStoreResponse(rsp *http.Response) (*ModelStoreResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ModelStoreResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ModelStore
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

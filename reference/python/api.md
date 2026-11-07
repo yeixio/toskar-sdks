@@ -135,7 +135,9 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `install_model_from_url(*, body: models.InstallFromURLRequest \| dict[str, Any], wait: str \| None = None)` |  | Download a GGUF from a URL |
 | `preview_model_from_url(*, body: models.InstallFromURLRequest \| dict[str, Any])` |  | What a download from a URL would bring, without downloading it |
 | `recommend_models(*, purpose: str \| None = None)` |  | Recommended models for this computer |
+| `quality_results()` | `GET /api/v1/models/results` | Toskar's public quality results |
 | `list_running_models()` | `GET /api/v1/models/running` | Loaded model instances on this and paired computers |
+| `model_store()` | `GET /api/v1/models/store` | The model store's front page for this computer |
 | `warm_model(*, body: dict[str, Any] \| None = None)` | `POST /api/v1/models/warm` | Start loading the model a chat would use |
 | `update_added_model(id: str, *, body: dict[str, Any])` | `PATCH /api/v1/models/{id}` | Rename or retag an added model |
 | `delete_model(id: str, *, body: dict[str, Any] \| None = None, node_id: str \| None = None)` | `DELETE /api/v1/models/{id}` | Delete a model file |
