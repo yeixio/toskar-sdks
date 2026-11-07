@@ -180,14 +180,18 @@ The Owner's role is fixed and they can't be disabled; nobody changes their own r
 fun changePerson(id: String, body: ChangePersonRequest): Person
 ```
 
-### chat(body)
+### chat(body, xToskarProject)
 
 Send a chat message
 
 Without stream, returns {content, metrics}. With stream, a server-sent event stream of token events, then done; an error event ends it early.
 
+Parameters:
+
+- `xToskarProject`: The folder a client on this computer is working in, path-escaped: where a turn's commands run and what its file tools reach. Ignored from another computer.
+
 ```kotlin
-fun chat(body: ChatRequest): ChatAnswer
+fun chat(body: ChatRequest, xToskarProject: String? = null): ChatAnswer
 ```
 
 ### checkConnector(id)
@@ -1735,6 +1739,16 @@ How well each catalog model fits this computer
 fun modelsFit(): List<ModelsFit>
 ```
 
+### modelStore()
+
+The model store's front page for this computer
+
+Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+
+```kotlin
+fun modelStore(): ModelStore
+```
+
 ### oidcCallback(state, code)
 
 Where the provider sends people back (#206)
@@ -1950,6 +1964,16 @@ Update settings (same as PATCH)
 
 ```kotlin
 fun putSettings(body: JsonObject): JsonObject
+```
+
+### qualityResults()
+
+Toskar's public quality results
+
+What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+
+```kotlin
+fun qualityResults(): QualityResults
 ```
 
 ### readAloud(body)

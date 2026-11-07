@@ -3311,6 +3311,177 @@ public sealed record ModelsFit
     public required List<CategoryWinner> Winners { get; init; }
 }
 
+public sealed record QualityResults
+{
+    [JsonPropertyName("live")]
+    public required bool Live { get; init; }
+
+    [JsonPropertyName("note")]
+    public string? Note { get; init; }
+
+    /// <summary>
+    /// How the results are measured
+    /// </summary>
+    [JsonPropertyName("method")]
+    public string? Method { get; init; }
+
+    [JsonPropertyName("suites")]
+    public Dictionary<string, string>? Suites { get; init; }
+
+    [JsonPropertyName("results")]
+    public required List<QualityResult> Results { get; init; }
+}
+
+public sealed record QualityResult
+{
+    [JsonPropertyName("model")]
+    public required string Model { get; init; }
+
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("date")]
+    public required string Date { get; init; }
+
+    [JsonPropertyName("hardware")]
+    public required string Hardware { get; init; }
+
+    /// <summary>
+    /// 0 is before versions existed
+    /// </summary>
+    [JsonPropertyName("method_version")]
+    public required long MethodVersion { get; init; }
+
+    /// <summary>
+    /// Sent by someone outside the project
+    /// </summary>
+    [JsonPropertyName("submitted")]
+    public bool? Submitted { get; init; }
+
+    [JsonPropertyName("submitted_by")]
+    public string? SubmittedBy { get; init; }
+
+    /// <summary>
+    /// Where the run can be read
+    /// </summary>
+    [JsonPropertyName("source")]
+    public string? Source { get; init; }
+
+    [JsonPropertyName("scores")]
+    public required Dictionary<string, QualityResultScoresValue> Scores { get; init; }
+
+    [JsonPropertyName("seconds_per_question")]
+    public double? SecondsPerQuestion { get; init; }
+
+    /// <summary>
+    /// How the model ran on that computer. A row that says no has no scores (contract 1.82) Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+    /// </summary>
+    [JsonPropertyName("runs")]
+    public string? Runs { get; init; }
+
+    /// <summary>
+    /// Why it's short of full
+    /// </summary>
+    [JsonPropertyName("why")]
+    public string? Why { get; init; }
+
+    /// <summary>
+    /// How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+    /// </summary>
+    [JsonPropertyName("performance")]
+    public QualityResultPerformance? Performance { get; init; }
+}
+
+public sealed record ModelStore
+{
+    [JsonPropertyName("shelves")]
+    public required List<StoreShelf> Shelves { get; init; }
+
+    /// <summary>
+    /// Hugging Face answered. When false, only models Toskar already knows are there.
+    /// </summary>
+    [JsonPropertyName("live")]
+    public required bool Live { get; init; }
+}
+
+public sealed record StoreShelf
+{
+    /// <summary>
+    /// What it's for. Known values: `picks`, `popular`, `top_rated`, `new`, `everyday`, `code`, `sees`, `small`, `tested`; others may be added.
+    /// </summary>
+    [JsonPropertyName("id")]
+    public required string Id { get; init; }
+
+    [JsonPropertyName("models")]
+    public required List<StoreModel> Models { get; init; }
+}
+
+public sealed record StoreModel
+{
+    [JsonPropertyName("id")]
+    public required string Id { get; init; }
+
+    [JsonPropertyName("display_name")]
+    public required string DisplayName { get; init; }
+
+    [JsonPropertyName("summary")]
+    public string? Summary { get; init; }
+
+    [JsonPropertyName("repo_id")]
+    public required string RepoId { get; init; }
+
+    [JsonPropertyName("filename")]
+    public required string Filename { get; init; }
+
+    [JsonPropertyName("source_url")]
+    public required string SourceUrl { get; init; }
+
+    [JsonPropertyName("size_bytes")]
+    public long? SizeBytes { get; init; }
+
+    [JsonPropertyName("parameters")]
+    public string? Parameters { get; init; }
+
+    [JsonPropertyName("variant")]
+    public string? Variant { get; init; }
+
+    [JsonPropertyName("downloads")]
+    public long? Downloads { get; init; }
+
+    [JsonPropertyName("tags")]
+    public List<string>? Tags { get; init; }
+
+    [JsonPropertyName("likes")]
+    public long? Likes { get; init; }
+
+    [JsonPropertyName("created_at")]
+    public DateTimeOffset? CreatedAt { get; init; }
+
+    /// <summary>
+    /// The license Hugging Face lists, such as apache-2.0
+    /// </summary>
+    [JsonPropertyName("license")]
+    public string? License { get; init; }
+
+    /// <summary>
+    /// The model's page
+    /// </summary>
+    [JsonPropertyName("details_url")]
+    public string? DetailsUrl { get; init; }
+
+    [JsonPropertyName("fit")]
+    public ModelFit? Fit { get; init; }
+
+    /// <summary>
+    /// Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else.
+    /// </summary>
+    [JsonPropertyName("catalog_id")]
+    public string? CatalogId { get; init; }
+
+    [JsonPropertyName("installed")]
+    public bool? Installed { get; init; }
+}
+
 /// <summary>
 /// A Hugging Face browse-all hit (GGUF filtered).
 /// </summary>
@@ -7629,6 +7800,72 @@ public sealed record RecommendationRoles
 
     [JsonPropertyName("required")]
     public required bool Required { get; init; }
+}
+
+public sealed record QualityResultScoresValue
+{
+    [JsonPropertyName("passed")]
+    public required long Passed { get; init; }
+
+    [JsonPropertyName("of")]
+    public required long Of { get; init; }
+}
+
+/// <summary>
+/// How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+/// </summary>
+public sealed record QualityResultPerformance
+{
+    /// <summary>
+    /// The prompt it was measured with
+    /// </summary>
+    [JsonPropertyName("prompt_tokens")]
+    public required long PromptTokens { get; init; }
+
+    /// <summary>
+    /// How fast it read the prompt
+    /// </summary>
+    [JsonPropertyName("prompt_tokens_per_second")]
+    public required double PromptTokensPerSecond { get; init; }
+
+    /// <summary>
+    /// How fast it wrote the answer
+    /// </summary>
+    [JsonPropertyName("tokens_per_second")]
+    public required double TokensPerSecond { get; init; }
+
+    /// <summary>
+    /// From sending to the first token
+    /// </summary>
+    [JsonPropertyName("first_token_ms")]
+    public required double FirstTokenMs { get; init; }
+
+    /// <summary>
+    /// The answer's tokens over the time from sending to the last one
+    /// </summary>
+    [JsonPropertyName("effective_tokens_per_second")]
+    public required double EffectiveTokensPerSecond { get; init; }
+
+    /// <summary>
+    /// What it ran on, such as vulkan, metal, cuda, or cpu
+    /// </summary>
+    [JsonPropertyName("backend")]
+    public string? Backend { get; init; }
+
+    [JsonPropertyName("gpu_layers")]
+    public required long GpuLayers { get; init; }
+
+    [JsonPropertyName("gpu_layers_total")]
+    public required long GpuLayersTotal { get; init; }
+
+    [JsonPropertyName("gpu_memory_bytes")]
+    public long? GpuMemoryBytes { get; init; }
+
+    [JsonPropertyName("context_window")]
+    public long? ContextWindow { get; init; }
+
+    [JsonPropertyName("quantization")]
+    public string? Quantization { get; init; }
 }
 
 /// <summary>

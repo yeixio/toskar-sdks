@@ -4,7 +4,7 @@
 package ai.toskar
 
 /** The client contract this SDK was built for. */
-public const val CONTRACT_VERSION: String = "1.77"
+public const val CONTRACT_VERSION: String = "1.82"
 
 /**
  * The codes Toskar Core answers errors with, for [ToskarException.code]. A

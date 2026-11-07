@@ -1126,10 +1126,28 @@ class Api:
             read="json",
         )
 
+    def quality_results(self) -> models.QualityResults:
+        """Toskar's public quality results
+
+        What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+        """
+        return self._client._request(
+            "GET", f"/api/v1/models/results", query={}, body=None, answer=models.QualityResults, read="json"
+        )
+
     def list_running_models(self) -> list[models.RunningModelView]:
         """Loaded model instances on this and paired computers"""
         return self._client._request(
             "GET", f"/api/v1/models/running", query={}, body=None, answer=list[models.RunningModelView], read="json"
+        )
+
+    def model_store(self) -> models.ModelStore:
+        """The model store's front page for this computer
+
+        Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+        """
+        return self._client._request(
+            "GET", f"/api/v1/models/store", query={}, body=None, answer=models.ModelStore, read="json"
         )
 
     def warm_model(self, *, body: dict[str, Any] | None = None) -> models.ModelWarmResponse:
@@ -3757,10 +3775,28 @@ class AsyncApi:
             read="json",
         )
 
+    async def quality_results(self) -> models.QualityResults:
+        """Toskar's public quality results
+
+        What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/models/results", query={}, body=None, answer=models.QualityResults, read="json"
+        )
+
     async def list_running_models(self) -> list[models.RunningModelView]:
         """Loaded model instances on this and paired computers"""
         return await self._client._request(
             "GET", f"/api/v1/models/running", query={}, body=None, answer=list[models.RunningModelView], read="json"
+        )
+
+    async def model_store(self) -> models.ModelStore:
+        """The model store's front page for this computer
+
+        Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/models/store", query={}, body=None, answer=models.ModelStore, read="json"
         )
 
     async def warm_model(self, *, body: dict[str, Any] | None = None) -> models.ModelWarmResponse:
