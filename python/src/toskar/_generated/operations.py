@@ -356,7 +356,9 @@ class Api:
             title
             profile_id
             model_id
-            memory_off: Turn memory off for this chat"""
+            memory_off: Turn memory off for this chat
+            project: The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85).
+        """
         return self._client._request(
             "PATCH", f"/api/v1/conversations/{id}", query={}, body=body, answer=models.Conversation, read="json"
         )
@@ -447,6 +449,12 @@ class Api:
             body=body,
             answer=models.ConversationSummary,
             read="json",
+        )
+
+    def get_chat_turn(self, id: str) -> models.ChatTurn:
+        """What the chat's running turn has done so far"""
+        return self._client._request(
+            "GET", f"/api/v1/conversations/{id}/turn", query={}, body=None, answer=models.ChatTurn, read="json"
         )
 
     def list_devices(self, *, kind: str | None = None) -> None:
@@ -1126,10 +1134,28 @@ class Api:
             read="json",
         )
 
+    def quality_results(self) -> models.QualityResults:
+        """Toskar's public quality results
+
+        What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+        """
+        return self._client._request(
+            "GET", f"/api/v1/models/results", query={}, body=None, answer=models.QualityResults, read="json"
+        )
+
     def list_running_models(self) -> list[models.RunningModelView]:
         """Loaded model instances on this and paired computers"""
         return self._client._request(
             "GET", f"/api/v1/models/running", query={}, body=None, answer=list[models.RunningModelView], read="json"
+        )
+
+    def model_store(self) -> models.ModelStore:
+        """The model store's front page for this computer
+
+        Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+        """
+        return self._client._request(
+            "GET", f"/api/v1/models/store", query={}, body=None, answer=models.ModelStore, read="json"
         )
 
     def warm_model(self, *, body: dict[str, Any] | None = None) -> models.ModelWarmResponse:
@@ -2969,7 +2995,9 @@ class AsyncApi:
             title
             profile_id
             model_id
-            memory_off: Turn memory off for this chat"""
+            memory_off: Turn memory off for this chat
+            project: The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85).
+        """
         return await self._client._request(
             "PATCH", f"/api/v1/conversations/{id}", query={}, body=body, answer=models.Conversation, read="json"
         )
@@ -3060,6 +3088,12 @@ class AsyncApi:
             body=body,
             answer=models.ConversationSummary,
             read="json",
+        )
+
+    async def get_chat_turn(self, id: str) -> models.ChatTurn:
+        """What the chat's running turn has done so far"""
+        return await self._client._request(
+            "GET", f"/api/v1/conversations/{id}/turn", query={}, body=None, answer=models.ChatTurn, read="json"
         )
 
     async def list_devices(self, *, kind: str | None = None) -> None:
@@ -3757,10 +3791,28 @@ class AsyncApi:
             read="json",
         )
 
+    async def quality_results(self) -> models.QualityResults:
+        """Toskar's public quality results
+
+        What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/models/results", query={}, body=None, answer=models.QualityResults, read="json"
+        )
+
     async def list_running_models(self) -> list[models.RunningModelView]:
         """Loaded model instances on this and paired computers"""
         return await self._client._request(
             "GET", f"/api/v1/models/running", query={}, body=None, answer=list[models.RunningModelView], read="json"
+        )
+
+    async def model_store(self) -> models.ModelStore:
+        """The model store's front page for this computer
+
+        Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/models/store", query={}, body=None, answer=models.ModelStore, read="json"
         )
 
     async def warm_model(self, *, body: dict[str, Any] | None = None) -> models.ModelWarmResponse:

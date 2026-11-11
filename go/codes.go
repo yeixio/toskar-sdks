@@ -3,7 +3,7 @@
 package toskar
 
 // ContractVersion is the client contract this SDK was built for.
-const ContractVersion = "1.77"
+const ContractVersion = "1.86"
 
 // The codes Toskar Core answers errors with, as APIError.Code. A newer
 // Core may answer with one this list doesn't have yet.
@@ -274,6 +274,8 @@ const (
 	ErrorCodeNotificationNotFound = "NOTIFICATION_NOT_FOUND"
 	// ErrorCodeNotADevice: Only a connected device can disconnect itself.
 	ErrorCodeNotADevice = "NOT_A_DEVICE"
+	// ErrorCodeNotAFolder: There's no folder at that path on this computer. Use its full path.
+	ErrorCodeNotAFolder = "NOT_A_FOLDER"
 	// ErrorCodeNotFound: {{detail}}
 	ErrorCodeNotFound = "NOT_FOUND"
 	// ErrorCodeNotImplemented: {{detail}}
@@ -368,6 +370,8 @@ const (
 	ErrorCodeProfilesListFailed = "PROFILES_LIST_FAILED"
 	// ErrorCodeProfileCreateFailed: {{detail}}
 	ErrorCodeProfileCreateFailed = "PROFILE_CREATE_FAILED"
+	// ErrorCodeProfileNameTaken: A profile is already called {{name}}. Choose another name.
+	ErrorCodeProfileNameTaken = "PROFILE_NAME_TAKEN"
 	// ErrorCodeProfileNotFound: There's no such profile.
 	ErrorCodeProfileNotFound = "PROFILE_NOT_FOUND"
 	// ErrorCodeProfilePinned: This key answers only with its own profile. Leave out the profile and model, or name that profile.

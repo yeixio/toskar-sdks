@@ -653,6 +653,10 @@ class Conversation(BaseModel):
     """
     `memory_off` keeps persistent memory out of this conversation.
     """
+    project: str | None = None
+    """
+    The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done
+    """
     compact_off: bool
     """
     `compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342).
@@ -675,6 +679,41 @@ class InstallFromURLRequest(BaseModel):
     variant: str | None = None
     tags: list[str] | None = None
     node_id: str | None = None
+
+
+class ChatTurnStep(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    tool_id: str
+    summary: str | None = None
+    status: str
+    """
+    Known values: `running`, `completed`, `failed`; others may be added.
+    """
+
+
+class ChatTurn(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    running: bool
+    started_at: AwareDatetime | None = None
+    steps: list[ChatTurnStep] | None = None
+    output: str | None = None
+    """
+    The end of what the running command has written, which can hold terminal control codes.
+    """
+    text: str | None = None
+    """
+    The answer written so far.
+    """
+    waiting: list[dict[str, Any]] | None = None
+    """
+    Each tool.requested still waiting for an answer.
+    """
 
 
 class MessageVersions(BaseModel):
@@ -2759,6 +2798,93 @@ class RecommendationRole(BaseModel):
     model_id: str
     node_id: str | None = None
     required: bool
+
+
+class QualityResultScores(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    passed: int
+    of: int
+
+
+class QualityResultPerformance(BaseModel):
+    """
+    How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    prompt_tokens: int
+    """
+    The prompt it was measured with
+    """
+    prompt_tokens_per_second: float
+    """
+    How fast it read the prompt
+    """
+    tokens_per_second: float
+    """
+    How fast it wrote the answer
+    """
+    first_token_ms: float
+    """
+    From sending to the first token
+    """
+    effective_tokens_per_second: float
+    """
+    The answer's tokens over the time from sending to the last one
+    """
+    backend: str | None = None
+    """
+    What it ran on, such as vulkan, metal, cuda, or cpu
+    """
+    gpu_layers: int
+    gpu_layers_total: int
+    gpu_memory_bytes: int | None = None
+    context_window: int | None = None
+    quantization: str | None = None
+
+
+class QualityResult(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    model: str
+    name: str
+    date: str
+    hardware: str
+    method_version: int
+    """
+    0 is before versions existed
+    """
+    submitted: bool | None = None
+    """
+    Sent by someone outside the project
+    """
+    submitted_by: str | None = None
+    source: str | None = None
+    """
+    Where the run can be read
+    """
+    scores: dict[str, QualityResultScores]
+    seconds_per_question: float | None = None
+    runs: str | None = None
+    """
+    How the model ran on that computer. A row that says no has no scores (contract 1.82) Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+    """
+    why: str | None = None
+    """
+    Why it's short of full
+    """
+    performance: QualityResultPerformance | None = None
+    """
+    How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+    """
 
 
 class BrowseModel(BaseModel):
@@ -5960,6 +6086,44 @@ class ModelsFit(BaseModel):
     winners: list[CategoryWinner]
 
 
+class QualityResults(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    live: bool
+    note: str | None = None
+    method: str | None = None
+    """
+    How the results are measured
+    """
+    suites: dict[str, str] | None = None
+    results: list[QualityResult]
+
+
+class StoreModel(BrowseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    likes: int | None = None
+    created_at: AwareDatetime | None = None
+    license: str | None = None
+    """
+    The license Hugging Face lists, such as apache-2.0
+    """
+    details_url: str | None = None
+    """
+    The model's page
+    """
+    fit: ModelFit | None = None
+    catalog_id: str | None = None
+    """
+    Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else.
+    """
+    installed: bool | None = None
+
+
 class URLPreview(BaseModel):
     """
     What a download from a link would bring, shown before it starts (#611): the file and its size, the free space where models are kept, and a copy of the same file another app already has, which can be used where it is instead of downloaded again.
@@ -6163,4 +6327,28 @@ class Message(BaseModel):
     versions: MessageVersions | None = None
     """
     The versions of this point in the chat, when a retry or an edit made more than one.
+    """
+
+
+class StoreShelf(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    id: str
+    """
+    What it's for. Known values: `picks`, `popular`, `top_rated`, `new`, `everyday`, `code`, `sees`, `small`, `tested`; others may be added.
+    """
+    models: list[StoreModel]
+
+
+class ModelStore(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    shelves: list[StoreShelf]
+    live: bool
+    """
+    Hugging Face answered. When false, only models Toskar already knows are there.
     """

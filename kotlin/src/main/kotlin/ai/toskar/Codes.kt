@@ -4,7 +4,7 @@
 package ai.toskar
 
 /** The client contract this SDK was built for. */
-public const val CONTRACT_VERSION: String = "1.77"
+public const val CONTRACT_VERSION: String = "1.86"
 
 /**
  * The codes Toskar Core answers errors with, for [ToskarException.code]. A
@@ -410,6 +410,9 @@ public object ErrorCodes {
     /** Only a connected device can disconnect itself. */
     public const val NOT_A_DEVICE: String = "NOT_A_DEVICE"
 
+    /** There's no folder at that path on this computer. Use its full path. */
+    public const val NOT_A_FOLDER: String = "NOT_A_FOLDER"
+
     /** {{detail}} */
     public const val NOT_FOUND: String = "NOT_FOUND"
 
@@ -550,6 +553,9 @@ public object ErrorCodes {
 
     /** {{detail}} */
     public const val PROFILE_CREATE_FAILED: String = "PROFILE_CREATE_FAILED"
+
+    /** A profile is already called {{name}}. Choose another name. */
+    public const val PROFILE_NAME_TAKEN: String = "PROFILE_NAME_TAKEN"
 
     /** There's no such profile. */
     public const val PROFILE_NOT_FOUND: String = "PROFILE_NOT_FOUND"

@@ -462,6 +462,9 @@ pub struct Conversation {
     pub model_id: Option<String>,
     /// `memory_off` keeps persistent memory out of this conversation.
     pub memory_off: bool,
+    /// The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
     /// `compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342).
     pub compact_off: bool,
     #[serde(with = "time::serde::rfc3339")]
@@ -478,6 +481,7 @@ impl Default for Conversation {
             profile_id: Default::default(),
             model_id: Default::default(),
             memory_off: Default::default(),
+            project: Default::default(),
             compact_off: Default::default(),
             created_at: OffsetDateTime::UNIX_EPOCH,
             updated_at: OffsetDateTime::UNIX_EPOCH,
@@ -510,6 +514,24 @@ pub struct InstallFromURLRequest {
     pub tags: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub node_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ChatTurn {
+    pub running: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "time::serde::rfc3339::option")]
+    pub started_at: Option<OffsetDateTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub steps: Option<Vec<ChatTurnSteps>>,
+    /// The end of what the running command has written, which can hold terminal control codes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<String>,
+    /// The answer written so far.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    /// Each tool.requested still waiting for an answer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub waiting: Option<Vec<Map<String, Value>>>,
 }
 
 /// A chat message.
@@ -2191,6 +2213,105 @@ pub struct ModelsFit {
     pub winners: Vec<CategoryWinner>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct QualityResults {
+    pub live: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    /// How the results are measured
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub method: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub suites: Option<BTreeMap<String, String>>,
+    #[serde(default)]
+    pub results: Vec<QualityResult>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct QualityResult {
+    pub model: String,
+    pub name: String,
+    pub date: String,
+    pub hardware: String,
+    /// 0 is before versions existed
+    pub method_version: i64,
+    /// Sent by someone outside the project
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submitted: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submitted_by: Option<String>,
+    /// Where the run can be read
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(default)]
+    pub scores: BTreeMap<String, QualityResultScoresValue>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seconds_per_question: Option<f64>,
+    /// How the model ran on that computer. A row that says no has no scores (contract 1.82) Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runs: Option<String>,
+    /// Why it's short of full
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub why: Option<String>,
+    /// How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub performance: Option<QualityResultPerformance>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ModelStore {
+    #[serde(default)]
+    pub shelves: Vec<StoreShelf>,
+    /// Hugging Face answered. When false, only models Toskar already knows are there.
+    pub live: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct StoreShelf {
+    /// What it's for. Known values: `picks`, `popular`, `top_rated`, `new`, `everyday`, `code`, `sees`, `small`, `tested`; others may be added.
+    pub id: String,
+    #[serde(default)]
+    pub models: Vec<StoreModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct StoreModel {
+    pub id: String,
+    pub display_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    pub repo_id: String,
+    pub filename: String,
+    pub source_url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_bytes: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variant: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub downloads: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub likes: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "time::serde::rfc3339::option")]
+    pub created_at: Option<OffsetDateTime>,
+    /// The license Hugging Face lists, such as apache-2.0
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    /// The model's page
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fit: Option<ModelFit>,
+    /// Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub catalog_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installed: Option<bool>,
+}
+
 /// A Hugging Face browse-all hit (GGUF filtered).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BrowseModel {
@@ -3821,6 +3942,9 @@ pub struct UpdateConversationRequest {
     /// Turn memory off for this chat
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory_off: Option<bool>,
+    /// The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4597,6 +4721,15 @@ pub struct ModelLanguages {
     pub sources: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ChatTurnSteps {
+    pub tool_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    /// Known values: `running`, `completed`, `failed`; others may be added.
+    pub status: String,
+}
+
 /// The versions of this point in the chat, when a retry or an edit made more than one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct MessageVersions {
@@ -4995,6 +5128,38 @@ pub struct RecommendationRoles {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub node_id: Option<String>,
     pub required: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct QualityResultScoresValue {
+    pub passed: i64,
+    pub of: i64,
+}
+
+/// How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct QualityResultPerformance {
+    /// The prompt it was measured with
+    pub prompt_tokens: i64,
+    /// How fast it read the prompt
+    pub prompt_tokens_per_second: f64,
+    /// How fast it wrote the answer
+    pub tokens_per_second: f64,
+    /// From sending to the first token
+    pub first_token_ms: f64,
+    /// The answer's tokens over the time from sending to the last one
+    pub effective_tokens_per_second: f64,
+    /// What it ran on, such as vulkan, metal, cuda, or cpu
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backend: Option<String>,
+    pub gpu_layers: i64,
+    pub gpu_layers_total: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gpu_memory_bytes: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quantization: Option<String>,
 }
 
 /// Whether a computer can run a model.

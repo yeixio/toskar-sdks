@@ -56,6 +56,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `show_message_version(id: str, mid: str)` |  | Show a version of its point in the chat, with what followed it (#447) |
 | `get_conversation_summary(id: str)` |  | A chat's auto-compact summary (#342) |
 | `edit_conversation_summary(id: str, *, body: dict[str, Any])` |  | Correct a chat's summary (#342) |
+| `get_chat_turn(id: str)` | `GET /api/v1/conversations/{id}/turn` | What the chat's running turn has done so far |
 | `list_devices(*, kind: str \| None = None)` | `GET /api/v1/devices` | The connected services' devices, by kind (#586) |
 | `pair_device(*, body: dict[str, Any])` | `POST /api/v1/devices/pair` | A phone exchanges the code for its own key (no key needed; local network only) |
 | `get_device_pairing()` | `GET /api/v1/devices/pairing` | Whether a phone has connected with the code shown |
@@ -135,7 +136,9 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `install_model_from_url(*, body: models.InstallFromURLRequest \| dict[str, Any], wait: str \| None = None)` |  | Download a GGUF from a URL |
 | `preview_model_from_url(*, body: models.InstallFromURLRequest \| dict[str, Any])` |  | What a download from a URL would bring, without downloading it |
 | `recommend_models(*, purpose: str \| None = None)` |  | Recommended models for this computer |
+| `quality_results()` | `GET /api/v1/models/results` | Toskar's public quality results |
 | `list_running_models()` | `GET /api/v1/models/running` | Loaded model instances on this and paired computers |
+| `model_store()` | `GET /api/v1/models/store` | The model store's front page for this computer |
 | `warm_model(*, body: dict[str, Any] \| None = None)` | `POST /api/v1/models/warm` | Start loading the model a chat would use |
 | `update_added_model(id: str, *, body: dict[str, Any])` | `PATCH /api/v1/models/{id}` | Rename or retag an added model |
 | `delete_model(id: str, *, body: dict[str, Any] \| None = None, node_id: str \| None = None)` | `DELETE /api/v1/models/{id}` | Delete a model file |

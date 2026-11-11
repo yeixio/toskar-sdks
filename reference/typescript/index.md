@@ -470,7 +470,7 @@ Milliseconds to wait for an answer to start. Default 60000; 0 waits as long as i
 ### CONTRACT\_VERSION
 
 ```ts
-const CONTRACT_VERSION: "1.77" = '1.77';
+const CONTRACT_VERSION: "1.86" = '1.86';
 ```
 
 The client contract this SDK was built for.
@@ -1552,6 +1552,14 @@ readonly NOT_A_DEVICE: "NOT_A_DEVICE" = 'NOT_A_DEVICE';
 
 Only a connected device can disconnect itself.
 
+##### NOT\_A\_FOLDER
+
+```ts
+readonly NOT_A_FOLDER: "NOT_A_FOLDER" = 'NOT_A_FOLDER';
+```
+
+There's no folder at that path on this computer. Use its full path.
+
 ##### NOT\_FOUND
 
 ```ts
@@ -1919,6 +1927,14 @@ readonly PROFILE_CREATE_FAILED: "PROFILE_CREATE_FAILED" = 'PROFILE_CREATE_FAILED
 ```
 
 {{detail}}
+
+##### PROFILE\_NAME\_TAKEN
+
+```ts
+readonly PROFILE_NAME_TAKEN: "PROFILE_NAME_TAKEN" = 'PROFILE_NAME_TAKEN';
+```
+
+A profile is already called {{name}}. Choose another name.
 
 ##### PROFILE\_NOT\_FOUND
 

@@ -332,6 +332,8 @@ public data class Conversation @JvmOverloads constructor(
     @SerialName("updated_at") public val updatedAt: Instant,
     @SerialName("profile_id") public val profileId: String? = null,
     @SerialName("model_id") public val modelId: String? = null,
+    /** The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done */
+    @SerialName("project") public val project: String? = null,
 )
 
 /** Wraps ErrorBody for JSON responses. */
@@ -351,6 +353,19 @@ public data class InstallFromURLRequest @JvmOverloads constructor(
     @SerialName("variant") public val variant: String? = null,
     @SerialName("tags") public val tags: List<String>? = null,
     @SerialName("node_id") public val nodeId: String? = null,
+)
+
+@Serializable
+public data class ChatTurn @JvmOverloads constructor(
+    @SerialName("running") public val running: Boolean,
+    @SerialName("started_at") public val startedAt: Instant? = null,
+    @SerialName("steps") public val steps: List<ChatTurnSteps>? = null,
+    /** The end of what the running command has written, which can hold terminal control codes. */
+    @SerialName("output") public val output: String? = null,
+    /** The answer written so far. */
+    @SerialName("text") public val text: String? = null,
+    /** Each tool.requested still waiting for an answer. */
+    @SerialName("waiting") public val waiting: List<JsonObject>? = null,
 )
 
 /** A chat message. */
@@ -1383,6 +1398,78 @@ public data class ModelsFit @JvmOverloads constructor(
     @SerialName("winners") public val winners: List<CategoryWinner>,
     @SerialName("node_id") public val nodeId: String? = null,
     @SerialName("node_name") public val nodeName: String? = null,
+)
+
+@Serializable
+public data class QualityResults @JvmOverloads constructor(
+    @SerialName("live") public val live: Boolean,
+    @SerialName("results") public val results: List<QualityResult>,
+    @SerialName("note") public val note: String? = null,
+    /** How the results are measured */
+    @SerialName("method") public val method: String? = null,
+    @SerialName("suites") public val suites: Map<String, String>? = null,
+)
+
+@Serializable
+public data class QualityResult @JvmOverloads constructor(
+    @SerialName("model") public val model: String,
+    @SerialName("name") public val name: String,
+    @SerialName("date") public val date: String,
+    @SerialName("hardware") public val hardware: String,
+    /** 0 is before versions existed */
+    @SerialName("method_version") public val methodVersion: Long,
+    @SerialName("scores") public val scores: Map<String, QualityResultScoresValue>,
+    /** Sent by someone outside the project */
+    @SerialName("submitted") public val submitted: Boolean? = null,
+    @SerialName("submitted_by") public val submittedBy: String? = null,
+    /** Where the run can be read */
+    @SerialName("source") public val source: String? = null,
+    @SerialName("seconds_per_question") public val secondsPerQuestion: Double? = null,
+    /** How the model ran on that computer. A row that says no has no scores (contract 1.82) Known values: `full`, `partial`, `cpu`, `no`; others may be added. */
+    @SerialName("runs") public val runs: String? = null,
+    /** Why it's short of full */
+    @SerialName("why") public val why: String? = null,
+    /** How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81) */
+    @SerialName("performance") public val performance: QualityResultPerformance? = null,
+)
+
+@Serializable
+public data class ModelStore @JvmOverloads constructor(
+    @SerialName("shelves") public val shelves: List<StoreShelf>,
+    /** Hugging Face answered. When false, only models Toskar already knows are there. */
+    @SerialName("live") public val live: Boolean,
+)
+
+@Serializable
+public data class StoreShelf @JvmOverloads constructor(
+    /** What it's for. Known values: `picks`, `popular`, `top_rated`, `new`, `everyday`, `code`, `sees`, `small`, `tested`; others may be added. */
+    @SerialName("id") public val id: String,
+    @SerialName("models") public val models: List<StoreModel>,
+)
+
+@Serializable
+public data class StoreModel @JvmOverloads constructor(
+    @SerialName("id") public val id: String,
+    @SerialName("display_name") public val displayName: String,
+    @SerialName("repo_id") public val repoId: String,
+    @SerialName("filename") public val filename: String,
+    @SerialName("source_url") public val sourceUrl: String,
+    @SerialName("summary") public val summary: String? = null,
+    @SerialName("size_bytes") public val sizeBytes: Long? = null,
+    @SerialName("parameters") public val parameters: String? = null,
+    @SerialName("variant") public val variant: String? = null,
+    @SerialName("downloads") public val downloads: Long? = null,
+    @SerialName("tags") public val tags: List<String>? = null,
+    @SerialName("likes") public val likes: Long? = null,
+    @SerialName("created_at") public val createdAt: Instant? = null,
+    /** The license Hugging Face lists, such as apache-2.0 */
+    @SerialName("license") public val license: String? = null,
+    /** The model's page */
+    @SerialName("details_url") public val detailsUrl: String? = null,
+    @SerialName("fit") public val fit: ModelFit? = null,
+    /** Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else. */
+    @SerialName("catalog_id") public val catalogId: String? = null,
+    @SerialName("installed") public val installed: Boolean? = null,
 )
 
 /** A Hugging Face browse-all hit (GGUF filtered). */
@@ -2484,6 +2571,8 @@ public data class UpdateConversationRequest @JvmOverloads constructor(
     @SerialName("model_id") public val modelId: String? = null,
     /** Turn memory off for this chat */
     @SerialName("memory_off") public val memoryOff: Boolean? = null,
+    /** The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85). */
+    @SerialName("project") public val project: String? = null,
 )
 
 @Serializable
@@ -3095,6 +3184,14 @@ public data class ModelLanguages @JvmOverloads constructor(
     @SerialName("sources") public val sources: List<String>,
 )
 
+@Serializable
+public data class ChatTurnSteps @JvmOverloads constructor(
+    @SerialName("tool_id") public val toolId: String,
+    /** Known values: `running`, `completed`, `failed`; others may be added. */
+    @SerialName("status") public val status: String,
+    @SerialName("summary") public val summary: String? = null,
+)
+
 /** The versions of this point in the chat, when a retry or an edit made more than one. */
 @Serializable
 public data class MessageVersions @JvmOverloads constructor(
@@ -3414,6 +3511,34 @@ public data class RecommendationRoles @JvmOverloads constructor(
     @SerialName("model_id") public val modelId: String,
     @SerialName("required") public val required: Boolean,
     @SerialName("node_id") public val nodeId: String? = null,
+)
+
+@Serializable
+public data class QualityResultScoresValue @JvmOverloads constructor(
+    @SerialName("passed") public val passed: Long,
+    @SerialName("of") public val of: Long,
+)
+
+/** How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81) */
+@Serializable
+public data class QualityResultPerformance @JvmOverloads constructor(
+    /** The prompt it was measured with */
+    @SerialName("prompt_tokens") public val promptTokens: Long,
+    /** How fast it read the prompt */
+    @SerialName("prompt_tokens_per_second") public val promptTokensPerSecond: Double,
+    /** How fast it wrote the answer */
+    @SerialName("tokens_per_second") public val tokensPerSecond: Double,
+    /** From sending to the first token */
+    @SerialName("first_token_ms") public val firstTokenMs: Double,
+    /** The answer's tokens over the time from sending to the last one */
+    @SerialName("effective_tokens_per_second") public val effectiveTokensPerSecond: Double,
+    @SerialName("gpu_layers") public val gpuLayers: Long,
+    @SerialName("gpu_layers_total") public val gpuLayersTotal: Long,
+    /** What it ran on, such as vulkan, metal, cuda, or cpu */
+    @SerialName("backend") public val backend: String? = null,
+    @SerialName("gpu_memory_bytes") public val gpuMemoryBytes: Long? = null,
+    @SerialName("context_window") public val contextWindow: Long? = null,
+    @SerialName("quantization") public val quantization: String? = null,
 )
 
 /** Whether a computer can run a model. */
