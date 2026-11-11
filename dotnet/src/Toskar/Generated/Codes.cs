@@ -6,8 +6,8 @@ namespace Toskar;
 /// <summary>The client contract this SDK was built for.</summary>
 public static class Contract
 {
-    /// <summary>The contract version, such as 1.77.</summary>
-    public const string Version = "1.77";
+    /// <summary>The contract version, such as 1.86.</summary>
+    public const string Version = "1.86";
 }
 
 /// <summary>
@@ -682,6 +682,11 @@ public static class ErrorCodes
     public const string NOT_A_DEVICE = "NOT_A_DEVICE";
 
     /// <summary>
+    /// There's no folder at that path on this computer. Use its full path.
+    /// </summary>
+    public const string NOT_A_FOLDER = "NOT_A_FOLDER";
+
+    /// <summary>
     /// {{detail}}
     /// </summary>
     public const string NOT_FOUND = "NOT_FOUND";
@@ -915,6 +920,11 @@ public static class ErrorCodes
     /// {{detail}}
     /// </summary>
     public const string PROFILE_CREATE_FAILED = "PROFILE_CREATE_FAILED";
+
+    /// <summary>
+    /// A profile is already called {{name}}. Choose another name.
+    /// </summary>
+    public const string PROFILE_NAME_TAKEN = "PROFILE_NAME_TAKEN";
 
     /// <summary>
     /// There's no such profile.

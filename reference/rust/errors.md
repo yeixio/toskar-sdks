@@ -139,6 +139,7 @@ The codes Toskar Core and the SDK answer errors with, as `Error::code`, with eac
 | `error_codes::NOTIFICATIONS_FAILED` | {{detail}} |
 | `error_codes::NOTIFICATION_NOT_FOUND` | That notification was removed. |
 | `error_codes::NOT_A_DEVICE` | Only a connected device can disconnect itself. |
+| `error_codes::NOT_A_FOLDER` | There's no folder at that path on this computer. Use its full path. |
 | `error_codes::NOT_FOUND` | {{detail}} |
 | `error_codes::NOT_IMPLEMENTED` | {{detail}} |
 | `error_codes::NO_MODEL_ASSIGNED` | No model is chosen for this. Install one in Models, or choose one in the profile. |
@@ -186,6 +187,7 @@ The codes Toskar Core and the SDK answer errors with, as `Error::code`, with eac
 | `error_codes::PRIVACY_FAILED` | {{detail}} |
 | `error_codes::PROFILES_LIST_FAILED` | Couldn't list profiles. |
 | `error_codes::PROFILE_CREATE_FAILED` | {{detail}} |
+| `error_codes::PROFILE_NAME_TAKEN` | A profile is already called {{name}}. Choose another name. |
 | `error_codes::PROFILE_NOT_FOUND` | There's no such profile. |
 | `error_codes::PROFILE_PINNED` | This key answers only with its own profile. Leave out the profile and model, or name that profile. |
 | `error_codes::PROFILE_UPDATE_FAILED` | {{detail}} |

@@ -168,9 +168,12 @@ public class Api internal constructor(private val toskar: Toskar) {
      * Send a chat message
      *
      * Without stream, returns {content, metrics}. With stream, a server-sent event stream of token events, then done; an error event ends it early.
+     *
+     * @param xToskarProject The folder a client on this computer is working in, path-escaped: where a turn's commands run and what its file tools reach. Ignored from another computer.
      */
-    public fun chat(body: ChatRequest): ChatAnswer =
-        toskar.call("POST", "/api/v1/chat", listOf(), body = toskar.json(body))
+    @JvmOverloads
+    public fun chat(body: ChatRequest, xToskarProject: String? = null): ChatAnswer =
+        toskar.call("POST", "/api/v1/chat", listOf(), headers = listOf("X-Toskar-Project" to xToskarProject), body = toskar.json(body))
 
     /** Stop a conversation's running turn */
     public fun stopChat(body: StopChatRequest): ChatStopped =
@@ -258,6 +261,10 @@ public class Api internal constructor(private val toskar: Toskar) {
      */
     public fun editConversationSummary(id: String, body: EditConversationSummaryRequest): ConversationSummary =
         toskar.call("PUT", "/api/v1/conversations/{id}/summary", listOf(id), body = toskar.json(body))
+
+    /** What the chat's running turn has done so far */
+    public fun getChatTurn(id: String): ChatTurn =
+        toskar.call("GET", "/api/v1/conversations/{id}/turn", listOf(id))
 
     /** The connected services' devices, by kind (#586) */
     @JvmOverloads
@@ -700,9 +707,25 @@ public class Api internal constructor(private val toskar: Toskar) {
     public fun recommendModels(purpose: String? = null): Recommendation =
         toskar.call("GET", "/api/v1/models/recommend", listOf(), query = listOf("purpose" to purpose))
 
+    /**
+     * Toskar's public quality results
+     *
+     * What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+     */
+    public fun qualityResults(): QualityResults =
+        toskar.call("GET", "/api/v1/models/results", listOf())
+
     /** Loaded model instances on this and paired computers */
     public fun listRunningModels(): List<RunningModelView> =
         toskar.call("GET", "/api/v1/models/running", listOf())
+
+    /**
+     * The model store's front page for this computer
+     *
+     * Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+     */
+    public fun modelStore(): ModelStore =
+        toskar.call("GET", "/api/v1/models/store", listOf())
 
     /**
      * Start loading the model a chat would use

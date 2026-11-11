@@ -235,7 +235,7 @@ Parameters:
 Task<M.Person> ChangePersonAsync(string id, M.ChangePersonRequest body, CancellationToken cancellationToken = default)
 ```
 
-### ChatAsync(body)
+### ChatAsync(body, xToskarProject)
 
 Send a chat message
 
@@ -244,9 +244,10 @@ Without stream, returns {content, metrics}. With stream, a server-sent event str
 Parameters:
 
 - `body`: The request.
+- `xToskarProject`: The folder a client on this computer is working in, path-escaped: where a turn's commands run and what its file tools reach. Ignored from another computer.
 
 ```csharp
-Task<M.ChatAnswer> ChatAsync(M.ChatRequest body, CancellationToken cancellationToken = default)
+Task<M.ChatAnswer> ChatAsync(M.ChatRequest body, string? xToskarProject = null, CancellationToken cancellationToken = default)
 ```
 
 ### CheckConnectorAsync(id)
@@ -1019,6 +1020,18 @@ Parameters:
 
 ```csharp
 Task<JsonNode?> GetCapabilitiesAsync(string? ask = null, CancellationToken cancellationToken = default)
+```
+
+### GetChatTurnAsync(id)
+
+What the chat's running turn has done so far
+
+Parameters:
+
+- `id`: The id.
+
+```csharp
+Task<M.ChatTurn> GetChatTurnAsync(string id, CancellationToken cancellationToken = default)
 ```
 
 ### GetCommunityRatingsAsync()
@@ -2164,6 +2177,16 @@ How well each catalog model fits this computer
 Task<List<M.ModelsFit>> ModelsFitAsync(CancellationToken cancellationToken = default)
 ```
 
+### ModelStoreAsync()
+
+The model store's front page for this computer
+
+Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+
+```csharp
+Task<M.ModelStore> ModelStoreAsync(CancellationToken cancellationToken = default)
+```
+
 ### OidcCallbackAsync(state, code)
 
 Where the provider sends people back (#206)
@@ -2463,6 +2486,16 @@ Parameters:
 
 ```csharp
 Task<JsonObject> PutSettingsAsync(JsonObject body, CancellationToken cancellationToken = default)
+```
+
+### QualityResultsAsync()
+
+Toskar's public quality results
+
+What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+
+```csharp
+Task<M.QualityResults> QualityResultsAsync(CancellationToken cancellationToken = default)
 ```
 
 ### ReadAloudAsync(body)

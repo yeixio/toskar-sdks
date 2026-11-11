@@ -140,6 +140,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.noTextFound` | `NO_TEXT_FOUND` | No text found. Scanned PDFs need text recognition (OCR) before Toskar can read them. |
 | `.nodesListFailed` | `NODES_LIST_FAILED` | Couldn't list computers. |
 | `.notADevice` | `NOT_A_DEVICE` | Only a connected device can disconnect itself. |
+| `.notAFolder` | `NOT_A_FOLDER` | There's no folder at that path on this computer. Use its full path. |
 | `.notConfirmed` | `NOT_CONFIRMED` | Pairing that the person stopped at the short pin. |
 | `.notFound` | `NOT_FOUND` | {{detail}} |
 | `.notImplemented` | `NOT_IMPLEMENTED` | {{detail}} |
@@ -188,6 +189,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.preferenceCannotGrantTools` | `PREFERENCE_CANNOT_GRANT_TOOLS` | Preferences and memories can't give permission to use tools. Change what tools may do in Settings → Tool permissions or in a profile. |
 | `.privacyFailed` | `PRIVACY_FAILED` | {{detail}} |
 | `.profileCreateFailed` | `PROFILE_CREATE_FAILED` | {{detail}} |
+| `.profileNameTaken` | `PROFILE_NAME_TAKEN` | A profile is already called {{name}}. Choose another name. |
 | `.profileNotFound` | `PROFILE_NOT_FOUND` | There's no such profile. |
 | `.profilePinned` | `PROFILE_PINNED` | This key answers only with its own profile. Leave out the profile and model, or name that profile. |
 | `.profileUpdateFailed` | `PROFILE_UPDATE_FAILED` | {{detail}} |

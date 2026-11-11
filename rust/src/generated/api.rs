@@ -216,9 +216,11 @@ impl Api<'_> {
     /// Send a chat message
     ///
     /// Without stream, returns {content, metrics}. With stream, a server-sent event stream of token events, then done; an error event ends it early.
+    ///
+    /// - `x_toskar_project`: The folder a client on this computer is working in, path-escaped: where a turn's commands run and what its file tools reach. Ignored from another computer.
     #[allow(clippy::too_many_arguments)]
-    pub async fn chat(&self, body: &models::ChatRequest) -> Result<models::ChatAnswer> {
-        self.client.call("POST", "/api/v1/chat", &[], &[], &[], Some(json(body)?)).await
+    pub async fn chat(&self, body: &models::ChatRequest, x_toskar_project: Option<&str>) -> Result<models::ChatAnswer> {
+        self.client.call("POST", "/api/v1/chat", &[], &[], &[("X-Toskar-Project", x_toskar_project.map(|v| v.to_string()))], Some(json(body)?)).await
     }
 
     /// Stop a conversation's running turn
@@ -329,6 +331,12 @@ impl Api<'_> {
     #[allow(clippy::too_many_arguments)]
     pub async fn edit_conversation_summary(&self, id: &str, body: &models::EditConversationSummaryRequest) -> Result<models::ConversationSummary> {
         self.client.call("PUT", "/api/v1/conversations/{id}/summary", &[id], &[], &[], Some(json(body)?)).await
+    }
+
+    /// What the chat's running turn has done so far
+    #[allow(clippy::too_many_arguments)]
+    pub async fn get_chat_turn(&self, id: &str) -> Result<models::ChatTurn> {
+        self.client.call("GET", "/api/v1/conversations/{id}/turn", &[id], &[], &[], None).await
     }
 
     /// The connected services' devices, by kind (#586)
@@ -861,10 +869,26 @@ impl Api<'_> {
         self.client.call("GET", "/api/v1/models/recommend", &[], &[("purpose", purpose.map(|v| v.to_string()))], &[], None).await
     }
 
+    /// Toskar's public quality results
+    ///
+    /// What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn quality_results(&self, ) -> Result<models::QualityResults> {
+        self.client.call("GET", "/api/v1/models/results", &[], &[], &[], None).await
+    }
+
     /// Loaded model instances on this and paired computers
     #[allow(clippy::too_many_arguments)]
     pub async fn list_running_models(&self, ) -> Result<Vec<models::RunningModelView>> {
         self.client.call("GET", "/api/v1/models/running", &[], &[], &[], None).await
+    }
+
+    /// The model store's front page for this computer
+    ///
+    /// Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn model_store(&self, ) -> Result<models::ModelStore> {
+        self.client.call("GET", "/api/v1/models/store", &[], &[], &[], None).await
     }
 
     /// Start loading the model a chat would use

@@ -271,6 +271,8 @@ export const ErrorCodes = {
   NOTIFICATION_NOT_FOUND: 'NOTIFICATION_NOT_FOUND',
   /** Only a connected device can disconnect itself. */
   NOT_A_DEVICE: 'NOT_A_DEVICE',
+  /** There's no folder at that path on this computer. Use its full path. */
+  NOT_A_FOLDER: 'NOT_A_FOLDER',
   /** {{detail}} */
   NOT_FOUND: 'NOT_FOUND',
   /** {{detail}} */
@@ -365,6 +367,8 @@ export const ErrorCodes = {
   PROFILES_LIST_FAILED: 'PROFILES_LIST_FAILED',
   /** {{detail}} */
   PROFILE_CREATE_FAILED: 'PROFILE_CREATE_FAILED',
+  /** A profile is already called {{name}}. Choose another name. */
+  PROFILE_NAME_TAKEN: 'PROFILE_NAME_TAKEN',
   /** There's no such profile. */
   PROFILE_NOT_FOUND: 'PROFILE_NOT_FOUND',
   /** This key answers only with its own profile. Leave out the profile and model, or name that profile. */

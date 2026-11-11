@@ -209,7 +209,7 @@ public sealed class ToskarClient : IDisposable
 
     /// <summary>Asks once and waits for the whole answer.</summary>
     public Task<ChatAnswer> ChatAsync(ChatRequest request, CancellationToken cancellationToken = default) =>
-        Api.ChatAsync(request with { Stream = false }, cancellationToken);
+        Api.ChatAsync(request with { Stream = false }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Asks and yields the answer as it's written: tokens, then done. A

@@ -145,6 +145,7 @@ except ToskarError as err:
 | `NOTIFICATIONS_FAILED` |  |
 | `NOTIFICATION_NOT_FOUND` | That notification was removed. |
 | `NOT_A_DEVICE` | Only a connected device can disconnect itself. |
+| `NOT_A_FOLDER` | There's no folder at that path on this computer. Use its full path. |
 | `NOT_FOUND` |  |
 | `NOT_IMPLEMENTED` |  |
 | `NO_MODEL_ASSIGNED` | No model is chosen for this. Install one in Models, or choose one in the profile. |
@@ -192,6 +193,7 @@ except ToskarError as err:
 | `PRIVACY_FAILED` |  |
 | `PROFILES_LIST_FAILED` | Couldn't list profiles. |
 | `PROFILE_CREATE_FAILED` |  |
+| `PROFILE_NAME_TAKEN` | A profile is already called {{name}}. Choose another name. |
 | `PROFILE_NOT_FOUND` | There's no such profile. |
 | `PROFILE_PINNED` | This key answers only with its own profile. Leave out the profile and model, or name that profile. |
 | `PROFILE_UPDATE_FAILED` |  |

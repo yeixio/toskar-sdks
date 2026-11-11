@@ -208,7 +208,7 @@ impl Client {
             stream: Some(false),
             ..request.clone()
         };
-        self.api().chat(&request).await
+        self.api().chat(&request, None).await
     }
 
     /// Asks and yields the answer as it's written: tokens, then done. A

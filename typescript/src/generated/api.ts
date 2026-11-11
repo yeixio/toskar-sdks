@@ -2254,6 +2254,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/models/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Toskar's public quality results
+         * @description What Toskar's test runs have measured, per model, computer, and date, from the public dataset, kept for an hour. No ranking or overall score. Scores are comparable within one method_version. Without the dataset, live is false and results is empty (#593, contract 1.80).
+         */
+        get: operations["qualityResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The model store's front page for this computer
+         * @description Shelves of models: Hugging Face's rankings, left out what doesn't run here, and the models tested with Toskar. Reads from Hugging Face, kept for an hour; without it, live is false and only tested models are there (#593, contract 1.79).
+         */
+        get: operations["modelStore"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/models/browse": {
         parameters: {
             query?: never;
@@ -2886,6 +2926,23 @@ export interface paths {
         };
         /** Messages of a conversation, with sources, steps, and files */
         get: operations["listConversationMessages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/turn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the chat's running turn has done so far */
+        get: operations["getChatTurn"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4692,6 +4749,8 @@ export interface components {
             model_id?: string;
             /** @description `memory_off` keeps persistent memory out of this conversation. */
             memory_off: boolean;
+            /** @description The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done */
+            project?: string;
             /** @description `compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342). */
             compact_off: boolean;
             /** Format: date-time */
@@ -4713,6 +4772,25 @@ export interface components {
             variant?: string;
             tags?: string[];
             node_id?: string;
+        };
+        ChatTurn: {
+            running: boolean;
+            /** Format: date-time */
+            started_at?: string;
+            steps?: {
+                tool_id: string;
+                summary?: string;
+                /** @description Known values: `running`, `completed`, `failed`; others may be added. */
+                status: string;
+            }[];
+            /** @description The end of what the running command has written, which can hold terminal control codes. */
+            output?: string;
+            /** @description The answer written so far. */
+            text?: string;
+            /** @description Each tool.requested still waiting for an answer. */
+            waiting?: {
+                [key: string]: unknown;
+            }[];
         };
         /** @description A chat message. */
         Message: {
@@ -5957,6 +6035,84 @@ export interface components {
             memory_bytes: number;
             fits: components["schemas"]["ModelFit"][];
             winners: components["schemas"]["CategoryWinner"][];
+        };
+        QualityResults: {
+            live: boolean;
+            note?: string;
+            /** @description How the results are measured */
+            method?: string;
+            suites?: {
+                [key: string]: string;
+            };
+            results: components["schemas"]["QualityResult"][];
+        };
+        QualityResult: {
+            model: string;
+            name: string;
+            date: string;
+            hardware: string;
+            /** @description 0 is before versions existed */
+            method_version: number;
+            /** @description Sent by someone outside the project */
+            submitted?: boolean;
+            submitted_by?: string;
+            /** @description Where the run can be read */
+            source?: string;
+            scores: {
+                [key: string]: {
+                    passed: number;
+                    of: number;
+                };
+            };
+            seconds_per_question?: number;
+            /** @description How the model ran on that computer. A row that says no has no scores (contract 1.82) Known values: `full`, `partial`, `cpu`, `no`; others may be added. */
+            runs?: string;
+            /** @description Why it's short of full */
+            why?: string;
+            /** @description How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81) */
+            performance?: {
+                /** @description The prompt it was measured with */
+                prompt_tokens: number;
+                /** @description How fast it read the prompt */
+                prompt_tokens_per_second: number;
+                /** @description How fast it wrote the answer */
+                tokens_per_second: number;
+                /** @description From sending to the first token */
+                first_token_ms: number;
+                /** @description The answer's tokens over the time from sending to the last one */
+                effective_tokens_per_second: number;
+                /** @description What it ran on, such as vulkan, metal, cuda, or cpu */
+                backend?: string;
+                gpu_layers: number;
+                gpu_layers_total: number;
+                /** Format: int64 */
+                gpu_memory_bytes?: number;
+                context_window?: number;
+                quantization?: string;
+            };
+        };
+        ModelStore: {
+            shelves: components["schemas"]["StoreShelf"][];
+            /** @description Hugging Face answered. When false, only models Toskar already knows are there. */
+            live: boolean;
+        };
+        StoreShelf: {
+            /** @description What it's for. Known values: `picks`, `popular`, `top_rated`, `new`, `everyday`, `code`, `sees`, `small`, `tested`; others may be added. */
+            id: string;
+            models: components["schemas"]["StoreModel"][];
+        };
+        StoreModel: components["schemas"]["BrowseModel"] & {
+            likes?: number;
+            /** Format: date-time */
+            created_at?: string;
+            /** @description The license Hugging Face lists, such as apache-2.0 */
+            license?: string;
+            /** @description The model's page */
+            details_url?: string;
+            fit?: components["schemas"]["ModelFit"];
+            /** @description Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else. */
+            catalog_id?: string;
+            installed?: boolean;
         };
         /** @description A Hugging Face browse-all hit (GGUF filtered). */
         BrowseModel: {
@@ -9749,6 +9905,8 @@ export interface operations {
                     model_id?: string;
                     /** @description Turn memory off for this chat */
                     memory_off?: boolean;
+                    /** @description The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85). */
+                    project?: string;
                 };
             };
         };
@@ -11632,6 +11790,46 @@ export interface operations {
             };
         };
     };
+    qualityResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityResults"];
+                };
+            };
+        };
+    };
+    modelStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelStore"];
+                };
+            };
+        };
+    };
     browseModels: {
         parameters: {
             query?: {
@@ -12721,7 +12919,10 @@ export interface operations {
     chat: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The folder a client on this computer is working in, path-escaped: where a turn's commands run and what its file tools reach. Ignored from another computer. */
+                "X-Toskar-Project"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12955,6 +13156,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Message"][];
                 };
+            };
+        };
+    };
+    getChatTurn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The turn; only `running` when none is running */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatTurn"];
+                };
+            };
+            /** @description No such chat for this person */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
