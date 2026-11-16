@@ -310,6 +310,12 @@ const (
     ErrorCodeModelNotFound = "MODEL_NOT_FOUND"
     // ErrorCodeModelNotInstalled: {{model_id}} isn't installed.
     ErrorCodeModelNotInstalled = "MODEL_NOT_INSTALLED"
+    // ErrorCodeModelSlotsContext: With {{slots}} agents at once, each would get {{context_per_slot}} tokens of context, less than the {{needed}} a task needs. Choose a bigger context window or fewer agents.
+    ErrorCodeModelSlotsContext = "MODEL_SLOTS_CONTEXT"
+    // ErrorCodeModelSlotsInvalid: Choose 1 to {{max}} agents at once.
+    ErrorCodeModelSlotsInvalid = "MODEL_SLOTS_INVALID"
+    // ErrorCodeModelSlotsMemory: This model doesn't fit this computer's memory with {{slots}} agents at once. Choose fewer.
+    ErrorCodeModelSlotsMemory = "MODEL_SLOTS_MEMORY"
     // ErrorCodeModelUnhealthy: The model stopped working.
     ErrorCodeModelUnhealthy = "MODEL_UNHEALTHY"
     // ErrorCodeModelUpdateFailed: {{detail}}
@@ -348,6 +354,8 @@ const (
     ErrorCodeNoTextFound = "NO_TEXT_FOUND"
     // ErrorCodeOfferFailed: {{detail}}
     ErrorCodeOfferFailed = "OFFER_FAILED"
+    // ErrorCodeOffline: This computer isn't connected to the internet. Check the connection, then try again.
+    ErrorCodeOffline = "OFFLINE"
     // ErrorCodeOriginNotAllowed: Websites cannot use Toskar without an API key.
     ErrorCodeOriginNotAllowed = "ORIGIN_NOT_ALLOWED"
     // ErrorCodeOutOfMemory: The model ran out of memory.
@@ -436,6 +444,12 @@ const (
     ErrorCodeProfilePinned = "PROFILE_PINNED"
     // ErrorCodeProfileUpdateFailed: {{detail}}
     ErrorCodeProfileUpdateFailed = "PROFILE_UPDATE_FAILED"
+    // ErrorCodeProjectFileNotFound: That file isn't in the project.
+    ErrorCodeProjectFileNotFound = "PROJECT_FILE_NOT_FOUND"
+    // ErrorCodeProjectNameRequired: Name the project.
+    ErrorCodeProjectNameRequired = "PROJECT_NAME_REQUIRED"
+    // ErrorCodeProjectNotFound: That project was removed.
+    ErrorCodeProjectNotFound = "PROJECT_NOT_FOUND"
     // ErrorCodeProxyRefused: Your sign-in doesn't give you a role on this Toskar. Ask its Owner to add you to a group that does.
     ErrorCodeProxyRefused = "PROXY_REFUSED"
     // ErrorCodePushDeviceOnly: Only a paired phone or tablet can turn on notifications.
@@ -582,6 +596,10 @@ const (
     ErrorCodeSummaryNotFound = "SUMMARY_NOT_FOUND"
     // ErrorCodeSupportModelBusy: The supporting model can't run right now.
     ErrorCodeSupportModelBusy = "SUPPORT_MODEL_BUSY"
+    // ErrorCodeSwarmNotFound: That swarm was removed.
+    ErrorCodeSwarmNotFound = "SWARM_NOT_FOUND"
+    // ErrorCodeSwarmRunning: This swarm is still running. Stop it first.
+    ErrorCodeSwarmRunning = "SWARM_RUNNING"
     // ErrorCodeTasksListFailed: {{detail}}
     ErrorCodeTasksListFailed = "TASKS_LIST_FAILED"
     // ErrorCodeTaskCreateFailed: {{detail}}
@@ -626,7 +644,7 @@ const (
 <a name="ContractVersion"></a>ContractVersion is the client contract this SDK was built for.
 
 ```go
-const ContractVersion = "1.86"
+const ContractVersion = "1.98"
 ```
 
 <a name="DefaultURL"></a>DefaultURL is this computer's Toskar Core, which needs no key.

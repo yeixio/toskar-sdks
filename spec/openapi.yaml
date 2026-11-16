@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Toskar Control Plane API
-  version: "1.86"
+  version: "1.98"
   description: >-
     Local AI control plane API for Toskar, its OpenAI-compatible routes, and its MCP server.
     On the default loopback bind no key is needed. When the daemon listens on any other address,
@@ -25,6 +25,10 @@ tags:
     description: "Documents, folders, and sources the assistant searches."
   - name: Memory
     description: "What the assistant remembers, and how it writes to you."
+  - name: Projects
+    description: "Chats kept together with their instructions, files, folder, default profile and model, and memory."
+  - name: Swarms
+    description: "Several agents working at once on one request, each in a chat of its own."
   - name: Profiles
     description: "Assistants with their own models, tools, and topics, and who may use them."
   - name: Automations
@@ -1706,6 +1710,17 @@ paths:
       summary: List conversations
       operationId: listConversations
       tags: [Conversations]
+      parameters:
+        - name: project_id
+          in: query
+          required: false
+          schema: {type: string}
+          description: Only the chats in this project (contract 1.87, #1136).
+        - name: swarm_id
+          in: query
+          required: false
+          schema: {type: string}
+          description: "A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out."
       responses:
         "200":
           description: OK
@@ -1731,6 +1746,9 @@ paths:
                   type: string
                 model_id:
                   type: string
+                project_id:
+                  type: string
+                  description: Start the chat in one of the caller's projects (contract 1.87, #1136).
       responses:
         "201":
           description: Created
@@ -1738,6 +1756,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Conversation"
+        "404":
+          description: PROJECT_NOT_FOUND for a project that isn't the caller's
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /api/v1/conversations/delete:
     post:
       summary: Delete several conversations
@@ -1796,6 +1820,9 @@ paths:
                 project:
                   type: string
                   description: The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85).
+                project_id:
+                  type: string
+                  description: Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87, #1136).
       responses:
         "200":
           description: OK
@@ -1803,6 +1830,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Conversation"
+        "404":
+          description: PROJECT_NOT_FOUND for a project that isn't the caller's
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Delete conversation
       operationId: deleteConversation
@@ -2307,9 +2340,11 @@ paths:
           description: Address, command, args, and whether a key is needed
   /mcp:
     post:
-      summary: Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+      summary: Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
       description: >-
-        Checked like /v1. A request with an Origin header from another site is refused.
+        Checked like /v1. A request with an Origin header from another site is refused. run_swarm
+        ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator
+        chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
       operationId: mcpServer
       tags: [MCP]
       requestBody:
@@ -2576,7 +2611,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/News"
         "502":
-          description: NEWS_UNAVAILABLE, toskar.ai couldn't be reached and no copy is kept
+          description: NEWS_UNAVAILABLE, toskar.ai couldn't be reached and no copy is kept; OFFLINE when this computer isn't connected to the internet (contract 1.92)
   /api/v1/privacy:
     get:
       summary: Run record retention and a 30-day summary of what left this computer
@@ -2791,7 +2826,7 @@ paths:
   /v1/models:
     get:
       summary: OpenAI-compatible model list
-      description: auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+      description: auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
       operationId: openaiListModels
       tags: [OpenAI-compatible]
       responses:
@@ -2813,7 +2848,10 @@ paths:
         Anthropic's events (message_start, content_block_start, content_block_delta with
         text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key
         may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use
-        Anthropic's shape, {"type":"error","error":{"type","message"}}.
+        Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile>
+        (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's
+        swarm models and computers, as raw, and runs a full swarm for one without, answering with
+        the coordinator's answer after a thinking block of its progress.
       operationId: anthropicMessages
       tags: [OpenAI-compatible]
       requestBody:
@@ -2884,7 +2922,10 @@ paths:
         parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no
         responses, so previous_response_id is refused: send the whole conversation, as with store
         set to false. With stream, the answer comes as the response.* events, each with a
-        sequence_number. Needs raw access, as raw:<model> does.
+        sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135,
+        contract 1.88) spreads a request with tools to the least busy of the profile's swarm models
+        and computers, as raw, and runs a full swarm for one without, answering with the
+        coordinator's answer after a reasoning item of its progress.
       operationId: openaiResponses
       tags: [OpenAI-compatible]
       requestBody:
@@ -2942,7 +2983,7 @@ paths:
               properties:
                 model:
                   type: string
-                  description: auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
+                  description: "auto, profile:<id>, sai:<slug>, a model id, raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:<profile> (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id"
                 messages:
                   type: array
                   items:
@@ -2959,6 +3000,24 @@ paths:
                   minimum: 0
                   maximum: 2
                   description: For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
+                seed:
+                  type: integer
+                  minimum: 0
+                  description: "Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93)"
+                top_p:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  description: "Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93)"
+                top_k:
+                  type: integer
+                  minimum: 0
+                  description: "Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93)"
+                min_p:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  description: "Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93)"
                 max_tokens:
                   type: integer
                   minimum: 1
@@ -3799,6 +3858,36 @@ paths:
                 $ref: "#/components/schemas/ModelSpeculation"
         "400":
           description: MODEL_UPDATE_FAILED, such as for a model that isn't installed here or doesn't chat
+  /api/v1/models/{id}/always-running:
+    put:
+      summary: Keep a model running
+      description: 'Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).'
+      operationId: setModelAlwaysRunning
+      tags: [Models]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [always_running]
+              properties:
+                always_running: {type: boolean}
+      responses:
+        "200":
+          description: The choice is kept
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelAlwaysRunning"
+        "400":
+          description: MODEL_UPDATE_FAILED, such as for a model that isn't installed here or doesn't chat
   /api/v1/models/{id}/context:
     put:
       summary: Set a model's context window
@@ -3832,6 +3921,39 @@ paths:
                 $ref: "#/components/schemas/ModelContext"
         "400":
           description: INVALID_JSON, or MODEL_UPDATE_FAILED, such as for a size past the model's own window, or a model that isn't installed here or doesn't chat
+  /api/v1/models/{id}/slots:
+    put:
+      summary: Set how many requests a model answers at once
+      description: 'How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).'
+      operationId: setModelSlots
+      tags: [Models]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slots]
+              properties:
+                slots:
+                  type: integer
+                  minimum: 1
+                  maximum: 4
+      responses:
+        "200":
+          description: The choice is kept
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelSlots"
+        "400":
+          description: 'INVALID_JSON; MODEL_SLOTS_INVALID for a number outside 1 to 4; MODEL_SLOTS_CONTEXT when each slot would have less than the 8,192 tokens a task needs (details: slots, context_per_slot, needed); MODEL_SLOTS_MEMORY when the model with every slot''s cache doesn''t fit this computer; or MODEL_UPDATE_FAILED for a model that isn''t installed here or doesn''t chat'
   /api/v1/models/{id}:
     patch:
       summary: Rename or retag an added model
@@ -4062,6 +4184,26 @@ paths:
                 effort:
                   type: string
                   enum: [auto, fast, balanced, thorough]
+                temperature:
+                  type: number
+                  minimum: 0
+                  maximum: 2
+                  description: "For the answer; 0 gives the same most likely answer every time (#839, contract 1.93)"
+                seed:
+                  type: integer
+                  minimum: 0
+                  description: "As on /v1/chat/completions (#839, contract 1.93)"
+                top_p:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                top_k:
+                  type: integer
+                  minimum: 0
+                min_p:
+                  type: number
+                  minimum: 0
+                  maximum: 1
                 thinking:
                   type: string
                   enum: ["on", "off"]
@@ -4095,6 +4237,16 @@ paths:
                 live:
                   type: boolean
                   description: "With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON."
+                project_id:
+                  type: string
+                  description: "One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own."
+                swarm:
+                  type: string
+                  enum: [split, race]
+                  description: "Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events."
+                make_room:
+                  type: boolean
+                  description: "Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id."
               required: [message]
       responses:
         "200":
@@ -4822,6 +4974,9 @@ paths:
                   type: boolean
                 local_only:
                   type: boolean
+                project_id:
+                  type: string
+                  description: 'Empty moves a project''s memory to the person''s own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can''t be moved into a project.'
       responses:
         "200":
           description: Memory
@@ -4856,6 +5011,362 @@ paths:
           description: Deleted
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/projects:
+    get:
+      summary: The caller's projects
+      description: Newest activity first, with how many chats each has (contract 1.87, #1136).
+      operationId: listProjects
+      tags: [Projects]
+      responses:
+        "200":
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      summary: Make a project
+      operationId: createProject
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: PROJECT_NAME_REQUIRED, NOT_A_FOLDER, KNOWLEDGE_SOURCE_NOT_FOUND, or another invalid field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: ROLE_REQUIRED, for a folder without the admin role, or knowledge without the member role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/projects/{id}:
+    get:
+      summary: One project
+      operationId: getProject
+      tags: [Projects]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: PROJECT_NOT_FOUND, also for another person's project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Change a project
+      description: Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+      operationId: updateProject
+      tags: [Projects]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: NOT_A_FOLDER, KNOWLEDGE_SOURCE_NOT_FOUND, or another invalid field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: ROLE_REQUIRED, for a folder without the admin role, or knowledge without the member role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: PROJECT_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a project
+      description: Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+      operationId: deleteProject
+      tags: [Projects]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chats
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [keep, delete]
+          description: delete deletes the project's chats too, with their files.
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: PROJECT_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/projects/{id}/files:
+    post:
+      summary: Add a file to a project
+      description: The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+      operationId: addProjectFile
+      tags: [Projects]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename]
+              properties:
+                filename:
+                  type: string
+                  description: Its name; the extension picks the reader, such as .md, .csv, or .pdf
+                text:
+                  type: string
+                  description: A text file's content
+                content_base64:
+                  type: string
+                  description: Another file's bytes, such as a PDF's, in place of text
+      responses:
+        "201":
+          description: The project with its files
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: An empty, unreadable, or unsupported file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: PROJECT_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/projects/{id}/files/{name}:
+    delete:
+      summary: Remove a file from a project
+      operationId: removeProjectFile
+      tags: [Projects]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Removed
+        "404":
+          description: PROJECT_NOT_FOUND or PROJECT_FILE_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/swarms:
+    get:
+      summary: The caller's swarms
+      description: Newest first (contract 1.88, #1135).
+      operationId: listSwarms
+      tags: [Swarms]
+      parameters:
+        - name: project_id
+          in: query
+          required: false
+          schema: {type: string}
+          description: Only this project's swarms.
+      responses:
+        "200":
+          description: Swarms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Swarm"
+        "404":
+          description: PROJECT_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Start a swarm
+      description: "Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role."
+      operationId: startSwarm
+      tags: [Swarms]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt: {type: string}
+                mode: {type: string, enum: [split, race], description: "Empty is the profile's, or split."}
+                project_id: {type: string, description: One of the caller's projects for a chat not yet in one.}
+                conversation_id: {type: string, description: The caller's chat to run it in; empty starts one.}
+                budget: {$ref: "#/components/schemas/SwarmPolicy"}
+      responses:
+        "202":
+          description: Started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Swarm"
+        "400":
+          description: An empty prompt, an unknown mode, or a budget out of range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: ROLE_REQUIRED, for a Visitor; PORTAL_MEMBERS, for a portal's guest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: PROJECT_NOT_FOUND, or NOT_FOUND for another person's chat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/swarms/{id}:
+    get:
+      summary: One swarm
+      description: With its agents, their status, and what they're waiting on.
+      operationId: getSwarm
+      tags: [Swarms]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Swarm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Swarm"
+        "404":
+          description: SWARM_NOT_FOUND, also for another person's swarm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a swarm
+      description: Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+      operationId: deleteSwarm
+      tags: [Swarms]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: SWARM_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: SWARM_RUNNING
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/swarms/{id}/stop:
+    post:
+      summary: Stop a swarm
+      description: Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+      operationId: stopSwarm
+      tags: [Swarms]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Whether anything was running to stop
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatStopped"
+        "404":
+          description: SWARM_NOT_FOUND
           content:
             application/json:
               schema:
@@ -7366,7 +7877,8 @@ components:
         node_id: {type: string}
         node_name: {type: string}
         status: {type: string}
-        memory_bytes: {type: integer, format: int64}
+        memory_bytes: {type: integer, format: int64, description: "The catalog's estimate of the memory it needs"}
+        resident_bytes: {type: integer, format: int64, description: "The system memory its process holds, measured a few seconds ago at most (contract 1.90). On Linux, the memory it allocated, without the model file it maps."}
         endpoint: {type: string}
         speed_tok_per_sec: {type: number, description: Generation speed in the model's latest replies}
         used_by_profiles:
@@ -7374,6 +7886,7 @@ components:
           items: {type: string}
         accelerator: {type: string, description: 'The devices the model is on, or CPU'}
         last_used_at: {type: string, format: date-time}
+        always_running: {type: boolean, description: 'A model kept loaded on its computer (#966, contract 1.96)'}
         mode: {type: string, description: '"embedding" or "reranking" for a supporting model serving knowledge search, and empty for a chat model.', enum: [embedding, reranking]}
         acceleration:
           type: object
@@ -7537,6 +8050,7 @@ components:
         dynamic: {type: boolean, description: installed from browse-all / URL}
         support_role: {type: string, description: '`support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models.'}
         speculation: {type: string, enum: [auto, off], description: 'Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models.'}
+        always_running: {type: boolean, description: 'A chat model installed on this computer that is kept loaded (#966, contract 1.94).'}
         context_window: {type: integer, description: 'The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).'}
         context_choice: {type: integer, description: 'The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).'}
         context_options:
@@ -7549,6 +8063,7 @@ components:
             properties:
               fit: {type: string, enum: [excellent, good, tight, heavy, unsupported]}
               tokens: {type: integer}
+        slots: {type: integer, minimum: 1, maximum: 4, description: 'How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models.'}
         languages:
           type: array
           description: How well the model writes each language it has a level for (§13–14, §31), best first.
@@ -7596,6 +8111,9 @@ components:
         model_id: {type: string}
         memory_off: {type: boolean, description: '`memory_off` keeps persistent memory out of this conversation.'}
         project: {type: string, description: The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done, on the terminal, web, and desktop (contract 1.85).}
+        project_id: {type: string, description: 'The project the chat is in, if any: a chat is in one project at most (contract 1.87, #1136).'}
+        swarm_id: {type: string, description: 'The swarm the chat belongs to: its coordinator''s chat, or one of its agents'' (contract 1.88, #1135).'}
+        swarm_role: {type: string, description: agent:N for an agent's chat; empty for the coordinator's or a chat in no swarm.}
         compact_off: {type: boolean, description: '`compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342).'}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
@@ -7750,6 +8268,138 @@ components:
           type: object
           description: How it was made, such as a picture's model, seed, and prompt (#553).
           additionalProperties: {}
+    Project:
+      type: object
+      description: 'Related chats kept together with what they share: instructions, files, a folder on the Toskar computer, a default profile and model, and a memory of their own (contract 1.87, #1136). It belongs to the person who made it.'
+      required: [chat_count, created_at, files, id, instructions, knowledge, memory_off, name, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        instructions: {type: string, description: 'The person''s own instructions for every chat in the project. They come after a profile''s and before the person''s style.'}
+        folder: {type: string, description: Where the project's chats work on the Toskar computer, unless a chat names its own. Only an Admin sets it.}
+        profile_id: {type: string}
+        model_id: {type: string}
+        memory_off: {type: boolean, description: '`memory_off` keeps the project''s chats from saving or reading the project''s own memory. The person''s memory follows each chat''s Memory control.'}
+        knowledge:
+          type: array
+          description: The ids of knowledge sources linked to the project, which its chats search as well as its files.
+          items: {type: string}
+        files:
+          type: array
+          description: The files added to the project's knowledge.
+          items: {$ref: "#/components/schemas/ProjectFile"}
+        chat_count: {type: integer, description: How many chats are in the project.}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time, description: 'The project''s last activity: a change to it, or to one of its chats.'}
+    ProjectInput:
+      type: object
+      description: A project's fields; one left out stays as it is.
+      properties:
+        name: {type: string}
+        instructions: {type: string}
+        folder: {type: string, description: 'The full path of a folder on the Toskar computer for the project''s chats to work in, or empty for none. Needs the admin role.'}
+        profile_id: {type: string}
+        model_id: {type: string}
+        memory_off: {type: boolean}
+        knowledge:
+          type: array
+          description: Knowledge source ids to link. Needs the member role.
+          items: {type: string}
+    ProjectFile:
+      type: object
+      description: One file in a project's knowledge.
+      required: [name, size]
+      properties:
+        name: {type: string}
+        size: {type: integer, format: int64}
+    Swarm:
+      type: object
+      description: 'Several agents working at once on one request, each in a chat of its own in the coordinator chat''s project (contract 1.88, #1135). It belongs to the person who started it.'
+      required: [agents, budget, conversation_id, created_at, id, mode, project_id, request, seconds, status, tokens]
+      properties:
+        id: {type: string}
+        project_id: {type: string}
+        conversation_id: {type: string, description: 'The coordinator''s chat, where the merged answer goes.'}
+        mode: {type: string, enum: [split, race]}
+        status: {type: string, enum: [running, merging, done, stopped, failed]}
+        request: {type: string}
+        budget: {$ref: '#/components/schemas/SwarmBudget'}
+        agents:
+          type: array
+          description: The swarm's agents, in order. Empty until the coordinator has planned the parts.
+          items: {$ref: '#/components/schemas/SwarmAgent'}
+        winner: {type: integer, description: 'A race''s winning agent, 0 when the answers were merged or it''s not a race.'}
+        note: {type: string, description: '`note` says why the swarm ran differently than asked, such as running as one agent.'}
+        tokens: {type: integer, description: Every agent's tokens so far.}
+        seconds: {type: number}
+        folder: {type: string, description: 'The folder a task swarm worked in. In a Git repository each agent worked on a branch of its own, kept for 7 days or until the swarm is deleted.'}
+        branch: {type: string, description: 'A task swarm''s result: the agents'' work merged, or a race winner''s. Empty for a question, or a folder that isn''t in Git.'}
+        checks: {type: string, enum: [passed, failed], description: 'How the project''s checks went on the result. Absent when none ran.'}
+        conflicts:
+          type: array
+          description: Agents' changes that couldn't be merged, each still on its agent's branch.
+          items: {$ref: '#/components/schemas/SwarmConflict'}
+        applied: {type: boolean, description: 'The result is in the person''s folder as uncommitted changes, after they allowed it.'}
+        waiting:
+          type: array
+          description: Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by.
+          items:
+            type: object
+            additionalProperties: {}
+        created_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time}
+    SwarmAgent:
+      type: object
+      description: 'One agent in a swarm: its part, where it runs, and how it went (contract 1.88, #1135).'
+      required: [agent, conversation_id, part, role, seconds, status, tokens]
+      properties:
+        agent: {type: integer, description: 'Its number, from 1.'}
+        conversation_id: {type: string, description: 'The agent''s own chat, which can be opened and continued.'}
+        role: {type: string, description: 'agent:N.'}
+        part: {type: string, description: 'What it was asked to do: its part, or in a race the whole request.'}
+        model_id: {type: string}
+        node_id: {type: string}
+        status: {type: string, enum: [queued, running, done, failed, stopped, out_of_budget]}
+        summary: {type: string, description: The start of its answer.}
+        tokens: {type: integer}
+        seconds: {type: number}
+        paths:
+          type: array
+          description: The files or folders a task's part expects to change.
+          items: {type: string}
+        branch: {type: string, description: 'A task agent''s own branch, with its work committed.'}
+        checks: {type: string, enum: [passed, failed], description: 'How the project''s checks went on its branch in a race. Absent when none ran.'}
+    SwarmConflict:
+      type: object
+      description: 'An agent''s change that couldn''t be merged with the others'', even by a fix-up agent (contract 1.88, #1135).'
+      required: [agent, branch, files]
+      properties:
+        agent: {type: integer, description: The agent whose change wasn't merged.}
+        branch: {type: string, description: Has its change.}
+        files:
+          type: array
+          description: The files that conflicted.
+          items: {type: string}
+    SwarmBudget:
+      type: object
+      description: 'What a swarm may use (contract 1.88, #1135).'
+      required: [agents, minutes, tokens]
+      properties:
+        agents: {type: integer, description: The most agents it has.}
+        tokens: {type: integer, description: The most the whole swarm may use.}
+        minutes: {type: integer, description: The most it may run.}
+    SwarmPolicy:
+      type: object
+      description: 'Swarm controls (contract 1.88, #1135): a profile''s orchestration.swarm, or one swarm''s budget. Every field is optional; empty keeps the default.'
+      properties:
+        mode: {type: string, enum: [split, race], description: 'split: a coordinator splits the job into parts that agents do at once. race: agents on different models each do the whole request, and the best answer wins or they''re merged. Empty is split.'}
+        models:
+          type: array
+          description: A race's models, one agent each, in order. A split's agents take them in turn.
+          items: {type: string}
+        agents: {type: integer, minimum: 2, maximum: 8, description: The most agents. Empty is the profile's max_workers, or 4.}
+        tokens: {type: integer, minimum: 10000, maximum: 4000000, description: The most the whole swarm may use. Empty is 400000.}
+        minutes: {type: integer, minimum: 1, maximum: 240, description: The most a swarm may run. Empty is 5 for a question and 30 for a task.}
     Memory:
       type: object
       description: One durable fact or preference.
@@ -7763,6 +8413,7 @@ components:
         enabled: {type: boolean}
         local_only: {type: boolean, description: '`local_only` keeps the memory on this computer: work that uses it is never sent to a paired computer (§63).'}
         language: {type: string, description: 'The language the memory is written in, as a BCP 47 tag detected on this computer (multilingual spec §18), or "" when it is too short to tell. A memory is found in any language; this says which one its text is in.'}
+        project_id: {type: string, description: 'The project the memory belongs to, learned in one of its chats, or "" for the person''s own memory (#1136).'}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
     KnowledgeSource:
@@ -8614,6 +9265,12 @@ components:
           type: array
           items: {$ref: '#/components/schemas/ActivityStep'}
         notice: {type: string, description: '`notice` tells the user something changed that may affect the answer, such as a smaller model answering after the chosen one failed.'}
+        link_check:
+          type: object
+          description: 'With check_links on, the answer''s links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)'
+          properties:
+            dead: {type: array, items: {type: string}}
+            unknown: {type: array, items: {type: string}}
         files:
           type: array
           description: Attached to a question or produced with an answer.
@@ -8973,6 +9630,33 @@ components:
             gpu_memory_bytes: {type: integer, format: int64}
             context_window: {type: integer}
             quantization: {type: string}
+            llama_cpp: {type: string, description: "The llama.cpp release it ran on, such as b12361 (contract 1.89)"}
+            speculation: {type: string, enum: [on, off], description: "Whether a draft guessed ahead during the runs (contract 1.89)"}
+            draft_accepted: {type: number, description: "The share of the draft's guesses the model kept, 0 to 1, when speculation is on (contract 1.89)"}
+            devices:
+              type: array
+              items: {type: string}
+              description: "The GPUs it ran on, every one when there are several (contract 1.89)"
+            system_memory_bytes: {type: integer, format: int64, description: "The system memory the model's process held after the runs, measured (contract 1.90). Where the graphics share the computer's memory, as on a Mac, it includes what gpu_memory_bytes counts."}
+            contexts:
+              type: array
+              description: "The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it"
+              items:
+                type: object
+                required: [context, runs]
+                properties:
+                  context: {type: integer, description: "The window, in tokens"}
+                  runs: {type: string, enum: [full, partial, cpu, "no"]}
+                  why: {type: string, description: "Why it's short of full: window, a size past the model's own, or out_of_memory"}
+                  prompt_tokens: {type: integer}
+                  prompt_tokens_per_second: {type: number}
+                  tokens_per_second: {type: number}
+                  first_token_ms: {type: number}
+                  effective_tokens_per_second: {type: number}
+                  gpu_layers: {type: integer}
+                  gpu_layers_total: {type: integer}
+                  gpu_memory_bytes: {type: integer, format: int64}
+                  system_memory_bytes: {type: integer, format: int64}
     ModelStore:
       type: object
       required: [shelves, live]
@@ -9103,6 +9787,21 @@ components:
       properties:
         model_id: {type: string}
         context_window: {type: integer, description: 0 for Auto}
+    ModelSlots:
+      type: object
+      description: How many requests a model answers at once (#1135).
+      required: [model_id, slots]
+      properties:
+        model_id: {type: string}
+        slots: {type: integer, minimum: 1, maximum: 4}
+    ModelAlwaysRunning:
+      type: object
+      description: Whether a model is kept running (#966).
+      required: [model_id, always_running]
+      properties:
+        model_id: {type: string}
+        always_running: {type: boolean}
+        memory_left_bytes: {type: integer, description: "This computer's memory less what the models kept running need, when it's known (contract 1.95)"}
     ModelSpeculation:
       type: object
       description: A model's guess-ahead choice (#835).

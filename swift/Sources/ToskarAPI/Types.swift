@@ -675,9 +675,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /mcp`.
     /// - Remark: Generated from `#/paths//mcp/get(mcpServerGet)`.
     func mcpServerGet(_ input: Operations.McpServerGet.Input) async throws -> Operations.McpServerGet.Output
-    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
     ///
-    /// Checked like /v1. A request with an Origin header from another site is refused.
+    /// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
     ///
     /// - Remark: HTTP `POST /mcp`.
     /// - Remark: Generated from `#/paths//mcp/post(mcpServer)`.
@@ -832,14 +832,14 @@ public protocol APIProtocol: Sendable {
     func getPromptCache(_ input: Operations.GetPromptCache.Input) async throws -> Operations.GetPromptCache.Output
     /// OpenAI-compatible model list
     ///
-    /// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+    /// auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
     ///
     /// - Remark: HTTP `GET /v1/models`.
     /// - Remark: Generated from `#/paths//v1/models/get(openaiListModels)`.
     func openaiListModels(_ input: Operations.OpenaiListModels.Input) async throws -> Operations.OpenaiListModels.Output
     /// Anthropic-compatible messages, for coding agents
     ///
-    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
     ///
     /// - Remark: HTTP `POST /v1/messages`.
     /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)`.
@@ -853,7 +853,7 @@ public protocol APIProtocol: Sendable {
     func anthropicCountTokens(_ input: Operations.AnthropicCountTokens.Input) async throws -> Operations.AnthropicCountTokens.Output
     /// OpenAI Responses, for coding agents
     ///
-    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
     ///
     /// - Remark: HTTP `POST /v1/responses`.
     /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)`.
@@ -1058,6 +1058,13 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `PUT /api/v1/models/{id}/speculation`.
     /// - Remark: Generated from `#/paths//api/v1/models/{id}/speculation/put(setModelSpeculation)`.
     func setModelSpeculation(_ input: Operations.SetModelSpeculation.Input) async throws -> Operations.SetModelSpeculation.Output
+    /// Keep a model running
+    ///
+    /// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/always-running`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/always-running/put(setModelAlwaysRunning)`.
+    func setModelAlwaysRunning(_ input: Operations.SetModelAlwaysRunning.Input) async throws -> Operations.SetModelAlwaysRunning.Output
     /// Set a model's context window
     ///
     /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -1065,6 +1072,13 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `PUT /api/v1/models/{id}/context`.
     /// - Remark: Generated from `#/paths//api/v1/models/{id}/context/put(setModelContext)`.
     func setModelContext(_ input: Operations.SetModelContext.Input) async throws -> Operations.SetModelContext.Output
+    /// Set how many requests a model answers at once
+    ///
+    /// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/slots`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/slots/put(setModelSlots)`.
+    func setModelSlots(_ input: Operations.SetModelSlots.Input) async throws -> Operations.SetModelSlots.Output
     /// Rename or retag an added model
     ///
     /// For a model added from a file or a link; catalog models keep their own (#467). Tags are general, coding, reasoning, and writing; vision comes with a projector.
@@ -1286,6 +1300,84 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `DELETE /api/v1/memory/{id}`.
     /// - Remark: Generated from `#/paths//api/v1/memory/{id}/delete(deleteMemory)`.
     func deleteMemory(_ input: Operations.DeleteMemory.Input) async throws -> Operations.DeleteMemory.Output
+    /// The caller's projects
+    ///
+    /// Newest activity first, with how many chats each has (contract 1.87,
+    ///
+    /// - Remark: HTTP `GET /api/v1/projects`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/get(listProjects)`.
+    func listProjects(_ input: Operations.ListProjects.Input) async throws -> Operations.ListProjects.Output
+    /// Make a project
+    ///
+    /// - Remark: HTTP `POST /api/v1/projects`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/post(createProject)`.
+    func createProject(_ input: Operations.CreateProject.Input) async throws -> Operations.CreateProject.Output
+    /// One project
+    ///
+    /// - Remark: HTTP `GET /api/v1/projects/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/get(getProject)`.
+    func getProject(_ input: Operations.GetProject.Input) async throws -> Operations.GetProject.Output
+    /// Change a project
+    ///
+    /// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+    ///
+    /// - Remark: HTTP `PATCH /api/v1/projects/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/patch(updateProject)`.
+    func updateProject(_ input: Operations.UpdateProject.Input) async throws -> Operations.UpdateProject.Output
+    /// Delete a project
+    ///
+    /// Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/projects/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/delete(deleteProject)`.
+    func deleteProject(_ input: Operations.DeleteProject.Input) async throws -> Operations.DeleteProject.Output
+    /// Add a file to a project
+    ///
+    /// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+    ///
+    /// - Remark: HTTP `POST /api/v1/projects/{id}/files`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/post(addProjectFile)`.
+    func addProjectFile(_ input: Operations.AddProjectFile.Input) async throws -> Operations.AddProjectFile.Output
+    /// Remove a file from a project
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/projects/{id}/files/{name}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/{name}/delete(removeProjectFile)`.
+    func removeProjectFile(_ input: Operations.RemoveProjectFile.Input) async throws -> Operations.RemoveProjectFile.Output
+    /// The caller's swarms
+    ///
+    /// Newest first (contract 1.88,
+    ///
+    /// - Remark: HTTP `GET /api/v1/swarms`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/get(listSwarms)`.
+    func listSwarms(_ input: Operations.ListSwarms.Input) async throws -> Operations.ListSwarms.Output
+    /// Start a swarm
+    ///
+    /// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+    ///
+    /// - Remark: HTTP `POST /api/v1/swarms`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/post(startSwarm)`.
+    func startSwarm(_ input: Operations.StartSwarm.Input) async throws -> Operations.StartSwarm.Output
+    /// One swarm
+    ///
+    /// With its agents, their status, and what they're waiting on.
+    ///
+    /// - Remark: HTTP `GET /api/v1/swarms/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/get(getSwarm)`.
+    func getSwarm(_ input: Operations.GetSwarm.Input) async throws -> Operations.GetSwarm.Output
+    /// Delete a swarm
+    ///
+    /// Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/swarms/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/delete(deleteSwarm)`.
+    func deleteSwarm(_ input: Operations.DeleteSwarm.Input) async throws -> Operations.DeleteSwarm.Output
+    /// Stop a swarm
+    ///
+    /// Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+    ///
+    /// - Remark: HTTP `POST /api/v1/swarms/{id}/stop`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/stop/post(stopSwarm)`.
+    func stopSwarm(_ input: Operations.StopSwarm.Input) async throws -> Operations.StopSwarm.Output
     /// Connected knowledge sources
     ///
     /// - Remark: HTTP `GET /api/v1/knowledge/sources`.
@@ -2640,8 +2732,14 @@ extension APIProtocol {
     ///
     /// - Remark: HTTP `GET /api/v1/conversations`.
     /// - Remark: Generated from `#/paths//api/v1/conversations/get(listConversations)`.
-    public func listConversations(headers: Operations.ListConversations.Input.Headers = .init()) async throws -> Operations.ListConversations.Output {
-        try await listConversations(Operations.ListConversations.Input(headers: headers))
+    public func listConversations(
+        query: Operations.ListConversations.Input.Query = .init(),
+        headers: Operations.ListConversations.Input.Headers = .init()
+    ) async throws -> Operations.ListConversations.Output {
+        try await listConversations(Operations.ListConversations.Input(
+            query: query,
+            headers: headers
+        ))
     }
     /// Create conversation
     ///
@@ -2942,9 +3040,9 @@ extension APIProtocol {
     public func mcpServerGet() async throws -> Operations.McpServerGet.Output {
         try await mcpServerGet(Operations.McpServerGet.Input())
     }
-    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
     ///
-    /// Checked like /v1. A request with an Origin header from another site is refused.
+    /// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
     ///
     /// - Remark: HTTP `POST /mcp`.
     /// - Remark: Generated from `#/paths//mcp/post(mcpServer)`.
@@ -3207,7 +3305,7 @@ extension APIProtocol {
     }
     /// OpenAI-compatible model list
     ///
-    /// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+    /// auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
     ///
     /// - Remark: HTTP `GET /v1/models`.
     /// - Remark: Generated from `#/paths//v1/models/get(openaiListModels)`.
@@ -3216,7 +3314,7 @@ extension APIProtocol {
     }
     /// Anthropic-compatible messages, for coding agents
     ///
-    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
     ///
     /// - Remark: HTTP `POST /v1/messages`.
     /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)`.
@@ -3234,7 +3332,7 @@ extension APIProtocol {
     }
     /// OpenAI Responses, for coding agents
     ///
-    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
     ///
     /// - Remark: HTTP `POST /v1/responses`.
     /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)`.
@@ -3653,6 +3751,23 @@ extension APIProtocol {
             body: body
         ))
     }
+    /// Keep a model running
+    ///
+    /// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/always-running`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/always-running/put(setModelAlwaysRunning)`.
+    public func setModelAlwaysRunning(
+        path: Operations.SetModelAlwaysRunning.Input.Path,
+        headers: Operations.SetModelAlwaysRunning.Input.Headers = .init(),
+        body: Operations.SetModelAlwaysRunning.Input.Body
+    ) async throws -> Operations.SetModelAlwaysRunning.Output {
+        try await setModelAlwaysRunning(Operations.SetModelAlwaysRunning.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
     /// Set a model's context window
     ///
     /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -3665,6 +3780,23 @@ extension APIProtocol {
         body: Operations.SetModelContext.Input.Body
     ) async throws -> Operations.SetModelContext.Output {
         try await setModelContext(Operations.SetModelContext.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Set how many requests a model answers at once
+    ///
+    /// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/slots`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/slots/put(setModelSlots)`.
+    public func setModelSlots(
+        path: Operations.SetModelSlots.Input.Path,
+        headers: Operations.SetModelSlots.Input.Headers = .init(),
+        body: Operations.SetModelSlots.Input.Body
+    ) async throws -> Operations.SetModelSlots.Output {
+        try await setModelSlots(Operations.SetModelSlots.Input(
             path: path,
             headers: headers,
             body: body
@@ -4187,6 +4319,180 @@ extension APIProtocol {
         headers: Operations.DeleteMemory.Input.Headers = .init()
     ) async throws -> Operations.DeleteMemory.Output {
         try await deleteMemory(Operations.DeleteMemory.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// The caller's projects
+    ///
+    /// Newest activity first, with how many chats each has (contract 1.87,
+    ///
+    /// - Remark: HTTP `GET /api/v1/projects`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/get(listProjects)`.
+    public func listProjects(headers: Operations.ListProjects.Input.Headers = .init()) async throws -> Operations.ListProjects.Output {
+        try await listProjects(Operations.ListProjects.Input(headers: headers))
+    }
+    /// Make a project
+    ///
+    /// - Remark: HTTP `POST /api/v1/projects`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/post(createProject)`.
+    public func createProject(
+        headers: Operations.CreateProject.Input.Headers = .init(),
+        body: Operations.CreateProject.Input.Body
+    ) async throws -> Operations.CreateProject.Output {
+        try await createProject(Operations.CreateProject.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// One project
+    ///
+    /// - Remark: HTTP `GET /api/v1/projects/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/get(getProject)`.
+    public func getProject(
+        path: Operations.GetProject.Input.Path,
+        headers: Operations.GetProject.Input.Headers = .init()
+    ) async throws -> Operations.GetProject.Output {
+        try await getProject(Operations.GetProject.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Change a project
+    ///
+    /// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+    ///
+    /// - Remark: HTTP `PATCH /api/v1/projects/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/patch(updateProject)`.
+    public func updateProject(
+        path: Operations.UpdateProject.Input.Path,
+        headers: Operations.UpdateProject.Input.Headers = .init(),
+        body: Operations.UpdateProject.Input.Body
+    ) async throws -> Operations.UpdateProject.Output {
+        try await updateProject(Operations.UpdateProject.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Delete a project
+    ///
+    /// Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/projects/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/delete(deleteProject)`.
+    public func deleteProject(
+        path: Operations.DeleteProject.Input.Path,
+        query: Operations.DeleteProject.Input.Query = .init(),
+        headers: Operations.DeleteProject.Input.Headers = .init()
+    ) async throws -> Operations.DeleteProject.Output {
+        try await deleteProject(Operations.DeleteProject.Input(
+            path: path,
+            query: query,
+            headers: headers
+        ))
+    }
+    /// Add a file to a project
+    ///
+    /// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+    ///
+    /// - Remark: HTTP `POST /api/v1/projects/{id}/files`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/post(addProjectFile)`.
+    public func addProjectFile(
+        path: Operations.AddProjectFile.Input.Path,
+        headers: Operations.AddProjectFile.Input.Headers = .init(),
+        body: Operations.AddProjectFile.Input.Body
+    ) async throws -> Operations.AddProjectFile.Output {
+        try await addProjectFile(Operations.AddProjectFile.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Remove a file from a project
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/projects/{id}/files/{name}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/{name}/delete(removeProjectFile)`.
+    public func removeProjectFile(
+        path: Operations.RemoveProjectFile.Input.Path,
+        headers: Operations.RemoveProjectFile.Input.Headers = .init()
+    ) async throws -> Operations.RemoveProjectFile.Output {
+        try await removeProjectFile(Operations.RemoveProjectFile.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// The caller's swarms
+    ///
+    /// Newest first (contract 1.88,
+    ///
+    /// - Remark: HTTP `GET /api/v1/swarms`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/get(listSwarms)`.
+    public func listSwarms(
+        query: Operations.ListSwarms.Input.Query = .init(),
+        headers: Operations.ListSwarms.Input.Headers = .init()
+    ) async throws -> Operations.ListSwarms.Output {
+        try await listSwarms(Operations.ListSwarms.Input(
+            query: query,
+            headers: headers
+        ))
+    }
+    /// Start a swarm
+    ///
+    /// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+    ///
+    /// - Remark: HTTP `POST /api/v1/swarms`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/post(startSwarm)`.
+    public func startSwarm(
+        headers: Operations.StartSwarm.Input.Headers = .init(),
+        body: Operations.StartSwarm.Input.Body
+    ) async throws -> Operations.StartSwarm.Output {
+        try await startSwarm(Operations.StartSwarm.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// One swarm
+    ///
+    /// With its agents, their status, and what they're waiting on.
+    ///
+    /// - Remark: HTTP `GET /api/v1/swarms/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/get(getSwarm)`.
+    public func getSwarm(
+        path: Operations.GetSwarm.Input.Path,
+        headers: Operations.GetSwarm.Input.Headers = .init()
+    ) async throws -> Operations.GetSwarm.Output {
+        try await getSwarm(Operations.GetSwarm.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Delete a swarm
+    ///
+    /// Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/swarms/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/delete(deleteSwarm)`.
+    public func deleteSwarm(
+        path: Operations.DeleteSwarm.Input.Path,
+        headers: Operations.DeleteSwarm.Input.Headers = .init()
+    ) async throws -> Operations.DeleteSwarm.Output {
+        try await deleteSwarm(Operations.DeleteSwarm.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Stop a swarm
+    ///
+    /// Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+    ///
+    /// - Remark: HTTP `POST /api/v1/swarms/{id}/stop`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/stop/post(stopSwarm)`.
+    public func stopSwarm(
+        path: Operations.StopSwarm.Input.Path,
+        headers: Operations.StopSwarm.Input.Headers = .init()
+    ) async throws -> Operations.StopSwarm.Output {
+        try await stopSwarm(Operations.StopSwarm.Input(
             path: path,
             headers: headers
         ))
@@ -6085,8 +6391,14 @@ public enum Components {
             public var nodeName: Swift.String
             /// - Remark: Generated from `#/components/schemas/RunningModelView/status`.
             public var status: Swift.String
+            /// The catalog's estimate of the memory it needs
+            ///
             /// - Remark: Generated from `#/components/schemas/RunningModelView/memory_bytes`.
             public var memoryBytes: Swift.Int64?
+            /// The system memory its process holds, measured a few seconds ago at most (contract 1.90). On Linux, the memory it allocated, without the model file it maps.
+            ///
+            /// - Remark: Generated from `#/components/schemas/RunningModelView/resident_bytes`.
+            public var residentBytes: Swift.Int64?
             /// - Remark: Generated from `#/components/schemas/RunningModelView/endpoint`.
             public var endpoint: Swift.String?
             /// Generation speed in the model's latest replies
@@ -6101,6 +6413,10 @@ public enum Components {
             public var accelerator: Swift.String?
             /// - Remark: Generated from `#/components/schemas/RunningModelView/last_used_at`.
             public var lastUsedAt: Foundation.Date?
+            /// A model kept loaded on its computer (#966, contract 1.96)
+            ///
+            /// - Remark: Generated from `#/components/schemas/RunningModelView/always_running`.
+            public var alwaysRunning: Swift.Bool?
             /// "embedding" or "reranking" for a supporting model serving knowledge search, and empty for a chat model. Known values: `embedding`, `reranking`; others may be added.
             ///
             /// - Remark: Generated from `#/components/schemas/RunningModelView/mode`.
@@ -6183,12 +6499,14 @@ public enum Components {
             ///   - nodeId:
             ///   - nodeName:
             ///   - status:
-            ///   - memoryBytes:
+            ///   - memoryBytes: The catalog's estimate of the memory it needs
+            ///   - residentBytes: The system memory its process holds, measured a few seconds ago at most (contract 1.90). On Linux, the memory it allocated, without the model file it maps.
             ///   - endpoint:
             ///   - speedTokPerSec: Generation speed in the model's latest replies
             ///   - usedByProfiles:
             ///   - accelerator: The devices the model is on, or CPU
             ///   - lastUsedAt:
+            ///   - alwaysRunning: A model kept loaded on its computer (#966, contract 1.96)
             ///   - mode: "embedding" or "reranking" for a supporting model serving knowledge search, and empty for a chat model. Known values: `embedding`, `reranking`; others may be added.
             ///   - acceleration: Where the model runs, from the runtime's own report; absent when that is not known.
             public init(
@@ -6199,11 +6517,13 @@ public enum Components {
                 nodeName: Swift.String,
                 status: Swift.String,
                 memoryBytes: Swift.Int64? = nil,
+                residentBytes: Swift.Int64? = nil,
                 endpoint: Swift.String? = nil,
                 speedTokPerSec: Swift.Double? = nil,
                 usedByProfiles: [Swift.String]? = nil,
                 accelerator: Swift.String? = nil,
                 lastUsedAt: Foundation.Date? = nil,
+                alwaysRunning: Swift.Bool? = nil,
                 mode: Swift.String? = nil,
                 acceleration: Components.Schemas.RunningModelView.AccelerationPayload? = nil
             ) {
@@ -6214,11 +6534,13 @@ public enum Components {
                 self.nodeName = nodeName
                 self.status = status
                 self.memoryBytes = memoryBytes
+                self.residentBytes = residentBytes
                 self.endpoint = endpoint
                 self.speedTokPerSec = speedTokPerSec
                 self.usedByProfiles = usedByProfiles
                 self.accelerator = accelerator
                 self.lastUsedAt = lastUsedAt
+                self.alwaysRunning = alwaysRunning
                 self.mode = mode
                 self.acceleration = acceleration
             }
@@ -6230,11 +6552,13 @@ public enum Components {
                 case nodeName = "node_name"
                 case status
                 case memoryBytes = "memory_bytes"
+                case residentBytes = "resident_bytes"
                 case endpoint
                 case speedTokPerSec = "speed_tok_per_sec"
                 case usedByProfiles = "used_by_profiles"
                 case accelerator
                 case lastUsedAt = "last_used_at"
+                case alwaysRunning = "always_running"
                 case mode
                 case acceleration
             }
@@ -6792,6 +7116,10 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/Model/speculation`.
             public var speculation: Swift.String?
+            /// A chat model installed on this computer that is kept loaded (#966, contract 1.94).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/always_running`.
+            public var alwaysRunning: Swift.Bool?
             /// The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
             ///
             /// - Remark: Generated from `#/components/schemas/Model/context_window`.
@@ -6835,6 +7163,10 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/Model/context_options`.
             public var contextOptions: Components.Schemas.Model.ContextOptionsPayload?
+            /// How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/slots`.
+            public var slots: Swift.Int?
             /// How well a model writes a language (multilingual spec §13–14, §31). Levels are coarse on purpose: they don't imply precision the sources don't have. A language a model has no level for is unknown, and is left out.
             ///
             /// - Remark: Generated from `#/components/schemas/Model/LanguagesPayload`.
@@ -6914,9 +7246,11 @@ public enum Components {
             ///   - dynamic: installed from browse-all / URL
             ///   - supportRole: `support_role` marks a model that serves Yggdrasil instead of chatting: SupportEmbedding, SupportReranker, or SupportClassifier. Empty for chat models.
             ///   - speculation: Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added.
+            ///   - alwaysRunning: A chat model installed on this computer that is kept loaded (#966, contract 1.94).
             ///   - contextWindow: The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
             ///   - contextChoice: The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).
             ///   - contextOptions: The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
+            ///   - slots: How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models.
             ///   - languages: How well the model writes each language it has a level for (§13–14, §31), best first.
             public init(
                 id: Swift.String,
@@ -6942,9 +7276,11 @@ public enum Components {
                 dynamic: Swift.Bool? = nil,
                 supportRole: Swift.String? = nil,
                 speculation: Swift.String? = nil,
+                alwaysRunning: Swift.Bool? = nil,
                 contextWindow: Swift.Int? = nil,
                 contextChoice: Swift.Int? = nil,
                 contextOptions: Components.Schemas.Model.ContextOptionsPayload? = nil,
+                slots: Swift.Int? = nil,
                 languages: Components.Schemas.Model.LanguagesPayload? = nil
             ) {
                 self.id = id
@@ -6970,9 +7306,11 @@ public enum Components {
                 self.dynamic = dynamic
                 self.supportRole = supportRole
                 self.speculation = speculation
+                self.alwaysRunning = alwaysRunning
                 self.contextWindow = contextWindow
                 self.contextChoice = contextChoice
                 self.contextOptions = contextOptions
+                self.slots = slots
                 self.languages = languages
             }
             public enum CodingKeys: String, CodingKey {
@@ -6999,9 +7337,11 @@ public enum Components {
                 case dynamic
                 case supportRole = "support_role"
                 case speculation
+                case alwaysRunning = "always_running"
                 case contextWindow = "context_window"
                 case contextChoice = "context_choice"
                 case contextOptions = "context_options"
+                case slots
                 case languages
             }
         }
@@ -7151,6 +7491,18 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/Conversation/project`.
             public var project: Swift.String?
+            /// The project the chat is in, if any: a chat is in one project at most (contract 1.87, #1136).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Conversation/project_id`.
+            public var projectId: Swift.String?
+            /// The swarm the chat belongs to: its coordinator's chat, or one of its agents' (contract 1.88, #1135).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Conversation/swarm_id`.
+            public var swarmId: Swift.String?
+            /// agent:N for an agent's chat; empty for the coordinator's or a chat in no swarm.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Conversation/swarm_role`.
+            public var swarmRole: Swift.String?
             /// `compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342).
             ///
             /// - Remark: Generated from `#/components/schemas/Conversation/compact_off`.
@@ -7168,6 +7520,9 @@ public enum Components {
             ///   - modelId:
             ///   - memoryOff: `memory_off` keeps persistent memory out of this conversation.
             ///   - project: The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done
+            ///   - projectId: The project the chat is in, if any: a chat is in one project at most (contract 1.87, #1136).
+            ///   - swarmId: The swarm the chat belongs to: its coordinator's chat, or one of its agents' (contract 1.88, #1135).
+            ///   - swarmRole: agent:N for an agent's chat; empty for the coordinator's or a chat in no swarm.
             ///   - compactOff: `compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342).
             ///   - createdAt:
             ///   - updatedAt:
@@ -7178,6 +7533,9 @@ public enum Components {
                 modelId: Swift.String? = nil,
                 memoryOff: Swift.Bool,
                 project: Swift.String? = nil,
+                projectId: Swift.String? = nil,
+                swarmId: Swift.String? = nil,
+                swarmRole: Swift.String? = nil,
                 compactOff: Swift.Bool,
                 createdAt: Foundation.Date,
                 updatedAt: Foundation.Date
@@ -7188,6 +7546,9 @@ public enum Components {
                 self.modelId = modelId
                 self.memoryOff = memoryOff
                 self.project = project
+                self.projectId = projectId
+                self.swarmId = swarmId
+                self.swarmRole = swarmRole
                 self.compactOff = compactOff
                 self.createdAt = createdAt
                 self.updatedAt = updatedAt
@@ -7199,6 +7560,9 @@ public enum Components {
                 case modelId = "model_id"
                 case memoryOff = "memory_off"
                 case project
+                case projectId = "project_id"
+                case swarmId = "swarm_id"
+                case swarmRole = "swarm_role"
                 case compactOff = "compact_off"
                 case createdAt = "created_at"
                 case updatedAt = "updated_at"
@@ -7865,6 +8229,606 @@ public enum Components {
                 case details
             }
         }
+        /// Related chats kept together with what they share: instructions, files, a folder on the Toskar computer, a default profile and model, and a memory of their own (contract 1.87, #1136). It belongs to the person who made it.
+        ///
+        /// - Remark: Generated from `#/components/schemas/Project`.
+        public struct Project: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/Project/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/Project/name`.
+            public var name: Swift.String
+            /// The person's own instructions for every chat in the project. They come after a profile's and before the person's style.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Project/instructions`.
+            public var instructions: Swift.String
+            /// Where the project's chats work on the Toskar computer
+            ///
+            /// - Remark: Generated from `#/components/schemas/Project/folder`.
+            public var folder: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/Project/profile_id`.
+            public var profileId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/Project/model_id`.
+            public var modelId: Swift.String?
+            /// `memory_off` keeps the project's chats from saving or reading the project's own memory. The person's memory follows each chat's Memory control.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Project/memory_off`.
+            public var memoryOff: Swift.Bool
+            /// The ids of knowledge sources linked to the project, which its chats search as well as its files.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Project/knowledge`.
+            public var knowledge: [Swift.String]
+            /// The files added to the project's knowledge.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Project/files`.
+            public var files: [Components.Schemas.ProjectFile]
+            /// How many chats are in the project.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Project/chat_count`.
+            public var chatCount: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/Project/created_at`.
+            public var createdAt: Foundation.Date
+            /// The project's last activity: a change to it, or to one of its chats.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Project/updated_at`.
+            public var updatedAt: Foundation.Date
+            /// Creates a new `Project`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - name:
+            ///   - instructions: The person's own instructions for every chat in the project. They come after a profile's and before the person's style.
+            ///   - folder: Where the project's chats work on the Toskar computer
+            ///   - profileId:
+            ///   - modelId:
+            ///   - memoryOff: `memory_off` keeps the project's chats from saving or reading the project's own memory. The person's memory follows each chat's Memory control.
+            ///   - knowledge: The ids of knowledge sources linked to the project, which its chats search as well as its files.
+            ///   - files: The files added to the project's knowledge.
+            ///   - chatCount: How many chats are in the project.
+            ///   - createdAt:
+            ///   - updatedAt: The project's last activity: a change to it, or to one of its chats.
+            public init(
+                id: Swift.String,
+                name: Swift.String,
+                instructions: Swift.String,
+                folder: Swift.String? = nil,
+                profileId: Swift.String? = nil,
+                modelId: Swift.String? = nil,
+                memoryOff: Swift.Bool,
+                knowledge: [Swift.String],
+                files: [Components.Schemas.ProjectFile],
+                chatCount: Swift.Int,
+                createdAt: Foundation.Date,
+                updatedAt: Foundation.Date
+            ) {
+                self.id = id
+                self.name = name
+                self.instructions = instructions
+                self.folder = folder
+                self.profileId = profileId
+                self.modelId = modelId
+                self.memoryOff = memoryOff
+                self.knowledge = knowledge
+                self.files = files
+                self.chatCount = chatCount
+                self.createdAt = createdAt
+                self.updatedAt = updatedAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case name
+                case instructions
+                case folder
+                case profileId = "profile_id"
+                case modelId = "model_id"
+                case memoryOff = "memory_off"
+                case knowledge
+                case files
+                case chatCount = "chat_count"
+                case createdAt = "created_at"
+                case updatedAt = "updated_at"
+            }
+        }
+        /// A project's fields; one left out stays as it is.
+        ///
+        /// - Remark: Generated from `#/components/schemas/ProjectInput`.
+        public struct ProjectInput: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ProjectInput/name`.
+            public var name: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/ProjectInput/instructions`.
+            public var instructions: Swift.String?
+            /// The full path of a folder on the Toskar computer for the project's chats to work in, or empty for none. Needs the admin role.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ProjectInput/folder`.
+            public var folder: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/ProjectInput/profile_id`.
+            public var profileId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/ProjectInput/model_id`.
+            public var modelId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/ProjectInput/memory_off`.
+            public var memoryOff: Swift.Bool?
+            /// Knowledge source ids to link. Needs the member role.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ProjectInput/knowledge`.
+            public var knowledge: [Swift.String]?
+            /// Creates a new `ProjectInput`.
+            ///
+            /// - Parameters:
+            ///   - name:
+            ///   - instructions:
+            ///   - folder: The full path of a folder on the Toskar computer for the project's chats to work in, or empty for none. Needs the admin role.
+            ///   - profileId:
+            ///   - modelId:
+            ///   - memoryOff:
+            ///   - knowledge: Knowledge source ids to link. Needs the member role.
+            public init(
+                name: Swift.String? = nil,
+                instructions: Swift.String? = nil,
+                folder: Swift.String? = nil,
+                profileId: Swift.String? = nil,
+                modelId: Swift.String? = nil,
+                memoryOff: Swift.Bool? = nil,
+                knowledge: [Swift.String]? = nil
+            ) {
+                self.name = name
+                self.instructions = instructions
+                self.folder = folder
+                self.profileId = profileId
+                self.modelId = modelId
+                self.memoryOff = memoryOff
+                self.knowledge = knowledge
+            }
+            public enum CodingKeys: String, CodingKey {
+                case name
+                case instructions
+                case folder
+                case profileId = "profile_id"
+                case modelId = "model_id"
+                case memoryOff = "memory_off"
+                case knowledge
+            }
+        }
+        /// One file in a project's knowledge.
+        ///
+        /// - Remark: Generated from `#/components/schemas/ProjectFile`.
+        public struct ProjectFile: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ProjectFile/name`.
+            public var name: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ProjectFile/size`.
+            public var size: Swift.Int64
+            /// Creates a new `ProjectFile`.
+            ///
+            /// - Parameters:
+            ///   - name:
+            ///   - size:
+            public init(
+                name: Swift.String,
+                size: Swift.Int64
+            ) {
+                self.name = name
+                self.size = size
+            }
+            public enum CodingKeys: String, CodingKey {
+                case name
+                case size
+            }
+        }
+        /// Several agents working at once on one request, each in a chat of its own in the coordinator chat's project (contract 1.88, #1135). It belongs to the person who started it.
+        ///
+        /// - Remark: Generated from `#/components/schemas/Swarm`.
+        public struct Swarm: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/Swarm/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/Swarm/project_id`.
+            public var projectId: Swift.String
+            /// The coordinator's chat, where the merged answer goes.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/conversation_id`.
+            public var conversationId: Swift.String
+            /// Known values: `split`, `race`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/mode`.
+            public var mode: Swift.String
+            /// Known values: `running`, `merging`, `done`, `stopped`, `failed`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/status`.
+            public var status: Swift.String
+            /// - Remark: Generated from `#/components/schemas/Swarm/request`.
+            public var request: Swift.String
+            /// - Remark: Generated from `#/components/schemas/Swarm/budget`.
+            public var budget: Components.Schemas.SwarmBudget
+            /// The swarm's agents, in order. Empty until the coordinator has planned the parts.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/agents`.
+            public var agents: [Components.Schemas.SwarmAgent]
+            /// A race's winning agent, 0 when the answers were merged or it's not a race.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/winner`.
+            public var winner: Swift.Int?
+            /// `note` says why the swarm ran differently than asked, such as running as one agent.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/note`.
+            public var note: Swift.String?
+            /// Every agent's tokens so far.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/tokens`.
+            public var tokens: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/Swarm/seconds`.
+            public var seconds: Swift.Double
+            /// The folder a task swarm worked in. In a Git repository each agent worked on a branch of its own, kept for 7 days or until the swarm is deleted.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/folder`.
+            public var folder: Swift.String?
+            /// A task swarm's result: the agents' work merged, or a race winner's. Empty for a question, or a folder that isn't in Git.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/branch`.
+            public var branch: Swift.String?
+            /// How the project's checks went on the result. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/checks`.
+            public var checks: Swift.String?
+            /// Agents' changes that couldn't be merged, each still on its agent's branch.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/conflicts`.
+            public var conflicts: [Components.Schemas.SwarmConflict]?
+            /// The result is in the person's folder as uncommitted changes, after they allowed it.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/applied`.
+            public var applied: Swift.Bool?
+            /// - Remark: Generated from `#/components/schemas/Swarm/WaitingPayload`.
+            public struct WaitingPayloadPayload: Codable, Hashable, Sendable {
+                /// A container of undocumented properties.
+                public var additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer]
+                /// Creates a new `WaitingPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - additionalProperties: A container of undocumented properties.
+                public init(additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer] = .init()) {
+                    self.additionalProperties = additionalProperties
+                }
+                public init(from decoder: any Decoder) throws {
+                    additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                }
+                public func encode(to encoder: any Encoder) throws {
+                    try encoder.encodeAdditionalProperties(additionalProperties)
+                }
+            }
+            /// Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/waiting`.
+            public typealias WaitingPayload = [Components.Schemas.Swarm.WaitingPayloadPayload]
+            /// Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Swarm/waiting`.
+            public var waiting: Components.Schemas.Swarm.WaitingPayload?
+            /// - Remark: Generated from `#/components/schemas/Swarm/created_at`.
+            public var createdAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/Swarm/finished_at`.
+            public var finishedAt: Foundation.Date?
+            /// Creates a new `Swarm`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - projectId:
+            ///   - conversationId: The coordinator's chat, where the merged answer goes.
+            ///   - mode: Known values: `split`, `race`; others may be added.
+            ///   - status: Known values: `running`, `merging`, `done`, `stopped`, `failed`; others may be added.
+            ///   - request:
+            ///   - budget:
+            ///   - agents: The swarm's agents, in order. Empty until the coordinator has planned the parts.
+            ///   - winner: A race's winning agent, 0 when the answers were merged or it's not a race.
+            ///   - note: `note` says why the swarm ran differently than asked, such as running as one agent.
+            ///   - tokens: Every agent's tokens so far.
+            ///   - seconds:
+            ///   - folder: The folder a task swarm worked in. In a Git repository each agent worked on a branch of its own, kept for 7 days or until the swarm is deleted.
+            ///   - branch: A task swarm's result: the agents' work merged, or a race winner's. Empty for a question, or a folder that isn't in Git.
+            ///   - checks: How the project's checks went on the result. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+            ///   - conflicts: Agents' changes that couldn't be merged, each still on its agent's branch.
+            ///   - applied: The result is in the person's folder as uncommitted changes, after they allowed it.
+            ///   - waiting: Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by.
+            ///   - createdAt:
+            ///   - finishedAt:
+            public init(
+                id: Swift.String,
+                projectId: Swift.String,
+                conversationId: Swift.String,
+                mode: Swift.String,
+                status: Swift.String,
+                request: Swift.String,
+                budget: Components.Schemas.SwarmBudget,
+                agents: [Components.Schemas.SwarmAgent],
+                winner: Swift.Int? = nil,
+                note: Swift.String? = nil,
+                tokens: Swift.Int,
+                seconds: Swift.Double,
+                folder: Swift.String? = nil,
+                branch: Swift.String? = nil,
+                checks: Swift.String? = nil,
+                conflicts: [Components.Schemas.SwarmConflict]? = nil,
+                applied: Swift.Bool? = nil,
+                waiting: Components.Schemas.Swarm.WaitingPayload? = nil,
+                createdAt: Foundation.Date,
+                finishedAt: Foundation.Date? = nil
+            ) {
+                self.id = id
+                self.projectId = projectId
+                self.conversationId = conversationId
+                self.mode = mode
+                self.status = status
+                self.request = request
+                self.budget = budget
+                self.agents = agents
+                self.winner = winner
+                self.note = note
+                self.tokens = tokens
+                self.seconds = seconds
+                self.folder = folder
+                self.branch = branch
+                self.checks = checks
+                self.conflicts = conflicts
+                self.applied = applied
+                self.waiting = waiting
+                self.createdAt = createdAt
+                self.finishedAt = finishedAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case projectId = "project_id"
+                case conversationId = "conversation_id"
+                case mode
+                case status
+                case request
+                case budget
+                case agents
+                case winner
+                case note
+                case tokens
+                case seconds
+                case folder
+                case branch
+                case checks
+                case conflicts
+                case applied
+                case waiting
+                case createdAt = "created_at"
+                case finishedAt = "finished_at"
+            }
+        }
+        /// One agent in a swarm: its part, where it runs, and how it went (contract 1.88, #1135).
+        ///
+        /// - Remark: Generated from `#/components/schemas/SwarmAgent`.
+        public struct SwarmAgent: Codable, Hashable, Sendable {
+            /// Its number, from 1.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/agent`.
+            public var agent: Swift.Int
+            /// The agent's own chat, which can be opened and continued.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/conversation_id`.
+            public var conversationId: Swift.String
+            /// agent:N.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/role`.
+            public var role: Swift.String
+            /// What it was asked to do: its part, or in a race the whole request.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/part`.
+            public var part: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/model_id`.
+            public var modelId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/node_id`.
+            public var nodeId: Swift.String?
+            /// Known values: `queued`, `running`, `done`, `failed`, `stopped`, `out_of_budget`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/status`.
+            public var status: Swift.String
+            /// The start of its answer.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/summary`.
+            public var summary: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/tokens`.
+            public var tokens: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/seconds`.
+            public var seconds: Swift.Double
+            /// The files or folders a task's part expects to change.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/paths`.
+            public var paths: [Swift.String]?
+            /// A task agent's own branch, with its work committed.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/branch`.
+            public var branch: Swift.String?
+            /// How the project's checks went on its branch in a race. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmAgent/checks`.
+            public var checks: Swift.String?
+            /// Creates a new `SwarmAgent`.
+            ///
+            /// - Parameters:
+            ///   - agent: Its number, from 1.
+            ///   - conversationId: The agent's own chat, which can be opened and continued.
+            ///   - role: agent:N.
+            ///   - part: What it was asked to do: its part, or in a race the whole request.
+            ///   - modelId:
+            ///   - nodeId:
+            ///   - status: Known values: `queued`, `running`, `done`, `failed`, `stopped`, `out_of_budget`; others may be added.
+            ///   - summary: The start of its answer.
+            ///   - tokens:
+            ///   - seconds:
+            ///   - paths: The files or folders a task's part expects to change.
+            ///   - branch: A task agent's own branch, with its work committed.
+            ///   - checks: How the project's checks went on its branch in a race. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+            public init(
+                agent: Swift.Int,
+                conversationId: Swift.String,
+                role: Swift.String,
+                part: Swift.String,
+                modelId: Swift.String? = nil,
+                nodeId: Swift.String? = nil,
+                status: Swift.String,
+                summary: Swift.String? = nil,
+                tokens: Swift.Int,
+                seconds: Swift.Double,
+                paths: [Swift.String]? = nil,
+                branch: Swift.String? = nil,
+                checks: Swift.String? = nil
+            ) {
+                self.agent = agent
+                self.conversationId = conversationId
+                self.role = role
+                self.part = part
+                self.modelId = modelId
+                self.nodeId = nodeId
+                self.status = status
+                self.summary = summary
+                self.tokens = tokens
+                self.seconds = seconds
+                self.paths = paths
+                self.branch = branch
+                self.checks = checks
+            }
+            public enum CodingKeys: String, CodingKey {
+                case agent
+                case conversationId = "conversation_id"
+                case role
+                case part
+                case modelId = "model_id"
+                case nodeId = "node_id"
+                case status
+                case summary
+                case tokens
+                case seconds
+                case paths
+                case branch
+                case checks
+            }
+        }
+        /// An agent's change that couldn't be merged with the others', even by a fix-up agent (contract 1.88, #1135).
+        ///
+        /// - Remark: Generated from `#/components/schemas/SwarmConflict`.
+        public struct SwarmConflict: Codable, Hashable, Sendable {
+            /// The agent whose change wasn't merged.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmConflict/agent`.
+            public var agent: Swift.Int
+            /// Has its change.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmConflict/branch`.
+            public var branch: Swift.String
+            /// The files that conflicted.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmConflict/files`.
+            public var files: [Swift.String]
+            /// Creates a new `SwarmConflict`.
+            ///
+            /// - Parameters:
+            ///   - agent: The agent whose change wasn't merged.
+            ///   - branch: Has its change.
+            ///   - files: The files that conflicted.
+            public init(
+                agent: Swift.Int,
+                branch: Swift.String,
+                files: [Swift.String]
+            ) {
+                self.agent = agent
+                self.branch = branch
+                self.files = files
+            }
+            public enum CodingKeys: String, CodingKey {
+                case agent
+                case branch
+                case files
+            }
+        }
+        /// What a swarm may use (contract 1.88, #1135).
+        ///
+        /// - Remark: Generated from `#/components/schemas/SwarmBudget`.
+        public struct SwarmBudget: Codable, Hashable, Sendable {
+            /// The most agents it has.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmBudget/agents`.
+            public var agents: Swift.Int
+            /// The most the whole swarm may use.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmBudget/tokens`.
+            public var tokens: Swift.Int
+            /// The most it may run.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmBudget/minutes`.
+            public var minutes: Swift.Int
+            /// Creates a new `SwarmBudget`.
+            ///
+            /// - Parameters:
+            ///   - agents: The most agents it has.
+            ///   - tokens: The most the whole swarm may use.
+            ///   - minutes: The most it may run.
+            public init(
+                agents: Swift.Int,
+                tokens: Swift.Int,
+                minutes: Swift.Int
+            ) {
+                self.agents = agents
+                self.tokens = tokens
+                self.minutes = minutes
+            }
+            public enum CodingKeys: String, CodingKey {
+                case agents
+                case tokens
+                case minutes
+            }
+        }
+        /// Swarm controls (contract 1.88, #1135): a profile's orchestration.swarm, or one swarm's budget. Every field is optional; empty keeps the default.
+        ///
+        /// - Remark: Generated from `#/components/schemas/SwarmPolicy`.
+        public struct SwarmPolicy: Codable, Hashable, Sendable {
+            /// split: a coordinator splits the job into parts that agents do at once. race: agents on different models each do the whole request, and the best answer wins or they're merged. Empty is split. Known values: `split`, `race`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmPolicy/mode`.
+            public var mode: Swift.String?
+            /// A race's models, one agent each, in order. A split's agents take them in turn.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmPolicy/models`.
+            public var models: [Swift.String]?
+            /// The most agents. Empty is the profile's max_workers
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmPolicy/agents`.
+            public var agents: Swift.Int?
+            /// The most the whole swarm may use. Empty is 400000.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmPolicy/tokens`.
+            public var tokens: Swift.Int?
+            /// The most a swarm may run. Empty is 5 for a question and 30 for a task.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SwarmPolicy/minutes`.
+            public var minutes: Swift.Int?
+            /// Creates a new `SwarmPolicy`.
+            ///
+            /// - Parameters:
+            ///   - mode: split: a coordinator splits the job into parts that agents do at once. race: agents on different models each do the whole request, and the best answer wins or they're merged. Empty is split. Known values: `split`, `race`; others may be added.
+            ///   - models: A race's models, one agent each, in order. A split's agents take them in turn.
+            ///   - agents: The most agents. Empty is the profile's max_workers
+            ///   - tokens: The most the whole swarm may use. Empty is 400000.
+            ///   - minutes: The most a swarm may run. Empty is 5 for a question and 30 for a task.
+            public init(
+                mode: Swift.String? = nil,
+                models: [Swift.String]? = nil,
+                agents: Swift.Int? = nil,
+                tokens: Swift.Int? = nil,
+                minutes: Swift.Int? = nil
+            ) {
+                self.mode = mode
+                self.models = models
+                self.agents = agents
+                self.tokens = tokens
+                self.minutes = minutes
+            }
+            public enum CodingKeys: String, CodingKey {
+                case mode
+                case models
+                case agents
+                case tokens
+                case minutes
+            }
+        }
         /// One durable fact or preference.
         ///
         /// - Remark: Generated from `#/components/schemas/Memory`.
@@ -7889,6 +8853,10 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/Memory/language`.
             public var language: Swift.String?
+            /// The project the memory belongs to, learned in one of its chats, or "" for the person's own memory (#1136).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Memory/project_id`.
+            public var projectId: Swift.String?
             /// - Remark: Generated from `#/components/schemas/Memory/created_at`.
             public var createdAt: Foundation.Date
             /// - Remark: Generated from `#/components/schemas/Memory/updated_at`.
@@ -7904,6 +8872,7 @@ public enum Components {
             ///   - enabled:
             ///   - localOnly: `local_only` keeps the memory on this computer: work that uses it is never sent to a paired computer (§63).
             ///   - language: The language the memory is written in, as a BCP 47 tag detected on this computer (multilingual spec §18), or "" when it is too short to tell. A memory is found in any language; this says which one its text is in.
+            ///   - projectId: The project the memory belongs to, learned in one of its chats, or "" for the person's own memory (#1136).
             ///   - createdAt:
             ///   - updatedAt:
             public init(
@@ -7915,6 +8884,7 @@ public enum Components {
                 enabled: Swift.Bool,
                 localOnly: Swift.Bool,
                 language: Swift.String? = nil,
+                projectId: Swift.String? = nil,
                 createdAt: Foundation.Date,
                 updatedAt: Foundation.Date
             ) {
@@ -7926,6 +8896,7 @@ public enum Components {
                 self.enabled = enabled
                 self.localOnly = localOnly
                 self.language = language
+                self.projectId = projectId
                 self.createdAt = createdAt
                 self.updatedAt = updatedAt
             }
@@ -7938,6 +8909,7 @@ public enum Components {
                 case enabled
                 case localOnly = "local_only"
                 case language
+                case projectId = "project_id"
                 case createdAt = "created_at"
                 case updatedAt = "updated_at"
             }
@@ -12293,6 +13265,35 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/MessageMeta/notice`.
             public var notice: Swift.String?
+            /// With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
+            ///
+            /// - Remark: Generated from `#/components/schemas/MessageMeta/link_check`.
+            public struct LinkCheckPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/MessageMeta/link_check/dead`.
+                public var dead: [Swift.String]?
+                /// - Remark: Generated from `#/components/schemas/MessageMeta/link_check/unknown`.
+                public var unknown: [Swift.String]?
+                /// Creates a new `LinkCheckPayload`.
+                ///
+                /// - Parameters:
+                ///   - dead:
+                ///   - unknown:
+                public init(
+                    dead: [Swift.String]? = nil,
+                    unknown: [Swift.String]? = nil
+                ) {
+                    self.dead = dead
+                    self.unknown = unknown
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case dead
+                    case unknown
+                }
+            }
+            /// With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
+            ///
+            /// - Remark: Generated from `#/components/schemas/MessageMeta/link_check`.
+            public var linkCheck: Components.Schemas.MessageMeta.LinkCheckPayload?
             /// Attached to a question or produced with an answer.
             ///
             /// - Remark: Generated from `#/components/schemas/MessageMeta/files`.
@@ -12576,6 +13577,7 @@ public enum Components {
             ///   - sources:
             ///   - steps:
             ///   - notice: `notice` tells the user something changed that may affect the answer, such as a smaller model answering after the chosen one failed.
+            ///   - linkCheck: With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
             ///   - files: Attached to a question or produced with an answer.
             ///   - runId: `run_id` names the run trace behind the answer (§35), at GET /api/v1/runs/{id}.
             ///   - contract: The client contract the metadata was written in (§68). Metadata saved before the contract existed has none, and reads as 1.0.
@@ -12591,6 +13593,7 @@ public enum Components {
                 sources: [Components.Schemas.Citation]? = nil,
                 steps: [Components.Schemas.ActivityStep]? = nil,
                 notice: Swift.String? = nil,
+                linkCheck: Components.Schemas.MessageMeta.LinkCheckPayload? = nil,
                 files: [Components.Schemas.FileRef]? = nil,
                 runId: Swift.String? = nil,
                 contract: Swift.String? = nil,
@@ -12606,6 +13609,7 @@ public enum Components {
                 self.sources = sources
                 self.steps = steps
                 self.notice = notice
+                self.linkCheck = linkCheck
                 self.files = files
                 self.runId = runId
                 self.contract = contract
@@ -12622,6 +13626,7 @@ public enum Components {
                 case sources
                 case steps
                 case notice
+                case linkCheck = "link_check"
                 case files
                 case runId = "run_id"
                 case contract
@@ -13847,6 +14852,123 @@ public enum Components {
                 public var contextWindow: Swift.Int?
                 /// - Remark: Generated from `#/components/schemas/QualityResult/performance/quantization`.
                 public var quantization: Swift.String?
+                /// The llama.cpp release it ran on, such as b12361 (contract 1.89)
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/llama_cpp`.
+                public var llamaCpp: Swift.String?
+                /// Whether a draft guessed ahead during the runs (contract 1.89) Known values: `on`, `off`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/speculation`.
+                public var speculation: Swift.String?
+                /// The share of the draft's guesses the model kept, 0 to 1, when speculation is on (contract 1.89)
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/draft_accepted`.
+                public var draftAccepted: Swift.Double?
+                /// The GPUs it ran on, every one when there are several (contract 1.89)
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/devices`.
+                public var devices: [Swift.String]?
+                /// The system memory the model's process held after the runs, measured (contract 1.90). Where the graphics share the computer's memory, as on a Mac, it includes what gpu_memory_bytes counts.
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/system_memory_bytes`.
+                public var systemMemoryBytes: Swift.Int64?
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload`.
+                public struct ContextsPayloadPayload: Codable, Hashable, Sendable {
+                    /// The window, in tokens
+                    ///
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/context`.
+                    public var context: Swift.Int
+                    /// Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+                    ///
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/runs`.
+                    public var runs: Swift.String
+                    /// Why it's short of full: window, a size past the model's own, or out_of_memory
+                    ///
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/why`.
+                    public var why: Swift.String?
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/prompt_tokens`.
+                    public var promptTokens: Swift.Int?
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/prompt_tokens_per_second`.
+                    public var promptTokensPerSecond: Swift.Double?
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/tokens_per_second`.
+                    public var tokensPerSecond: Swift.Double?
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/first_token_ms`.
+                    public var firstTokenMs: Swift.Double?
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/effective_tokens_per_second`.
+                    public var effectiveTokensPerSecond: Swift.Double?
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/gpu_layers`.
+                    public var gpuLayers: Swift.Int?
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/gpu_layers_total`.
+                    public var gpuLayersTotal: Swift.Int?
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/gpu_memory_bytes`.
+                    public var gpuMemoryBytes: Swift.Int64?
+                    /// - Remark: Generated from `#/components/schemas/QualityResult/performance/ContextsPayload/system_memory_bytes`.
+                    public var systemMemoryBytes: Swift.Int64?
+                    /// Creates a new `ContextsPayloadPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - context: The window, in tokens
+                    ///   - runs: Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+                    ///   - why: Why it's short of full: window, a size past the model's own, or out_of_memory
+                    ///   - promptTokens:
+                    ///   - promptTokensPerSecond:
+                    ///   - tokensPerSecond:
+                    ///   - firstTokenMs:
+                    ///   - effectiveTokensPerSecond:
+                    ///   - gpuLayers:
+                    ///   - gpuLayersTotal:
+                    ///   - gpuMemoryBytes:
+                    ///   - systemMemoryBytes:
+                    public init(
+                        context: Swift.Int,
+                        runs: Swift.String,
+                        why: Swift.String? = nil,
+                        promptTokens: Swift.Int? = nil,
+                        promptTokensPerSecond: Swift.Double? = nil,
+                        tokensPerSecond: Swift.Double? = nil,
+                        firstTokenMs: Swift.Double? = nil,
+                        effectiveTokensPerSecond: Swift.Double? = nil,
+                        gpuLayers: Swift.Int? = nil,
+                        gpuLayersTotal: Swift.Int? = nil,
+                        gpuMemoryBytes: Swift.Int64? = nil,
+                        systemMemoryBytes: Swift.Int64? = nil
+                    ) {
+                        self.context = context
+                        self.runs = runs
+                        self.why = why
+                        self.promptTokens = promptTokens
+                        self.promptTokensPerSecond = promptTokensPerSecond
+                        self.tokensPerSecond = tokensPerSecond
+                        self.firstTokenMs = firstTokenMs
+                        self.effectiveTokensPerSecond = effectiveTokensPerSecond
+                        self.gpuLayers = gpuLayers
+                        self.gpuLayersTotal = gpuLayersTotal
+                        self.gpuMemoryBytes = gpuMemoryBytes
+                        self.systemMemoryBytes = systemMemoryBytes
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case context
+                        case runs
+                        case why
+                        case promptTokens = "prompt_tokens"
+                        case promptTokensPerSecond = "prompt_tokens_per_second"
+                        case tokensPerSecond = "tokens_per_second"
+                        case firstTokenMs = "first_token_ms"
+                        case effectiveTokensPerSecond = "effective_tokens_per_second"
+                        case gpuLayers = "gpu_layers"
+                        case gpuLayersTotal = "gpu_layers_total"
+                        case gpuMemoryBytes = "gpu_memory_bytes"
+                        case systemMemoryBytes = "system_memory_bytes"
+                    }
+                }
+                /// The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/contexts`.
+                public typealias ContextsPayload = [Components.Schemas.QualityResult.PerformancePayload.ContextsPayloadPayload]
+                /// The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it
+                ///
+                /// - Remark: Generated from `#/components/schemas/QualityResult/performance/contexts`.
+                public var contexts: Components.Schemas.QualityResult.PerformancePayload.ContextsPayload?
                 /// Creates a new `PerformancePayload`.
                 ///
                 /// - Parameters:
@@ -13861,6 +14983,12 @@ public enum Components {
                 ///   - gpuMemoryBytes:
                 ///   - contextWindow:
                 ///   - quantization:
+                ///   - llamaCpp: The llama.cpp release it ran on, such as b12361 (contract 1.89)
+                ///   - speculation: Whether a draft guessed ahead during the runs (contract 1.89) Known values: `on`, `off`; others may be added.
+                ///   - draftAccepted: The share of the draft's guesses the model kept, 0 to 1, when speculation is on (contract 1.89)
+                ///   - devices: The GPUs it ran on, every one when there are several (contract 1.89)
+                ///   - systemMemoryBytes: The system memory the model's process held after the runs, measured (contract 1.90). Where the graphics share the computer's memory, as on a Mac, it includes what gpu_memory_bytes counts.
+                ///   - contexts: The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it
                 public init(
                     promptTokens: Swift.Int,
                     promptTokensPerSecond: Swift.Double,
@@ -13872,7 +15000,13 @@ public enum Components {
                     gpuLayersTotal: Swift.Int,
                     gpuMemoryBytes: Swift.Int64? = nil,
                     contextWindow: Swift.Int? = nil,
-                    quantization: Swift.String? = nil
+                    quantization: Swift.String? = nil,
+                    llamaCpp: Swift.String? = nil,
+                    speculation: Swift.String? = nil,
+                    draftAccepted: Swift.Double? = nil,
+                    devices: [Swift.String]? = nil,
+                    systemMemoryBytes: Swift.Int64? = nil,
+                    contexts: Components.Schemas.QualityResult.PerformancePayload.ContextsPayload? = nil
                 ) {
                     self.promptTokens = promptTokens
                     self.promptTokensPerSecond = promptTokensPerSecond
@@ -13885,6 +15019,12 @@ public enum Components {
                     self.gpuMemoryBytes = gpuMemoryBytes
                     self.contextWindow = contextWindow
                     self.quantization = quantization
+                    self.llamaCpp = llamaCpp
+                    self.speculation = speculation
+                    self.draftAccepted = draftAccepted
+                    self.devices = devices
+                    self.systemMemoryBytes = systemMemoryBytes
+                    self.contexts = contexts
                 }
                 public enum CodingKeys: String, CodingKey {
                     case promptTokens = "prompt_tokens"
@@ -13898,6 +15038,12 @@ public enum Components {
                     case gpuMemoryBytes = "gpu_memory_bytes"
                     case contextWindow = "context_window"
                     case quantization
+                    case llamaCpp = "llama_cpp"
+                    case speculation
+                    case draftAccepted = "draft_accepted"
+                    case devices
+                    case systemMemoryBytes = "system_memory_bytes"
+                    case contexts
                 }
             }
             /// How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
@@ -14526,6 +15672,64 @@ public enum Components {
             public enum CodingKeys: String, CodingKey {
                 case modelId = "model_id"
                 case contextWindow = "context_window"
+            }
+        }
+        /// How many requests a model answers at once (#1135).
+        ///
+        /// - Remark: Generated from `#/components/schemas/ModelSlots`.
+        public struct ModelSlots: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ModelSlots/model_id`.
+            public var modelId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ModelSlots/slots`.
+            public var slots: Swift.Int
+            /// Creates a new `ModelSlots`.
+            ///
+            /// - Parameters:
+            ///   - modelId:
+            ///   - slots:
+            public init(
+                modelId: Swift.String,
+                slots: Swift.Int
+            ) {
+                self.modelId = modelId
+                self.slots = slots
+            }
+            public enum CodingKeys: String, CodingKey {
+                case modelId = "model_id"
+                case slots
+            }
+        }
+        /// Whether a model is kept running (#966).
+        ///
+        /// - Remark: Generated from `#/components/schemas/ModelAlwaysRunning`.
+        public struct ModelAlwaysRunning: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ModelAlwaysRunning/model_id`.
+            public var modelId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ModelAlwaysRunning/always_running`.
+            public var alwaysRunning: Swift.Bool
+            /// This computer's memory less what the models kept running need, when it's known (contract 1.95)
+            ///
+            /// - Remark: Generated from `#/components/schemas/ModelAlwaysRunning/memory_left_bytes`.
+            public var memoryLeftBytes: Swift.Int?
+            /// Creates a new `ModelAlwaysRunning`.
+            ///
+            /// - Parameters:
+            ///   - modelId:
+            ///   - alwaysRunning:
+            ///   - memoryLeftBytes: This computer's memory less what the models kept running need, when it's known (contract 1.95)
+            public init(
+                modelId: Swift.String,
+                alwaysRunning: Swift.Bool,
+                memoryLeftBytes: Swift.Int? = nil
+            ) {
+                self.modelId = modelId
+                self.alwaysRunning = alwaysRunning
+                self.memoryLeftBytes = memoryLeftBytes
+            }
+            public enum CodingKeys: String, CodingKey {
+                case modelId = "model_id"
+                case alwaysRunning = "always_running"
+                case memoryLeftBytes = "memory_left_bytes"
             }
         }
         /// A model's guess-ahead choice (#835).
@@ -32575,6 +33779,30 @@ public enum Operations {
     public enum ListConversations {
         public static let id: Swift.String = "listConversations"
         public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/conversations/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// Only the chats in this project (contract 1.87,
+                ///
+                /// - Remark: Generated from `#/paths/api/v1/conversations/GET/query/project_id`.
+                public var projectId: Swift.String?
+                /// A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out.
+                ///
+                /// - Remark: Generated from `#/paths/api/v1/conversations/GET/query/swarm_id`.
+                public var swarmId: Swift.String?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - projectId: Only the chats in this project (contract 1.87,
+                ///   - swarmId: A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out.
+                public init(
+                    projectId: Swift.String? = nil,
+                    swarmId: Swift.String? = nil
+                ) {
+                    self.projectId = projectId
+                    self.swarmId = swarmId
+                }
+            }
+            public var query: Operations.ListConversations.Input.Query
             /// - Remark: Generated from `#/paths/api/v1/conversations/GET/header`.
             public struct Headers: Sendable, Hashable {
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListConversations.AcceptableContentType>]
@@ -32590,8 +33818,13 @@ public enum Operations {
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - query:
             ///   - headers:
-            public init(headers: Operations.ListConversations.Input.Headers = .init()) {
+            public init(
+                query: Operations.ListConversations.Input.Query = .init(),
+                headers: Operations.ListConversations.Input.Headers = .init()
+            ) {
+                self.query = query
                 self.headers = headers
             }
         }
@@ -32707,25 +33940,33 @@ public enum Operations {
                     public var profileId: Swift.String?
                     /// - Remark: Generated from `#/paths/api/v1/conversations/POST/requestBody/json/model_id`.
                     public var modelId: Swift.String?
+                    /// Start the chat in one of the caller's projects (contract 1.87,
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/conversations/POST/requestBody/json/project_id`.
+                    public var projectId: Swift.String?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
                     ///   - title:
                     ///   - profileId:
                     ///   - modelId:
+                    ///   - projectId: Start the chat in one of the caller's projects (contract 1.87,
                     public init(
                         title: Swift.String? = nil,
                         profileId: Swift.String? = nil,
-                        modelId: Swift.String? = nil
+                        modelId: Swift.String? = nil,
+                        projectId: Swift.String? = nil
                     ) {
                         self.title = title
                         self.profileId = profileId
                         self.modelId = modelId
+                        self.projectId = projectId
                     }
                     public enum CodingKeys: String, CodingKey {
                         case title
                         case profileId = "profile_id"
                         case modelId = "model_id"
+                        case projectId = "project_id"
                     }
                 }
                 /// - Remark: Generated from `#/paths/api/v1/conversations/POST/requestBody/content/application\/json`.
@@ -32792,6 +34033,57 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "created",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/conversations/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/conversations/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.CreateConversation.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.CreateConversation.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NOT_FOUND for a project that isn't the caller's
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/conversations/post(createConversation)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.CreateConversation.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.CreateConversation.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
                             response: self
                         )
                     }
@@ -33051,6 +34343,10 @@ public enum Operations {
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/conversations/{id}/PATCH/requestBody/json/project`.
                     public var project: Swift.String?
+                    /// Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87,
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/conversations/{id}/PATCH/requestBody/json/project_id`.
+                    public var projectId: Swift.String?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
@@ -33059,18 +34355,21 @@ public enum Operations {
                     ///   - modelId:
                     ///   - memoryOff: Turn memory off for this chat
                     ///   - project: The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85).
+                    ///   - projectId: Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87,
                     public init(
                         title: Swift.String? = nil,
                         profileId: Swift.String? = nil,
                         modelId: Swift.String? = nil,
                         memoryOff: Swift.Bool? = nil,
-                        project: Swift.String? = nil
+                        project: Swift.String? = nil,
+                        projectId: Swift.String? = nil
                     ) {
                         self.title = title
                         self.profileId = profileId
                         self.modelId = modelId
                         self.memoryOff = memoryOff
                         self.project = project
+                        self.projectId = projectId
                     }
                     public enum CodingKeys: String, CodingKey {
                         case title
@@ -33078,6 +34377,7 @@ public enum Operations {
                         case modelId = "model_id"
                         case memoryOff = "memory_off"
                         case project
+                        case projectId = "project_id"
                     }
                 }
                 /// - Remark: Generated from `#/paths/api/v1/conversations/{id}/PATCH/requestBody/content/application\/json`.
@@ -33147,6 +34447,57 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/conversations/{id}/PATCH/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/conversations/{id}/PATCH/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.UpdateConversation.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.UpdateConversation.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NOT_FOUND for a project that isn't the caller's
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/conversations/{id}/patch(updateConversation)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.UpdateConversation.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.UpdateConversation.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
                             response: self
                         )
                     }
@@ -36130,9 +37481,9 @@ public enum Operations {
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
     }
-    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
     ///
-    /// Checked like /v1. A request with an Origin header from another site is refused.
+    /// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
     ///
     /// - Remark: HTTP `POST /mcp`.
     /// - Remark: Generated from `#/paths//mcp/post(mcpServer)`.
@@ -38066,13 +39417,13 @@ public enum Operations {
                 /// Creates a new `BadGateway`.
                 public init() {}
             }
-            /// NEWS_UNAVAILABLE, toskar.ai couldn't be reached and no copy is kept
+            /// NEWS_UNAVAILABLE, toskar.ai couldn't be reached and no copy is kept; OFFLINE when this computer isn't connected to the internet (contract 1.92)
             ///
             /// - Remark: Generated from `#/paths//api/v1/news/get(getNews)/responses/502`.
             ///
             /// HTTP response code: `502 badGateway`.
             case badGateway(Operations.GetNews.Output.BadGateway)
-            /// NEWS_UNAVAILABLE, toskar.ai couldn't be reached and no copy is kept
+            /// NEWS_UNAVAILABLE, toskar.ai couldn't be reached and no copy is kept; OFFLINE when this computer isn't connected to the internet (contract 1.92)
             ///
             /// - Remark: Generated from `#/paths//api/v1/news/get(getNews)/responses/502`.
             ///
@@ -39577,7 +40928,7 @@ public enum Operations {
     }
     /// OpenAI-compatible model list
     ///
-    /// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+    /// auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
     ///
     /// - Remark: HTTP `GET /v1/models`.
     /// - Remark: Generated from `#/paths//v1/models/get(openaiListModels)`.
@@ -39689,7 +41040,7 @@ public enum Operations {
     }
     /// Anthropic-compatible messages, for coding agents
     ///
-    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
     ///
     /// - Remark: HTTP `POST /v1/messages`.
     /// - Remark: Generated from `#/paths//v1/messages/post(anthropicMessages)`.
@@ -40077,7 +41428,7 @@ public enum Operations {
     }
     /// OpenAI Responses, for coding agents
     ///
-    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
     ///
     /// - Remark: HTTP `POST /v1/responses`.
     /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)`.
@@ -40384,7 +41735,7 @@ public enum Operations {
             @frozen public enum Body: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json`.
                 public struct JsonPayload: Codable, Hashable, Sendable {
-                    /// auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
+                    /// auto, profile:<id>, sai:<slug>, a model id, raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:<profile> (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id
                     ///
                     /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/model`.
                     public var model: Swift.String
@@ -40421,6 +41772,22 @@ public enum Operations {
                     ///
                     /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/temperature`.
                     public var temperature: Swift.Double?
+                    /// Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93)
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/seed`.
+                    public var seed: Swift.Int?
+                    /// Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93)
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/top_p`.
+                    public var topP: Swift.Double?
+                    /// Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93)
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/top_k`.
+                    public var topK: Swift.Int?
+                    /// Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93)
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/min_p`.
+                    public var minP: Swift.Double?
                     /// The most tokens each answer-writing call may use. Left out, the model's default.
                     ///
                     /// - Remark: Generated from `#/paths/v1/chat/completions/POST/requestBody/json/max_tokens`.
@@ -40533,10 +41900,14 @@ public enum Operations {
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
-                    ///   - model: auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
+                    ///   - model: auto, profile:<id>, sai:<slug>, a model id, raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:<profile> (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id
                     ///   - messages:
                     ///   - stream:
                     ///   - temperature: For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
+                    ///   - seed: Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93)
+                    ///   - topP: Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93)
+                    ///   - topK: Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93)
+                    ///   - minP: Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93)
                     ///   - maxTokens: The most tokens each answer-writing call may use. Left out, the model's default.
                     ///   - maxCompletionTokens: OpenAI's newer name for max_tokens; wins when both are sent.
                     ///   - reasoningEffort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
@@ -40550,6 +41921,10 @@ public enum Operations {
                         messages: Operations.OpenaiChatCompletions.Input.Body.JsonPayload.MessagesPayload,
                         stream: Swift.Bool? = nil,
                         temperature: Swift.Double? = nil,
+                        seed: Swift.Int? = nil,
+                        topP: Swift.Double? = nil,
+                        topK: Swift.Int? = nil,
+                        minP: Swift.Double? = nil,
                         maxTokens: Swift.Int? = nil,
                         maxCompletionTokens: Swift.Int? = nil,
                         reasoningEffort: Swift.String? = nil,
@@ -40563,6 +41938,10 @@ public enum Operations {
                         self.messages = messages
                         self.stream = stream
                         self.temperature = temperature
+                        self.seed = seed
+                        self.topP = topP
+                        self.topK = topK
+                        self.minP = minP
                         self.maxTokens = maxTokens
                         self.maxCompletionTokens = maxCompletionTokens
                         self.reasoningEffort = reasoningEffort
@@ -40577,6 +41956,10 @@ public enum Operations {
                         case messages
                         case stream
                         case temperature
+                        case seed
+                        case topP = "top_p"
+                        case topK = "top_k"
+                        case minP = "min_p"
                         case maxTokens = "max_tokens"
                         case maxCompletionTokens = "max_completion_tokens"
                         case reasoningEffort = "reasoning_effort"
@@ -46274,6 +47657,195 @@ public enum Operations {
             }
         }
     }
+    /// Keep a model running
+    ///
+    /// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/always-running`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/always-running/put(setModelAlwaysRunning)`.
+    public enum SetModelAlwaysRunning {
+        public static let id: Swift.String = "setModelAlwaysRunning"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/always-running/PUT/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/always-running/PUT/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.SetModelAlwaysRunning.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/always-running/PUT/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetModelAlwaysRunning.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetModelAlwaysRunning.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SetModelAlwaysRunning.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/always-running/PUT/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/always-running/PUT/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/always-running/PUT/requestBody/json/always_running`.
+                    public var alwaysRunning: Swift.Bool
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - alwaysRunning:
+                    public init(alwaysRunning: Swift.Bool) {
+                        self.alwaysRunning = alwaysRunning
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case alwaysRunning = "always_running"
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/always-running/PUT/requestBody/content/application\/json`.
+                case json(Operations.SetModelAlwaysRunning.Input.Body.JsonPayload)
+            }
+            public var body: Operations.SetModelAlwaysRunning.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.SetModelAlwaysRunning.Input.Path,
+                headers: Operations.SetModelAlwaysRunning.Input.Headers = .init(),
+                body: Operations.SetModelAlwaysRunning.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/always-running/PUT/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/always-running/PUT/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ModelAlwaysRunning)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ModelAlwaysRunning {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetModelAlwaysRunning.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetModelAlwaysRunning.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The choice is kept
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/always-running/put(setModelAlwaysRunning)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.SetModelAlwaysRunning.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.SetModelAlwaysRunning.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// MODEL_UPDATE_FAILED, such as for a model that isn't installed here or doesn't chat
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/always-running/put(setModelAlwaysRunning)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.SetModelAlwaysRunning.Output.BadRequest)
+            /// MODEL_UPDATE_FAILED, such as for a model that isn't installed here or doesn't chat
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/always-running/put(setModelAlwaysRunning)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.SetModelAlwaysRunning.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// Set a model's context window
     ///
     /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -46435,6 +48007,195 @@ public enum Operations {
             /// - Throws: An error if `self` is not `.badRequest`.
             /// - SeeAlso: `.badRequest`.
             public var badRequest: Operations.SetModelContext.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Set how many requests a model answers at once
+    ///
+    /// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/models/{id}/slots`.
+    /// - Remark: Generated from `#/paths//api/v1/models/{id}/slots/put(setModelSlots)`.
+    public enum SetModelSlots {
+        public static let id: Swift.String = "setModelSlots"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/slots/PUT/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/slots/PUT/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.SetModelSlots.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/slots/PUT/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetModelSlots.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetModelSlots.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SetModelSlots.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/models/{id}/slots/PUT/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/slots/PUT/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/slots/PUT/requestBody/json/slots`.
+                    public var slots: Swift.Int
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - slots:
+                    public init(slots: Swift.Int) {
+                        self.slots = slots
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case slots
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/slots/PUT/requestBody/content/application\/json`.
+                case json(Operations.SetModelSlots.Input.Body.JsonPayload)
+            }
+            public var body: Operations.SetModelSlots.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.SetModelSlots.Input.Path,
+                headers: Operations.SetModelSlots.Input.Headers = .init(),
+                body: Operations.SetModelSlots.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/{id}/slots/PUT/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/slots/PUT/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ModelSlots)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ModelSlots {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetModelSlots.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetModelSlots.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The choice is kept
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/slots/put(setModelSlots)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.SetModelSlots.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.SetModelSlots.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// INVALID_JSON; MODEL_SLOTS_INVALID for a number outside 1 to 4; MODEL_SLOTS_CONTEXT when each slot would have less than the 8,192 tokens a task needs (details: slots, context_per_slot, needed); MODEL_SLOTS_MEMORY when the model with every slot's cache doesn't fit this computer; or MODEL_UPDATE_FAILED for a model that isn't installed here or doesn't chat
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/slots/put(setModelSlots)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.SetModelSlots.Output.BadRequest)
+            /// INVALID_JSON; MODEL_SLOTS_INVALID for a number outside 1 to 4; MODEL_SLOTS_CONTEXT when each slot would have less than the 8,192 tokens a task needs (details: slots, context_per_slot, needed); MODEL_SLOTS_MEMORY when the model with every slot's cache doesn't fit this computer; or MODEL_UPDATE_FAILED for a model that isn't installed here or doesn't chat
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/{id}/slots/put(setModelSlots)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.SetModelSlots.Output.BadRequest {
                 get throws {
                     switch self {
                     case let .badRequest(response):
@@ -47924,6 +49685,20 @@ public enum Operations {
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/effort`.
                     public var effort: Swift.String?
+                    /// For the answer; 0 gives the same most likely answer every time (#839, contract 1.93)
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/temperature`.
+                    public var temperature: Swift.Double?
+                    /// As on /v1/chat/completions (#839, contract 1.93)
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/seed`.
+                    public var seed: Swift.Int?
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/top_p`.
+                    public var topP: Swift.Double?
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/top_k`.
+                    public var topK: Swift.Int?
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/min_p`.
+                    public var minP: Swift.Double?
                     /// off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/thinking`.
@@ -47962,6 +49737,18 @@ public enum Operations {
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/live`.
                     public var live: Swift.Bool?
+                    /// One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/project_id`.
+                    public var projectId: Swift.String?
+                    /// Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events. Known values: `split`, `race`; others may be added.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/swarm`.
+                    public var swarm: Swift.String?
+                    /// Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/make_room`.
+                    public var makeRoom: Swift.Bool?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
@@ -47970,6 +49757,11 @@ public enum Operations {
                     ///   - profileId:
                     ///   - modelId: A model id, auto, or sai:<slug>
                     ///   - effort: Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
+                    ///   - temperature: For the answer; 0 gives the same most likely answer every time (#839, contract 1.93)
+                    ///   - seed: As on /v1/chat/completions (#839, contract 1.93)
+                    ///   - topP:
+                    ///   - topK:
+                    ///   - minP:
                     ///   - thinking: off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
                     ///   - timeZone: The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
                     ///   - parentId: Answer from this message in the chat, as a new version of the point after it (#447)
@@ -47980,12 +49772,20 @@ public enum Operations {
                     ///   - execution: Where the turn runs, such as local
                     ///   - stream:
                     ///   - live: With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON.
+                    ///   - projectId: One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own.
+                    ///   - swarm: Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events. Known values: `split`, `race`; others may be added.
+                    ///   - makeRoom: Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id.
                     public init(
                         conversationId: Swift.String? = nil,
                         message: Swift.String,
                         profileId: Swift.String? = nil,
                         modelId: Swift.String? = nil,
                         effort: Swift.String? = nil,
+                        temperature: Swift.Double? = nil,
+                        seed: Swift.Int? = nil,
+                        topP: Swift.Double? = nil,
+                        topK: Swift.Int? = nil,
+                        minP: Swift.Double? = nil,
                         thinking: Swift.String? = nil,
                         timeZone: Swift.String? = nil,
                         parentId: Swift.String? = nil,
@@ -47995,13 +49795,21 @@ public enum Operations {
                         attachments: [Swift.String]? = nil,
                         execution: Swift.String? = nil,
                         stream: Swift.Bool? = nil,
-                        live: Swift.Bool? = nil
+                        live: Swift.Bool? = nil,
+                        projectId: Swift.String? = nil,
+                        swarm: Swift.String? = nil,
+                        makeRoom: Swift.Bool? = nil
                     ) {
                         self.conversationId = conversationId
                         self.message = message
                         self.profileId = profileId
                         self.modelId = modelId
                         self.effort = effort
+                        self.temperature = temperature
+                        self.seed = seed
+                        self.topP = topP
+                        self.topK = topK
+                        self.minP = minP
                         self.thinking = thinking
                         self.timeZone = timeZone
                         self.parentId = parentId
@@ -48012,6 +49820,9 @@ public enum Operations {
                         self.execution = execution
                         self.stream = stream
                         self.live = live
+                        self.projectId = projectId
+                        self.swarm = swarm
+                        self.makeRoom = makeRoom
                     }
                     public enum CodingKeys: String, CodingKey {
                         case conversationId = "conversation_id"
@@ -48019,6 +49830,11 @@ public enum Operations {
                         case profileId = "profile_id"
                         case modelId = "model_id"
                         case effort
+                        case temperature
+                        case seed
+                        case topP = "top_p"
+                        case topK = "top_k"
+                        case minP = "min_p"
                         case thinking
                         case timeZone = "time_zone"
                         case parentId = "parent_id"
@@ -48029,6 +49845,9 @@ public enum Operations {
                         case execution
                         case stream
                         case live
+                        case projectId = "project_id"
+                        case swarm
+                        case makeRoom = "make_room"
                     }
                 }
                 /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/content/application\/json`.
@@ -53135,6 +54954,10 @@ public enum Operations {
                     public var enabled: Swift.Bool?
                     /// - Remark: Generated from `#/paths/api/v1/memory/{id}/PATCH/requestBody/json/local_only`.
                     public var localOnly: Swift.Bool?
+                    /// Empty moves a project's memory to the person's own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can't be moved into a project.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/memory/{id}/PATCH/requestBody/json/project_id`.
+                    public var projectId: Swift.String?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
@@ -53142,22 +54965,26 @@ public enum Operations {
                     ///   - category:
                     ///   - enabled:
                     ///   - localOnly:
+                    ///   - projectId: Empty moves a project's memory to the person's own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can't be moved into a project.
                     public init(
                         content: Swift.String? = nil,
                         category: Swift.String? = nil,
                         enabled: Swift.Bool? = nil,
-                        localOnly: Swift.Bool? = nil
+                        localOnly: Swift.Bool? = nil,
+                        projectId: Swift.String? = nil
                     ) {
                         self.content = content
                         self.category = category
                         self.enabled = enabled
                         self.localOnly = localOnly
+                        self.projectId = projectId
                     }
                     public enum CodingKeys: String, CodingKey {
                         case content
                         case category
                         case enabled
                         case localOnly = "local_only"
+                        case projectId = "project_id"
                     }
                 }
                 /// - Remark: Generated from `#/paths/api/v1/memory/{id}/PATCH/requestBody/content/application\/json`.
@@ -53485,6 +55312,2525 @@ public enum Operations {
             /// - Throws: An error if `self` is not `.notFound`.
             /// - SeeAlso: `.notFound`.
             public var notFound: Operations.DeleteMemory.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// The caller's projects
+    ///
+    /// Newest activity first, with how many chats each has (contract 1.87,
+    ///
+    /// - Remark: HTTP `GET /api/v1/projects`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/get(listProjects)`.
+    public enum ListProjects {
+        public static let id: Swift.String = "listProjects"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/projects/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListProjects.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListProjects.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ListProjects.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.ListProjects.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/GET/responses/200/content/application\/json`.
+                    case json([Components.Schemas.Project])
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: [Components.Schemas.Project] {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListProjects.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListProjects.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Projects
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/get(listProjects)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListProjects.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListProjects.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Make a project
+    ///
+    /// - Remark: HTTP `POST /api/v1/projects`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/post(createProject)`.
+    public enum CreateProject {
+        public static let id: Swift.String = "createProject"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/projects/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateProject.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateProject.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.CreateProject.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/projects/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/POST/requestBody/content/application\/json`.
+                case json(Components.Schemas.ProjectInput)
+            }
+            public var body: Operations.CreateProject.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.CreateProject.Input.Headers = .init(),
+                body: Operations.CreateProject.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Created: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/POST/responses/201/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/POST/responses/201/content/application\/json`.
+                    case json(Components.Schemas.Project)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.Project {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.CreateProject.Output.Created.Body
+                /// Creates a new `Created`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.CreateProject.Output.Created.Body) {
+                    self.body = body
+                }
+            }
+            /// Created
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/post(createProject)/responses/201`.
+            ///
+            /// HTTP response code: `201 created`.
+            case created(Operations.CreateProject.Output.Created)
+            /// The associated value of the enum case if `self` is `.created`.
+            ///
+            /// - Throws: An error if `self` is not `.created`.
+            /// - SeeAlso: `.created`.
+            public var created: Operations.CreateProject.Output.Created {
+                get throws {
+                    switch self {
+                    case let .created(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "created",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.CreateProject.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.CreateProject.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NAME_REQUIRED, NOT_A_FOLDER, KNOWLEDGE_SOURCE_NOT_FOUND, or another invalid field
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/post(createProject)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.CreateProject.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.CreateProject.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/POST/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/POST/responses/403/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.CreateProject.Output.Forbidden.Body
+                /// Creates a new `Forbidden`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.CreateProject.Output.Forbidden.Body) {
+                    self.body = body
+                }
+            }
+            /// ROLE_REQUIRED, for a folder without the admin role, or knowledge without the member role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/post(createProject)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.CreateProject.Output.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.CreateProject.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// One project
+    ///
+    /// - Remark: HTTP `GET /api/v1/projects/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/get(getProject)`.
+    public enum GetProject {
+        public static let id: Swift.String = "getProject"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/GET/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.GetProject.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetProject.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetProject.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetProject.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.GetProject.Input.Path,
+                headers: Operations.GetProject.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.Project)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.Project {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetProject.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetProject.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Project
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/get(getProject)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetProject.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetProject.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetProject.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetProject.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NOT_FOUND, also for another person's project
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/get(getProject)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.GetProject.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.GetProject.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Change a project
+    ///
+    /// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+    ///
+    /// - Remark: HTTP `PATCH /api/v1/projects/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/patch(updateProject)`.
+    public enum UpdateProject {
+        public static let id: Swift.String = "updateProject"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.UpdateProject.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.UpdateProject.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.UpdateProject.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.UpdateProject.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/requestBody/content/application\/json`.
+                case json(Components.Schemas.ProjectInput)
+            }
+            public var body: Operations.UpdateProject.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.UpdateProject.Input.Path,
+                headers: Operations.UpdateProject.Input.Headers = .init(),
+                body: Operations.UpdateProject.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/responses/200/content/application\/json`.
+                    case json(Components.Schemas.Project)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.Project {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.UpdateProject.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.UpdateProject.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Project
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/patch(updateProject)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.UpdateProject.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.UpdateProject.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/responses/400/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.UpdateProject.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.UpdateProject.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// NOT_A_FOLDER, KNOWLEDGE_SOURCE_NOT_FOUND, or another invalid field
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/patch(updateProject)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.UpdateProject.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.UpdateProject.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/responses/403/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.UpdateProject.Output.Forbidden.Body
+                /// Creates a new `Forbidden`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.UpdateProject.Output.Forbidden.Body) {
+                    self.body = body
+                }
+            }
+            /// ROLE_REQUIRED, for a folder without the admin role, or knowledge without the member role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/patch(updateProject)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.UpdateProject.Output.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.UpdateProject.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/PATCH/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.UpdateProject.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.UpdateProject.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/patch(updateProject)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.UpdateProject.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.UpdateProject.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Delete a project
+    ///
+    /// Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/projects/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/delete(deleteProject)`.
+    public enum DeleteProject {
+        public static let id: Swift.String = "deleteProject"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/DELETE/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/DELETE/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.DeleteProject.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/DELETE/query`.
+            public struct Query: Sendable, Hashable {
+                /// delete deletes the project's chats too, with their files.
+                ///
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/DELETE/query/chats`.
+                public var chats: Swift.String?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - chats: delete deletes the project's chats too, with their files.
+                public init(chats: Swift.String? = nil) {
+                    self.chats = chats
+                }
+            }
+            public var query: Operations.DeleteProject.Input.Query
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DeleteProject.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DeleteProject.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.DeleteProject.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - query:
+            ///   - headers:
+            public init(
+                path: Operations.DeleteProject.Input.Path,
+                query: Operations.DeleteProject.Input.Query = .init(),
+                headers: Operations.DeleteProject.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct NoContent: Sendable, Hashable {
+                /// Creates a new `NoContent`.
+                public init() {}
+            }
+            /// Deleted
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/delete(deleteProject)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            case noContent(Operations.DeleteProject.Output.NoContent)
+            /// Deleted
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/delete(deleteProject)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            public static var noContent: Self {
+                .noContent(.init())
+            }
+            /// The associated value of the enum case if `self` is `.noContent`.
+            ///
+            /// - Throws: An error if `self` is not `.noContent`.
+            /// - SeeAlso: `.noContent`.
+            public var noContent: Operations.DeleteProject.Output.NoContent {
+                get throws {
+                    switch self {
+                    case let .noContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "noContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/DELETE/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/DELETE/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DeleteProject.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DeleteProject.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/delete(deleteProject)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.DeleteProject.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.DeleteProject.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Add a file to a project
+    ///
+    /// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+    ///
+    /// - Remark: HTTP `POST /api/v1/projects/{id}/files`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/post(addProjectFile)`.
+    public enum AddProjectFile {
+        public static let id: Swift.String = "addProjectFile"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.AddProjectFile.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.AddProjectFile.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.AddProjectFile.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.AddProjectFile.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// Its name; the extension picks the reader, such as .md, .csv, or .pdf
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/requestBody/json/filename`.
+                    public var filename: Swift.String
+                    /// A text file's content
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/requestBody/json/text`.
+                    public var text: Swift.String?
+                    /// Another file's bytes, such as a PDF's, in place of text
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/requestBody/json/content_base64`.
+                    public var contentBase64: Swift.String?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - filename: Its name; the extension picks the reader, such as .md, .csv, or .pdf
+                    ///   - text: A text file's content
+                    ///   - contentBase64: Another file's bytes, such as a PDF's, in place of text
+                    public init(
+                        filename: Swift.String,
+                        text: Swift.String? = nil,
+                        contentBase64: Swift.String? = nil
+                    ) {
+                        self.filename = filename
+                        self.text = text
+                        self.contentBase64 = contentBase64
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case filename
+                        case text
+                        case contentBase64 = "content_base64"
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/requestBody/content/application\/json`.
+                case json(Operations.AddProjectFile.Input.Body.JsonPayload)
+            }
+            public var body: Operations.AddProjectFile.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.AddProjectFile.Input.Path,
+                headers: Operations.AddProjectFile.Input.Headers = .init(),
+                body: Operations.AddProjectFile.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Created: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/responses/201/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/responses/201/content/application\/json`.
+                    case json(Components.Schemas.Project)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.Project {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.AddProjectFile.Output.Created.Body
+                /// Creates a new `Created`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.AddProjectFile.Output.Created.Body) {
+                    self.body = body
+                }
+            }
+            /// The project with its files
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/post(addProjectFile)/responses/201`.
+            ///
+            /// HTTP response code: `201 created`.
+            case created(Operations.AddProjectFile.Output.Created)
+            /// The associated value of the enum case if `self` is `.created`.
+            ///
+            /// - Throws: An error if `self` is not `.created`.
+            /// - SeeAlso: `.created`.
+            public var created: Operations.AddProjectFile.Output.Created {
+                get throws {
+                    switch self {
+                    case let .created(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "created",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.AddProjectFile.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.AddProjectFile.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// An empty, unreadable, or unsupported file
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/post(addProjectFile)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.AddProjectFile.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.AddProjectFile.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.AddProjectFile.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.AddProjectFile.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/post(addProjectFile)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.AddProjectFile.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.AddProjectFile.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Remove a file from a project
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/projects/{id}/files/{name}`.
+    /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/{name}/delete(removeProjectFile)`.
+    public enum RemoveProjectFile {
+        public static let id: Swift.String = "removeProjectFile"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/{name}/DELETE/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/{name}/DELETE/path/id`.
+                public var id: Swift.String
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/{name}/DELETE/path/name`.
+                public var name: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                ///   - name:
+                public init(
+                    id: Swift.String,
+                    name: Swift.String
+                ) {
+                    self.id = id
+                    self.name = name
+                }
+            }
+            public var path: Operations.RemoveProjectFile.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/{name}/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RemoveProjectFile.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RemoveProjectFile.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.RemoveProjectFile.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.RemoveProjectFile.Input.Path,
+                headers: Operations.RemoveProjectFile.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct NoContent: Sendable, Hashable {
+                /// Creates a new `NoContent`.
+                public init() {}
+            }
+            /// Removed
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/{name}/delete(removeProjectFile)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            case noContent(Operations.RemoveProjectFile.Output.NoContent)
+            /// Removed
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/{name}/delete(removeProjectFile)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            public static var noContent: Self {
+                .noContent(.init())
+            }
+            /// The associated value of the enum case if `self` is `.noContent`.
+            ///
+            /// - Throws: An error if `self` is not `.noContent`.
+            /// - SeeAlso: `.noContent`.
+            public var noContent: Operations.RemoveProjectFile.Output.NoContent {
+                get throws {
+                    switch self {
+                    case let .noContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "noContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/{name}/DELETE/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/projects/{id}/files/{name}/DELETE/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.RemoveProjectFile.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.RemoveProjectFile.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NOT_FOUND or PROJECT_FILE_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/projects/{id}/files/{name}/delete(removeProjectFile)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.RemoveProjectFile.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.RemoveProjectFile.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// The caller's swarms
+    ///
+    /// Newest first (contract 1.88,
+    ///
+    /// - Remark: HTTP `GET /api/v1/swarms`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/get(listSwarms)`.
+    public enum ListSwarms {
+        public static let id: Swift.String = "listSwarms"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/swarms/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// Only this project's swarms.
+                ///
+                /// - Remark: Generated from `#/paths/api/v1/swarms/GET/query/project_id`.
+                public var projectId: Swift.String?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - projectId: Only this project's swarms.
+                public init(projectId: Swift.String? = nil) {
+                    self.projectId = projectId
+                }
+            }
+            public var query: Operations.ListSwarms.Input.Query
+            /// - Remark: Generated from `#/paths/api/v1/swarms/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListSwarms.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListSwarms.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ListSwarms.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - query:
+            ///   - headers:
+            public init(
+                query: Operations.ListSwarms.Input.Query = .init(),
+                headers: Operations.ListSwarms.Input.Headers = .init()
+            ) {
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/GET/responses/200/content/application\/json`.
+                    case json([Components.Schemas.Swarm])
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: [Components.Schemas.Swarm] {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListSwarms.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListSwarms.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Swarms
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/get(listSwarms)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListSwarms.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListSwarms.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListSwarms.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListSwarms.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/get(listSwarms)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.ListSwarms.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.ListSwarms.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Start a swarm
+    ///
+    /// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+    ///
+    /// - Remark: HTTP `POST /api/v1/swarms`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/post(startSwarm)`.
+    public enum StartSwarm {
+        public static let id: Swift.String = "startSwarm"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/swarms/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.StartSwarm.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.StartSwarm.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.StartSwarm.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/swarms/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/POST/requestBody/json/prompt`.
+                    public var prompt: Swift.String
+                    /// Empty is the profile's, or split. Known values: `split`, `race`; others may be added.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/POST/requestBody/json/mode`.
+                    public var mode: Swift.String?
+                    /// One of the caller's projects for a chat not yet in one.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/POST/requestBody/json/project_id`.
+                    public var projectId: Swift.String?
+                    /// The caller's chat to run it in; empty starts one.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/POST/requestBody/json/conversation_id`.
+                    public var conversationId: Swift.String?
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/POST/requestBody/json/budget`.
+                    public var budget: Components.Schemas.SwarmPolicy?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - prompt:
+                    ///   - mode: Empty is the profile's, or split. Known values: `split`, `race`; others may be added.
+                    ///   - projectId: One of the caller's projects for a chat not yet in one.
+                    ///   - conversationId: The caller's chat to run it in; empty starts one.
+                    ///   - budget:
+                    public init(
+                        prompt: Swift.String,
+                        mode: Swift.String? = nil,
+                        projectId: Swift.String? = nil,
+                        conversationId: Swift.String? = nil,
+                        budget: Components.Schemas.SwarmPolicy? = nil
+                    ) {
+                        self.prompt = prompt
+                        self.mode = mode
+                        self.projectId = projectId
+                        self.conversationId = conversationId
+                        self.budget = budget
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case prompt
+                        case mode
+                        case projectId = "project_id"
+                        case conversationId = "conversation_id"
+                        case budget
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/swarms/POST/requestBody/content/application\/json`.
+                case json(Operations.StartSwarm.Input.Body.JsonPayload)
+            }
+            public var body: Operations.StartSwarm.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.StartSwarm.Input.Headers = .init(),
+                body: Operations.StartSwarm.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Accepted: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/POST/responses/202/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/POST/responses/202/content/application\/json`.
+                    case json(Components.Schemas.Swarm)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.Swarm {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.StartSwarm.Output.Accepted.Body
+                /// Creates a new `Accepted`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.StartSwarm.Output.Accepted.Body) {
+                    self.body = body
+                }
+            }
+            /// Started
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/post(startSwarm)/responses/202`.
+            ///
+            /// HTTP response code: `202 accepted`.
+            case accepted(Operations.StartSwarm.Output.Accepted)
+            /// The associated value of the enum case if `self` is `.accepted`.
+            ///
+            /// - Throws: An error if `self` is not `.accepted`.
+            /// - SeeAlso: `.accepted`.
+            public var accepted: Operations.StartSwarm.Output.Accepted {
+                get throws {
+                    switch self {
+                    case let .accepted(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "accepted",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.StartSwarm.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.StartSwarm.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// An empty prompt, an unknown mode, or a budget out of range
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/post(startSwarm)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.StartSwarm.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.StartSwarm.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/POST/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/POST/responses/403/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.StartSwarm.Output.Forbidden.Body
+                /// Creates a new `Forbidden`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.StartSwarm.Output.Forbidden.Body) {
+                    self.body = body
+                }
+            }
+            /// ROLE_REQUIRED, for a Visitor; PORTAL_MEMBERS, for a portal's guest
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/post(startSwarm)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.StartSwarm.Output.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.StartSwarm.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.StartSwarm.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.StartSwarm.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PROJECT_NOT_FOUND, or NOT_FOUND for another person's chat
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/post(startSwarm)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.StartSwarm.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.StartSwarm.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// One swarm
+    ///
+    /// With its agents, their status, and what they're waiting on.
+    ///
+    /// - Remark: HTTP `GET /api/v1/swarms/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/get(getSwarm)`.
+    public enum GetSwarm {
+        public static let id: Swift.String = "getSwarm"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/GET/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.GetSwarm.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetSwarm.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetSwarm.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetSwarm.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.GetSwarm.Input.Path,
+                headers: Operations.GetSwarm.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.Swarm)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.Swarm {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetSwarm.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetSwarm.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Swarm
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/get(getSwarm)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetSwarm.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetSwarm.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetSwarm.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetSwarm.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// SWARM_NOT_FOUND, also for another person's swarm
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/get(getSwarm)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.GetSwarm.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.GetSwarm.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Delete a swarm
+    ///
+    /// Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/swarms/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/delete(deleteSwarm)`.
+    public enum DeleteSwarm {
+        public static let id: Swift.String = "deleteSwarm"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/DELETE/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/DELETE/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.DeleteSwarm.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DeleteSwarm.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DeleteSwarm.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.DeleteSwarm.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.DeleteSwarm.Input.Path,
+                headers: Operations.DeleteSwarm.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct NoContent: Sendable, Hashable {
+                /// Creates a new `NoContent`.
+                public init() {}
+            }
+            /// Deleted
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/delete(deleteSwarm)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            case noContent(Operations.DeleteSwarm.Output.NoContent)
+            /// Deleted
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/delete(deleteSwarm)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            public static var noContent: Self {
+                .noContent(.init())
+            }
+            /// The associated value of the enum case if `self` is `.noContent`.
+            ///
+            /// - Throws: An error if `self` is not `.noContent`.
+            /// - SeeAlso: `.noContent`.
+            public var noContent: Operations.DeleteSwarm.Output.NoContent {
+                get throws {
+                    switch self {
+                    case let .noContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "noContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/DELETE/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/DELETE/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DeleteSwarm.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DeleteSwarm.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// SWARM_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/delete(deleteSwarm)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.DeleteSwarm.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.DeleteSwarm.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/DELETE/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/DELETE/responses/409/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DeleteSwarm.Output.Conflict.Body
+                /// Creates a new `Conflict`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DeleteSwarm.Output.Conflict.Body) {
+                    self.body = body
+                }
+            }
+            /// SWARM_RUNNING
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/delete(deleteSwarm)/responses/409`.
+            ///
+            /// HTTP response code: `409 conflict`.
+            case conflict(Operations.DeleteSwarm.Output.Conflict)
+            /// The associated value of the enum case if `self` is `.conflict`.
+            ///
+            /// - Throws: An error if `self` is not `.conflict`.
+            /// - SeeAlso: `.conflict`.
+            public var conflict: Operations.DeleteSwarm.Output.Conflict {
+                get throws {
+                    switch self {
+                    case let .conflict(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "conflict",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Stop a swarm
+    ///
+    /// Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+    ///
+    /// - Remark: HTTP `POST /api/v1/swarms/{id}/stop`.
+    /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/stop/post(stopSwarm)`.
+    public enum StopSwarm {
+        public static let id: Swift.String = "stopSwarm"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/stop/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/stop/POST/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.StopSwarm.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/stop/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.StopSwarm.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.StopSwarm.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.StopSwarm.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.StopSwarm.Input.Path,
+                headers: Operations.StopSwarm.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/stop/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/stop/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ChatStopped)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ChatStopped {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.StopSwarm.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.StopSwarm.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Whether anything was running to stop
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/stop/post(stopSwarm)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.StopSwarm.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.StopSwarm.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/stop/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/swarms/{id}/stop/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.StopSwarm.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.StopSwarm.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// SWARM_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/swarms/{id}/stop/post(stopSwarm)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.StopSwarm.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.StopSwarm.Output.NotFound {
                 get throws {
                     switch self {
                     case let .notFound(response):

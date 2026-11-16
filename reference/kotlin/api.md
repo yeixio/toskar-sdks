@@ -84,6 +84,16 @@ Add a person and make their invite link (Admins add Members and Visitors; the Ow
 fun addPerson(body: AddPersonRequest): AddedPerson
 ```
 
+### addProjectFile(id, body)
+
+Add a file to a project
+
+The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+
+```kotlin
+fun addProjectFile(id: String, body: AddProjectFileRequest): Project
+```
+
 ### anthropicCountTokens()
 
 About how many tokens a Messages request's input takes
@@ -98,7 +108,7 @@ fun anthropicCountTokens(): Unit
 
 Anthropic-compatible messages, for coding agents
 
-Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 
 ```kotlin
 fun anthropicMessages(body: AnthropicMessagesRequest): Unit
@@ -372,6 +382,14 @@ Create a profile
 fun createProfile(body: JsonObject): JsonObject
 ```
 
+### createProject(body)
+
+Make a project
+
+```kotlin
+fun createProject(body: ProjectInput): Project
+```
+
 ### createTask(body)
 
 Run a prompt as a task
@@ -537,12 +555,36 @@ Delete a custom profile
 fun deleteProfile(id: String): Unit
 ```
 
+### deleteProject(id, chats)
+
+Delete a project
+
+Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+
+Parameters:
+
+- `chats`: delete deletes the project's chats too, with their files.
+
+```kotlin
+fun deleteProject(id: String, chats: String? = null): Unit
+```
+
 ### deleteRunRecords()
 
 Delete run records now
 
 ```kotlin
 fun deleteRunRecords(): Unit
+```
+
+### deleteSwarm(id)
+
+Delete a swarm
+
+Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+
+```kotlin
+fun deleteSwarm(id: String): Unit
 ```
 
 ### deployedAIs()
@@ -1060,6 +1102,14 @@ The profiles each pinnable role is kept to (#345)
 fun getProfilePins(): ProfilePins
 ```
 
+### getProject(id)
+
+One project
+
+```kotlin
+fun getProject(id: String): Project
+```
+
 ### getPromptCache(days)
 
 How much of chats' later turns each model read from its prompt cache
@@ -1154,6 +1204,16 @@ AGPL corresponding-source offer
 
 ```kotlin
 fun getSource(): SourceOffer
+```
+
+### getSwarm(id)
+
+One swarm
+
+With its agents, their status, and what they're waiting on.
+
+```kotlin
+fun getSwarm(id: String): Swarm
 ```
 
 ### getTask(id)
@@ -1365,12 +1425,17 @@ Messages of a conversation, with sources, steps, and files
 fun listConversationMessages(id: String): List<Message>
 ```
 
-### listConversations()
+### listConversations(projectId, swarmId)
 
 List conversations
 
+Parameters:
+
+- `projectId`: Only the chats in this project (contract 1.87,
+- `swarmId`: A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out.
+
 ```kotlin
-fun listConversations(): List<Conversation>
+fun listConversations(projectId: String? = null, swarmId: String? = null): List<Conversation>
 ```
 
 ### listDevices(kind)
@@ -1563,6 +1628,16 @@ List AI profiles
 fun listProfiles(): List<JsonObject>
 ```
 
+### listProjects()
+
+The caller's projects
+
+Newest activity first, with how many chats each has (contract 1.87,
+
+```kotlin
+fun listProjects(): List<Project>
+```
+
 ### listRunningModels()
 
 Loaded model instances on this and paired computers
@@ -1585,6 +1660,20 @@ Runtimes and whether each is installed
 
 ```kotlin
 fun listRuntimes(): List<RuntimeInfo>
+```
+
+### listSwarms(projectId)
+
+The caller's swarms
+
+Newest first (contract 1.88,
+
+Parameters:
+
+- `projectId`: Only this project's swarms.
+
+```kotlin
+fun listSwarms(projectId: String? = null): List<Swarm>
 ```
 
 ### listTasks()
@@ -1683,9 +1772,9 @@ fun mcpOAuthCallback(): Unit
 
 ### mcpServer(body)
 
-Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 
-Checked like /v1. A request with an Origin header from another site is refused.
+Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 
 ```kotlin
 fun mcpServer(body: JsonObject? = null): Unit
@@ -1781,7 +1870,7 @@ fun openaiChatCompletions(body: OpenaiChatCompletionsRequest): OpenAIChatComplet
 
 OpenAI-compatible model list
 
-auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
 
 ```kotlin
 fun openaiListModels(): OpenAIModelList
@@ -1791,7 +1880,7 @@ fun openaiListModels(): OpenAIModelList
 
 OpenAI Responses, for coding agents
 
-OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 
 ```kotlin
 fun openaiResponses(body: OpenaiResponsesRequest): Unit
@@ -2078,6 +2167,14 @@ They're disabled and signed out at once.
 fun removePortalVisitor(id: String, vid: String): Unit
 ```
 
+### removeProjectFile(id, name)
+
+Remove a file from a project
+
+```kotlin
+fun removeProjectFile(id: String, name: String): Unit
+```
+
 ### removeVideoModel(id)
 
 Delete an installed video model to free its space
@@ -2232,6 +2329,16 @@ The key is stored in the secrets folder and never returned. An empty api_key kee
 fun setExternalServer(body: SetExternalServerRequest): ExternalServer
 ```
 
+### setModelAlwaysRunning(id, body)
+
+Keep a model running
+
+Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+
+```kotlin
+fun setModelAlwaysRunning(id: String, body: SetModelAlwaysRunningRequest): ModelAlwaysRunning
+```
+
 ### setModelContext(id, body)
 
 Set a model's context window
@@ -2250,6 +2357,16 @@ A GGUF vision projector (mmproj) on this computer, copied beside the model so it
 
 ```kotlin
 fun setModelProjector(id: String, body: SetModelProjectorRequest): ModelVision
+```
+
+### setModelSlots(id, body)
+
+Set how many requests a model answers at once
+
+How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+
+```kotlin
+fun setModelSlots(id: String, body: SetModelSlotsRequest): ModelSlots
 ```
 
 ### setModelSpeculation(id, body)
@@ -2448,6 +2565,16 @@ Body {plan}: monthly or yearly. Opens a Stripe checkout at yeix.io, which bills 
 fun startSubscriptionCheckout(): Unit
 ```
 
+### startSwarm(body)
+
+Start a swarm
+
+Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+
+```kotlin
+fun startSwarm(body: StartSwarmRequest): Swarm
+```
+
 ### startTraining(id, body)
 
 Start training
@@ -2482,6 +2609,16 @@ Unload a model instance
 
 ```kotlin
 fun stopModel(id: String, body: StopModelRequest? = null): OK
+```
+
+### stopSwarm(id)
+
+Stop a swarm
+
+Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+
+```kotlin
+fun stopSwarm(id: String): ChatStopped
 ```
 
 ### testNotificationDestination(id)
@@ -2690,6 +2827,16 @@ Update a profile, including its orchestration controls
 
 ```kotlin
 fun updateProfile(id: String, body: JsonObject): JsonObject
+```
+
+### updateProject(id, body)
+
+Change a project
+
+Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+
+```kotlin
+fun updateProject(id: String, body: ProjectInput): Project
 ```
 
 ### updateSettings(body)

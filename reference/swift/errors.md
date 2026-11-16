@@ -127,6 +127,9 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.modelNotEditable` | `MODEL_NOT_EDITABLE` | Only a model you added can be renamed or tagged. |
 | `.modelNotFound` | `MODEL_NOT_FOUND` | No model has that ID. |
 | `.modelNotInstalled` | `MODEL_NOT_INSTALLED` | {{model_id}} isn't installed. |
+| `.modelSlotsContext` | `MODEL_SLOTS_CONTEXT` | With {{slots}} agents at once, each would get {{context_per_slot}} tokens of context, less than the {{needed}} a task needs. Choose a bigger context window or fewer agents. |
+| `.modelSlotsInvalid` | `MODEL_SLOTS_INVALID` | Choose 1 to {{max}} agents at once. |
+| `.modelSlotsMemory` | `MODEL_SLOTS_MEMORY` | This model doesn't fit this computer's memory with {{slots}} agents at once. Choose fewer. |
 | `.modelUnhealthy` | `MODEL_UNHEALTHY` | The model stopped working. |
 | `.modelUpdateFailed` | `MODEL_UPDATE_FAILED` | {{detail}} |
 | `.modelsListFailed` | `MODELS_LIST_FAILED` | Couldn't list models. |
@@ -149,6 +152,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.notificationsDisabled` | `NOTIFICATIONS_DISABLED` | Notifications are turned off. |
 | `.notificationsFailed` | `NOTIFICATIONS_FAILED` | {{detail}} |
 | `.offerFailed` | `OFFER_FAILED` | {{detail}} |
+| `.offline` | `OFFLINE` | This computer isn't connected to the internet. Check the connection, then try again. |
 | `.originNotAllowed` | `ORIGIN_NOT_ALLOWED` | Websites cannot use Toskar without an API key. |
 | `.outOfMemory` | `OUT_OF_MEMORY` | The model ran out of memory. |
 | `.ownerFixed` | `OWNER_FIXED` | The Owner's role can't change, and nobody changes their own role or disables themselves. |
@@ -194,6 +198,9 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.profilePinned` | `PROFILE_PINNED` | This key answers only with its own profile. Leave out the profile and model, or name that profile. |
 | `.profileUpdateFailed` | `PROFILE_UPDATE_FAILED` | {{detail}} |
 | `.profilesListFailed` | `PROFILES_LIST_FAILED` | Couldn't list profiles. |
+| `.projectFileNotFound` | `PROJECT_FILE_NOT_FOUND` | That file isn't in the project. |
+| `.projectNameRequired` | `PROJECT_NAME_REQUIRED` | Name the project. |
+| `.projectNotFound` | `PROJECT_NOT_FOUND` | That project was removed. |
 | `.proxyRefused` | `PROXY_REFUSED` | Your sign-in doesn't give you a role on this Toskar. Ask its Owner to add you to a group that does. |
 | `.pushDeviceOnly` | `PUSH_DEVICE_ONLY` | Only a paired phone or tablet can turn on notifications. |
 | `.pushFailed` | `PUSH_FAILED` | {{detail}} |
@@ -270,6 +277,8 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.summaryFailed` | `SUMMARY_FAILED` | The summary couldn't be read or saved: {{detail}} |
 | `.summaryNotFound` | `SUMMARY_NOT_FOUND` | This chat hasn't been compacted yet. |
 | `.supportModelBusy` | `SUPPORT_MODEL_BUSY` | The supporting model can't run right now. |
+| `.swarmNotFound` | `SWARM_NOT_FOUND` | That swarm was removed. |
+| `.swarmRunning` | `SWARM_RUNNING` | This swarm is still running. Stop it first. |
 | `.taskCreateFailed` | `TASK_CREATE_FAILED` | {{detail}} |
 | `.taskFailed` | `TASK_FAILED` | {{detail}} |
 | `.taskInterrupted` | `TASK_INTERRUPTED` | Toskar stopped before this finished. |

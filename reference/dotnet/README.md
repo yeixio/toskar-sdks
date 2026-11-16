@@ -494,8 +494,8 @@ static class Contract
 
 #### Contract.Version
 
-The contract version, such as 1.86.
+The contract version, such as 1.98.
 
 ```csharp
-const string Version = "1.86"
+const string Version = "1.98"
 ```

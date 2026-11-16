@@ -254,9 +254,12 @@ impl Api<'_> {
     }
 
     /// List conversations
+    ///
+    /// - `project_id`: Only the chats in this project (contract 1.87,
+    /// - `swarm_id`: A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out.
     #[allow(clippy::too_many_arguments)]
-    pub async fn list_conversations(&self, ) -> Result<Vec<models::Conversation>> {
-        self.client.call("GET", "/api/v1/conversations", &[], &[], &[], None).await
+    pub async fn list_conversations(&self, project_id: Option<&str>, swarm_id: Option<&str>) -> Result<Vec<models::Conversation>> {
+        self.client.call("GET", "/api/v1/conversations", &[], &[("project_id", project_id.map(|v| v.to_string())), ("swarm_id", swarm_id.map(|v| v.to_string()))], &[], None).await
     }
 
     /// Create conversation
@@ -913,6 +916,14 @@ impl Api<'_> {
         self.client.send("DELETE", "/api/v1/models/{id}", &[id], &[("node_id", node_id.map(|v| v.to_string()))], &[], body.map(json).transpose()?).await
     }
 
+    /// Keep a model running
+    ///
+    /// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn set_model_always_running(&self, id: &str, body: &models::SetModelAlwaysRunningRequest) -> Result<models::ModelAlwaysRunning> {
+        self.client.call("PUT", "/api/v1/models/{id}/always-running", &[id], &[], &[], Some(json(body)?)).await
+    }
+
     /// Set a model's context window
     ///
     /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -959,6 +970,14 @@ impl Api<'_> {
     #[allow(clippy::too_many_arguments)]
     pub async fn dismiss_model_rating(&self, id: &str) -> Result<()> {
         self.client.send("POST", "/api/v1/models/{id}/rating/dismiss", &[id], &[], &[], None).await
+    }
+
+    /// Set how many requests a model answers at once
+    ///
+    /// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn set_model_slots(&self, id: &str, body: &models::SetModelSlotsRequest) -> Result<models::ModelSlots> {
+        self.client.call("PUT", "/api/v1/models/{id}/slots", &[id], &[], &[], Some(json(body)?)).await
     }
 
     /// Turn guessing ahead Auto or Off for a model
@@ -1492,6 +1511,58 @@ impl Api<'_> {
         self.client.send("POST", "/api/v1/profiles/{id}/try-topics", &[id], &[], &[], Some(json(body)?)).await
     }
 
+    /// The caller's projects
+    ///
+    /// Newest activity first, with how many chats each has (contract 1.87,
+    #[allow(clippy::too_many_arguments)]
+    pub async fn list_projects(&self, ) -> Result<Vec<models::Project>> {
+        self.client.call("GET", "/api/v1/projects", &[], &[], &[], None).await
+    }
+
+    /// Make a project
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_project(&self, body: &models::ProjectInput) -> Result<models::Project> {
+        self.client.call("POST", "/api/v1/projects", &[], &[], &[], Some(json(body)?)).await
+    }
+
+    /// One project
+    #[allow(clippy::too_many_arguments)]
+    pub async fn get_project(&self, id: &str) -> Result<models::Project> {
+        self.client.call("GET", "/api/v1/projects/{id}", &[id], &[], &[], None).await
+    }
+
+    /// Change a project
+    ///
+    /// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_project(&self, id: &str, body: &models::ProjectInput) -> Result<models::Project> {
+        self.client.call("PATCH", "/api/v1/projects/{id}", &[id], &[], &[], Some(json(body)?)).await
+    }
+
+    /// Delete a project
+    ///
+    /// Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+    ///
+    /// - `chats`: delete deletes the project's chats too, with their files.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn delete_project(&self, id: &str, chats: Option<&str>) -> Result<()> {
+        self.client.send("DELETE", "/api/v1/projects/{id}", &[id], &[("chats", chats.map(|v| v.to_string()))], &[], None).await
+    }
+
+    /// Add a file to a project
+    ///
+    /// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn add_project_file(&self, id: &str, body: &models::AddProjectFileRequest) -> Result<models::Project> {
+        self.client.call("POST", "/api/v1/projects/{id}/files", &[id], &[], &[], Some(json(body)?)).await
+    }
+
+    /// Remove a file from a project
+    #[allow(clippy::too_many_arguments)]
+    pub async fn remove_project_file(&self, id: &str, name: &str) -> Result<()> {
+        self.client.send("DELETE", "/api/v1/projects/{id}/files/{name}", &[id, name], &[], &[], None).await
+    }
+
     /// Everyone's ratings of the models here, from hardware like this computer's and overall
     ///
     /// Empty unless `community_ratings` is on. The public summary is downloaded at most once a day; when that fails, the last one is used and `error` says why.
@@ -1640,6 +1711,48 @@ impl Api<'_> {
     #[allow(clippy::too_many_arguments)]
     pub async fn transcribe_recording(&self, body: &models::TranscribeRecordingRequest) -> Result<models::Transcription> {
         self.client.call("POST", "/api/v1/speech/transcribe", &[], &[], &[], Some(json(body)?)).await
+    }
+
+    /// The caller's swarms
+    ///
+    /// Newest first (contract 1.88,
+    ///
+    /// - `project_id`: Only this project's swarms.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn list_swarms(&self, project_id: Option<&str>) -> Result<Vec<models::Swarm>> {
+        self.client.call("GET", "/api/v1/swarms", &[], &[("project_id", project_id.map(|v| v.to_string()))], &[], None).await
+    }
+
+    /// Start a swarm
+    ///
+    /// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn start_swarm(&self, body: &models::StartSwarmRequest) -> Result<models::Swarm> {
+        self.client.call("POST", "/api/v1/swarms", &[], &[], &[], Some(json(body)?)).await
+    }
+
+    /// One swarm
+    ///
+    /// With its agents, their status, and what they're waiting on.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn get_swarm(&self, id: &str) -> Result<models::Swarm> {
+        self.client.call("GET", "/api/v1/swarms/{id}", &[id], &[], &[], None).await
+    }
+
+    /// Delete a swarm
+    ///
+    /// Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn delete_swarm(&self, id: &str) -> Result<()> {
+        self.client.send("DELETE", "/api/v1/swarms/{id}", &[id], &[], &[], None).await
+    }
+
+    /// Stop a swarm
+    ///
+    /// Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn stop_swarm(&self, id: &str) -> Result<models::ChatStopped> {
+        self.client.call("POST", "/api/v1/swarms/{id}/stop", &[id], &[], &[], None).await
     }
 
     /// Recent tasks
@@ -2006,9 +2119,9 @@ impl Api<'_> {
         self.client.send("GET", "/mcp", &[], &[], &[], None).await
     }
 
-    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
     ///
-    /// Checked like /v1. A request with an Origin header from another site is refused.
+    /// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=&lt;id&gt;; it needs the member role (#1135, contract 1.88).
     #[allow(clippy::too_many_arguments)]
     pub async fn mcp_server(&self, body: Option<&Map<String, Value>>) -> Result<()> {
         self.client.send("POST", "/mcp", &[], &[], &[], body.map(json).transpose()?).await
@@ -2042,7 +2155,7 @@ impl Api<'_> {
 
     /// Anthropic-compatible messages, for coding agents
     ///
-    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:&lt;model&gt; does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:&lt;model&gt; does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:&lt;profile&gt; (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
     #[allow(clippy::too_many_arguments)]
     pub async fn anthropic_messages(&self, body: &models::AnthropicMessagesRequest) -> Result<()> {
         self.client.send("POST", "/v1/messages", &[], &[], &[], Some(json(body)?)).await
@@ -2058,7 +2171,7 @@ impl Api<'_> {
 
     /// OpenAI-compatible model list
     ///
-    /// auto, each profile as profile:&lt;id&gt;, and each deployed specialized AI as sai:&lt;slug&gt;.
+    /// auto, each profile as profile:&lt;id&gt;, each profile whose strategy is swarm as swarm:&lt;id&gt; (#1135, contract 1.88), and each deployed specialized AI as sai:&lt;slug&gt;.
     #[allow(clippy::too_many_arguments)]
     pub async fn openai_list_models(&self, ) -> Result<models::OpenAIModelList> {
         self.client.call("GET", "/v1/models", &[], &[], &[], None).await
@@ -2066,7 +2179,7 @@ impl Api<'_> {
 
     /// OpenAI Responses, for coding agents
     ///
-    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:&lt;model&gt; does.
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:&lt;model&gt; does. model swarm:&lt;profile&gt; (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
     #[allow(clippy::too_many_arguments)]
     pub async fn openai_responses(&self, body: &models::OpenaiResponsesRequest) -> Result<()> {
         self.client.send("POST", "/v1/responses", &[], &[], &[], Some(json(body)?)).await

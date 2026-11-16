@@ -134,6 +134,9 @@ except ToskarError as err:
 | `MODEL_NOT_EDITABLE` | Only a model you added can be renamed or tagged. |
 | `MODEL_NOT_FOUND` | No model has that ID. |
 | `MODEL_NOT_INSTALLED` | {{model_id}} isn't installed. |
+| `MODEL_SLOTS_CONTEXT` | With {{slots}} agents at once, each would get {{context_per_slot}} tokens of context, less than the {{needed}} a task needs. Choose a bigger context window or fewer agents. |
+| `MODEL_SLOTS_INVALID` | Choose 1 to {{max}} agents at once. |
+| `MODEL_SLOTS_MEMORY` | This model doesn't fit this computer's memory with {{slots}} agents at once. Choose fewer. |
 | `MODEL_UNHEALTHY` | The model stopped working. |
 | `MODEL_UPDATE_FAILED` |  |
 | `NAME_INVALID` | A name is 1 to 80 characters. |
@@ -153,6 +156,7 @@ except ToskarError as err:
 | `NO_PASSWORD` | You don't sign in with a password here. |
 | `NO_TEXT_FOUND` | No text found. Scanned PDFs need text recognition (OCR) before Toskar can read them. |
 | `OFFER_FAILED` |  |
+| `OFFLINE` | This computer isn't connected to the internet. Check the connection, then try again. |
 | `ORIGIN_NOT_ALLOWED` | Websites cannot use Toskar without an API key. |
 | `OUT_OF_MEMORY` | The model ran out of memory. |
 | `OWNER_FIXED` | The Owner's role can't change, and nobody changes their own role or disables themselves. |
@@ -197,6 +201,9 @@ except ToskarError as err:
 | `PROFILE_NOT_FOUND` | There's no such profile. |
 | `PROFILE_PINNED` | This key answers only with its own profile. Leave out the profile and model, or name that profile. |
 | `PROFILE_UPDATE_FAILED` |  |
+| `PROJECT_FILE_NOT_FOUND` | That file isn't in the project. |
+| `PROJECT_NAME_REQUIRED` | Name the project. |
+| `PROJECT_NOT_FOUND` | That project was removed. |
 | `PROXY_REFUSED` | Your sign-in doesn't give you a role on this Toskar. Ask its Owner to add you to a group that does. |
 | `PUSH_DEVICE_ONLY` | Only a paired phone or tablet can turn on notifications. |
 | `PUSH_FAILED` |  |
@@ -270,6 +277,8 @@ except ToskarError as err:
 | `SUMMARY_FAILED` | The summary couldn't be read or saved: {{detail}} |
 | `SUMMARY_NOT_FOUND` | This chat hasn't been compacted yet. |
 | `SUPPORT_MODEL_BUSY` | The supporting model can't run right now. |
+| `SWARM_NOT_FOUND` | That swarm was removed. |
+| `SWARM_RUNNING` | This swarm is still running. Stop it first. |
 | `TASKS_LIST_FAILED` |  |
 | `TASK_CREATE_FAILED` |  |
 | `TASK_FAILED` |  |

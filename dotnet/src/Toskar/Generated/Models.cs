@@ -421,8 +421,17 @@ public sealed record RunningModelView
     [JsonPropertyName("status")]
     public required string Status { get; init; }
 
+    /// <summary>
+    /// The catalog's estimate of the memory it needs
+    /// </summary>
     [JsonPropertyName("memory_bytes")]
     public long? MemoryBytes { get; init; }
+
+    /// <summary>
+    /// The system memory its process holds, measured a few seconds ago at most (contract 1.90). On Linux, the memory it allocated, without the model file it maps.
+    /// </summary>
+    [JsonPropertyName("resident_bytes")]
+    public long? ResidentBytes { get; init; }
 
     [JsonPropertyName("endpoint")]
     public string? Endpoint { get; init; }
@@ -444,6 +453,12 @@ public sealed record RunningModelView
 
     [JsonPropertyName("last_used_at")]
     public DateTimeOffset? LastUsedAt { get; init; }
+
+    /// <summary>
+    /// A model kept loaded on its computer (#966, contract 1.96)
+    /// </summary>
+    [JsonPropertyName("always_running")]
+    public bool? AlwaysRunning { get; init; }
 
     /// <summary>
     /// "embedding" or "reranking" for a supporting model serving knowledge search, and empty for a chat model. Known values: `embedding`, `reranking`; others may be added.
@@ -719,6 +734,12 @@ public sealed record Model
     public string? Speculation { get; init; }
 
     /// <summary>
+    /// A chat model installed on this computer that is kept loaded (#966, contract 1.94).
+    /// </summary>
+    [JsonPropertyName("always_running")]
+    public bool? AlwaysRunning { get; init; }
+
+    /// <summary>
     /// The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
     /// </summary>
     [JsonPropertyName("context_window")]
@@ -735,6 +756,12 @@ public sealed record Model
     /// </summary>
     [JsonPropertyName("context_options")]
     public List<ModelContextOptions>? ContextOptions { get; init; }
+
+    /// <summary>
+    /// How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models.
+    /// </summary>
+    [JsonPropertyName("slots")]
+    public long? Slots { get; init; }
 
     /// <summary>
     /// How well the model writes each language it has a level for (§13–14, §31), best first.
@@ -771,6 +798,24 @@ public sealed record Conversation
     /// </summary>
     [JsonPropertyName("project")]
     public string? Project { get; init; }
+
+    /// <summary>
+    /// The project the chat is in, if any: a chat is in one project at most (contract 1.87, #1136).
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public string? ProjectId { get; init; }
+
+    /// <summary>
+    /// The swarm the chat belongs to: its coordinator's chat, or one of its agents' (contract 1.88, #1135).
+    /// </summary>
+    [JsonPropertyName("swarm_id")]
+    public string? SwarmId { get; init; }
+
+    /// <summary>
+    /// agent:N for an agent's chat; empty for the coordinator's or a chat in no swarm.
+    /// </summary>
+    [JsonPropertyName("swarm_role")]
+    public string? SwarmRole { get; init; }
 
     /// <summary>
     /// `compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342).
@@ -996,6 +1041,375 @@ public sealed record Artifact
 }
 
 /// <summary>
+/// Related chats kept together with what they share: instructions, files, a folder on the Toskar computer, a default profile and model, and a memory of their own (contract 1.87, #1136). It belongs to the person who made it.
+/// </summary>
+public sealed record Project
+{
+    [JsonPropertyName("id")]
+    public required string Id { get; init; }
+
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    /// <summary>
+    /// The person's own instructions for every chat in the project. They come after a profile's and before the person's style.
+    /// </summary>
+    [JsonPropertyName("instructions")]
+    public required string Instructions { get; init; }
+
+    /// <summary>
+    /// Where the project's chats work on the Toskar computer
+    /// </summary>
+    [JsonPropertyName("folder")]
+    public string? Folder { get; init; }
+
+    [JsonPropertyName("profile_id")]
+    public string? ProfileId { get; init; }
+
+    [JsonPropertyName("model_id")]
+    public string? ModelId { get; init; }
+
+    /// <summary>
+    /// `memory_off` keeps the project's chats from saving or reading the project's own memory. The person's memory follows each chat's Memory control.
+    /// </summary>
+    [JsonPropertyName("memory_off")]
+    public required bool MemoryOff { get; init; }
+
+    /// <summary>
+    /// The ids of knowledge sources linked to the project, which its chats search as well as its files.
+    /// </summary>
+    [JsonPropertyName("knowledge")]
+    public required List<string> Knowledge { get; init; }
+
+    /// <summary>
+    /// The files added to the project's knowledge.
+    /// </summary>
+    [JsonPropertyName("files")]
+    public required List<ProjectFile> Files { get; init; }
+
+    /// <summary>
+    /// How many chats are in the project.
+    /// </summary>
+    [JsonPropertyName("chat_count")]
+    public required long ChatCount { get; init; }
+
+    [JsonPropertyName("created_at")]
+    public required DateTimeOffset CreatedAt { get; init; }
+
+    /// <summary>
+    /// The project's last activity: a change to it, or to one of its chats.
+    /// </summary>
+    [JsonPropertyName("updated_at")]
+    public required DateTimeOffset UpdatedAt { get; init; }
+}
+
+/// <summary>
+/// A project's fields; one left out stays as it is.
+/// </summary>
+public sealed record ProjectInput
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; init; }
+
+    /// <summary>
+    /// The full path of a folder on the Toskar computer for the project's chats to work in, or empty for none. Needs the admin role.
+    /// </summary>
+    [JsonPropertyName("folder")]
+    public string? Folder { get; init; }
+
+    [JsonPropertyName("profile_id")]
+    public string? ProfileId { get; init; }
+
+    [JsonPropertyName("model_id")]
+    public string? ModelId { get; init; }
+
+    [JsonPropertyName("memory_off")]
+    public bool? MemoryOff { get; init; }
+
+    /// <summary>
+    /// Knowledge source ids to link. Needs the member role.
+    /// </summary>
+    [JsonPropertyName("knowledge")]
+    public List<string>? Knowledge { get; init; }
+}
+
+/// <summary>
+/// One file in a project's knowledge.
+/// </summary>
+public sealed record ProjectFile
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("size")]
+    public required long Size { get; init; }
+}
+
+/// <summary>
+/// Several agents working at once on one request, each in a chat of its own in the coordinator chat's project (contract 1.88, #1135). It belongs to the person who started it.
+/// </summary>
+public sealed record Swarm
+{
+    [JsonPropertyName("id")]
+    public required string Id { get; init; }
+
+    [JsonPropertyName("project_id")]
+    public required string ProjectId { get; init; }
+
+    /// <summary>
+    /// The coordinator's chat, where the merged answer goes.
+    /// </summary>
+    [JsonPropertyName("conversation_id")]
+    public required string ConversationId { get; init; }
+
+    /// <summary>
+    /// Known values: `split`, `race`; others may be added.
+    /// </summary>
+    [JsonPropertyName("mode")]
+    public required string Mode { get; init; }
+
+    /// <summary>
+    /// Known values: `running`, `merging`, `done`, `stopped`, `failed`; others may be added.
+    /// </summary>
+    [JsonPropertyName("status")]
+    public required string Status { get; init; }
+
+    [JsonPropertyName("request")]
+    public required string Request { get; init; }
+
+    [JsonPropertyName("budget")]
+    public required SwarmBudget Budget { get; init; }
+
+    /// <summary>
+    /// The swarm's agents, in order. Empty until the coordinator has planned the parts.
+    /// </summary>
+    [JsonPropertyName("agents")]
+    public required List<SwarmAgent> Agents { get; init; }
+
+    /// <summary>
+    /// A race's winning agent, 0 when the answers were merged or it's not a race.
+    /// </summary>
+    [JsonPropertyName("winner")]
+    public long? Winner { get; init; }
+
+    /// <summary>
+    /// `note` says why the swarm ran differently than asked, such as running as one agent.
+    /// </summary>
+    [JsonPropertyName("note")]
+    public string? Note { get; init; }
+
+    /// <summary>
+    /// Every agent's tokens so far.
+    /// </summary>
+    [JsonPropertyName("tokens")]
+    public required long Tokens { get; init; }
+
+    [JsonPropertyName("seconds")]
+    public required double Seconds { get; init; }
+
+    /// <summary>
+    /// The folder a task swarm worked in. In a Git repository each agent worked on a branch of its own, kept for 7 days or until the swarm is deleted.
+    /// </summary>
+    [JsonPropertyName("folder")]
+    public string? Folder { get; init; }
+
+    /// <summary>
+    /// A task swarm's result: the agents' work merged, or a race winner's. Empty for a question, or a folder that isn't in Git.
+    /// </summary>
+    [JsonPropertyName("branch")]
+    public string? Branch { get; init; }
+
+    /// <summary>
+    /// How the project's checks went on the result. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+    /// </summary>
+    [JsonPropertyName("checks")]
+    public string? Checks { get; init; }
+
+    /// <summary>
+    /// Agents' changes that couldn't be merged, each still on its agent's branch.
+    /// </summary>
+    [JsonPropertyName("conflicts")]
+    public List<SwarmConflict>? Conflicts { get; init; }
+
+    /// <summary>
+    /// The result is in the person's folder as uncommitted changes, after they allowed it.
+    /// </summary>
+    [JsonPropertyName("applied")]
+    public bool? Applied { get; init; }
+
+    /// <summary>
+    /// Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by.
+    /// </summary>
+    [JsonPropertyName("waiting")]
+    public List<JsonObject>? Waiting { get; init; }
+
+    [JsonPropertyName("created_at")]
+    public required DateTimeOffset CreatedAt { get; init; }
+
+    [JsonPropertyName("finished_at")]
+    public DateTimeOffset? FinishedAt { get; init; }
+}
+
+/// <summary>
+/// One agent in a swarm: its part, where it runs, and how it went (contract 1.88, #1135).
+/// </summary>
+public sealed record SwarmAgent
+{
+    /// <summary>
+    /// Its number, from 1.
+    /// </summary>
+    [JsonPropertyName("agent")]
+    public required long Agent { get; init; }
+
+    /// <summary>
+    /// The agent's own chat, which can be opened and continued.
+    /// </summary>
+    [JsonPropertyName("conversation_id")]
+    public required string ConversationId { get; init; }
+
+    /// <summary>
+    /// agent:N.
+    /// </summary>
+    [JsonPropertyName("role")]
+    public required string Role { get; init; }
+
+    /// <summary>
+    /// What it was asked to do: its part, or in a race the whole request.
+    /// </summary>
+    [JsonPropertyName("part")]
+    public required string Part { get; init; }
+
+    [JsonPropertyName("model_id")]
+    public string? ModelId { get; init; }
+
+    [JsonPropertyName("node_id")]
+    public string? NodeId { get; init; }
+
+    /// <summary>
+    /// Known values: `queued`, `running`, `done`, `failed`, `stopped`, `out_of_budget`; others may be added.
+    /// </summary>
+    [JsonPropertyName("status")]
+    public required string Status { get; init; }
+
+    /// <summary>
+    /// The start of its answer.
+    /// </summary>
+    [JsonPropertyName("summary")]
+    public string? Summary { get; init; }
+
+    [JsonPropertyName("tokens")]
+    public required long Tokens { get; init; }
+
+    [JsonPropertyName("seconds")]
+    public required double Seconds { get; init; }
+
+    /// <summary>
+    /// The files or folders a task's part expects to change.
+    /// </summary>
+    [JsonPropertyName("paths")]
+    public List<string>? Paths { get; init; }
+
+    /// <summary>
+    /// A task agent's own branch, with its work committed.
+    /// </summary>
+    [JsonPropertyName("branch")]
+    public string? Branch { get; init; }
+
+    /// <summary>
+    /// How the project's checks went on its branch in a race. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+    /// </summary>
+    [JsonPropertyName("checks")]
+    public string? Checks { get; init; }
+}
+
+/// <summary>
+/// An agent's change that couldn't be merged with the others', even by a fix-up agent (contract 1.88, #1135).
+/// </summary>
+public sealed record SwarmConflict
+{
+    /// <summary>
+    /// The agent whose change wasn't merged.
+    /// </summary>
+    [JsonPropertyName("agent")]
+    public required long Agent { get; init; }
+
+    /// <summary>
+    /// Has its change.
+    /// </summary>
+    [JsonPropertyName("branch")]
+    public required string Branch { get; init; }
+
+    /// <summary>
+    /// The files that conflicted.
+    /// </summary>
+    [JsonPropertyName("files")]
+    public required List<string> Files { get; init; }
+}
+
+/// <summary>
+/// What a swarm may use (contract 1.88, #1135).
+/// </summary>
+public sealed record SwarmBudget
+{
+    /// <summary>
+    /// The most agents it has.
+    /// </summary>
+    [JsonPropertyName("agents")]
+    public required long Agents { get; init; }
+
+    /// <summary>
+    /// The most the whole swarm may use.
+    /// </summary>
+    [JsonPropertyName("tokens")]
+    public required long Tokens { get; init; }
+
+    /// <summary>
+    /// The most it may run.
+    /// </summary>
+    [JsonPropertyName("minutes")]
+    public required long Minutes { get; init; }
+}
+
+/// <summary>
+/// Swarm controls (contract 1.88, #1135): a profile's orchestration.swarm, or one swarm's budget. Every field is optional; empty keeps the default.
+/// </summary>
+public sealed record SwarmPolicy
+{
+    /// <summary>
+    /// split: a coordinator splits the job into parts that agents do at once. race: agents on different models each do the whole request, and the best answer wins or they're merged. Empty is split. Known values: `split`, `race`; others may be added.
+    /// </summary>
+    [JsonPropertyName("mode")]
+    public string? Mode { get; init; }
+
+    /// <summary>
+    /// A race's models, one agent each, in order. A split's agents take them in turn.
+    /// </summary>
+    [JsonPropertyName("models")]
+    public List<string>? Models { get; init; }
+
+    /// <summary>
+    /// The most agents. Empty is the profile's max_workers
+    /// </summary>
+    [JsonPropertyName("agents")]
+    public long? Agents { get; init; }
+
+    /// <summary>
+    /// The most the whole swarm may use. Empty is 400000.
+    /// </summary>
+    [JsonPropertyName("tokens")]
+    public long? Tokens { get; init; }
+
+    /// <summary>
+    /// The most a swarm may run. Empty is 5 for a question and 30 for a task.
+    /// </summary>
+    [JsonPropertyName("minutes")]
+    public long? Minutes { get; init; }
+}
+
+/// <summary>
 /// One durable fact or preference.
 /// </summary>
 public sealed record Memory
@@ -1029,6 +1443,12 @@ public sealed record Memory
     /// </summary>
     [JsonPropertyName("language")]
     public string? Language { get; init; }
+
+    /// <summary>
+    /// The project the memory belongs to, learned in one of its chats, or "" for the person's own memory (#1136).
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public string? ProjectId { get; init; }
 
     [JsonPropertyName("created_at")]
     public required DateTimeOffset CreatedAt { get; init; }
@@ -2762,6 +3182,12 @@ public sealed record MessageMeta
     public string? Notice { get; init; }
 
     /// <summary>
+    /// With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
+    /// </summary>
+    [JsonPropertyName("link_check")]
+    public MessageMetaLinkCheck? LinkCheck { get; init; }
+
+    /// <summary>
     /// Attached to a question or produced with an answer.
     /// </summary>
     [JsonPropertyName("files")]
@@ -3750,6 +4176,36 @@ public sealed record ModelContext
     /// </summary>
     [JsonPropertyName("context_window")]
     public required long ContextWindow { get; init; }
+}
+
+/// <summary>
+/// How many requests a model answers at once (#1135).
+/// </summary>
+public sealed record ModelSlots
+{
+    [JsonPropertyName("model_id")]
+    public required string ModelId { get; init; }
+
+    [JsonPropertyName("slots")]
+    public required long Slots { get; init; }
+}
+
+/// <summary>
+/// Whether a model is kept running (#966).
+/// </summary>
+public sealed record ModelAlwaysRunning
+{
+    [JsonPropertyName("model_id")]
+    public required string ModelId { get; init; }
+
+    [JsonPropertyName("always_running")]
+    public required bool AlwaysRunning { get; init; }
+
+    /// <summary>
+    /// This computer's memory less what the models kept running need, when it's known (contract 1.95)
+    /// </summary>
+    [JsonPropertyName("memory_left_bytes")]
+    public long? MemoryLeftBytes { get; init; }
 }
 
 /// <summary>
@@ -5897,6 +6353,27 @@ public sealed record ChatRequest
     public string? Effort { get; init; }
 
     /// <summary>
+    /// For the answer; 0 gives the same most likely answer every time (#839, contract 1.93)
+    /// </summary>
+    [JsonPropertyName("temperature")]
+    public double? Temperature { get; init; }
+
+    /// <summary>
+    /// As on /v1/chat/completions (#839, contract 1.93)
+    /// </summary>
+    [JsonPropertyName("seed")]
+    public long? Seed { get; init; }
+
+    [JsonPropertyName("top_p")]
+    public double? TopP { get; init; }
+
+    [JsonPropertyName("top_k")]
+    public long? TopK { get; init; }
+
+    [JsonPropertyName("min_p")]
+    public double? MinP { get; init; }
+
+    /// <summary>
     /// off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
     /// </summary>
     [JsonPropertyName("thinking")]
@@ -5952,6 +6429,24 @@ public sealed record ChatRequest
     /// </summary>
     [JsonPropertyName("live")]
     public bool? Live { get; init; }
+
+    /// <summary>
+    /// One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own.
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public string? ProjectId { get; init; }
+
+    /// <summary>
+    /// Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events. Known values: `split`, `race`; others may be added.
+    /// </summary>
+    [JsonPropertyName("swarm")]
+    public string? Swarm { get; init; }
+
+    /// <summary>
+    /// Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id.
+    /// </summary>
+    [JsonPropertyName("make_room")]
+    public bool? MakeRoom { get; init; }
 }
 
 public sealed record StopChatRequest
@@ -5976,6 +6471,12 @@ public sealed record CreateConversationRequest
 
     [JsonPropertyName("model_id")]
     public string? ModelId { get; init; }
+
+    /// <summary>
+    /// Start the chat in one of the caller's projects (contract 1.87,
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public string? ProjectId { get; init; }
 }
 
 public sealed record DeleteConversationsRequest
@@ -6006,6 +6507,12 @@ public sealed record UpdateConversationRequest
     /// </summary>
     [JsonPropertyName("project")]
     public string? Project { get; init; }
+
+    /// <summary>
+    /// Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87,
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public string? ProjectId { get; init; }
 }
 
 public sealed record EditConversationSummaryRequest
@@ -6294,6 +6801,12 @@ public sealed record UpdateMemoryRequest
 
     [JsonPropertyName("local_only")]
     public bool? LocalOnly { get; init; }
+
+    /// <summary>
+    /// Empty moves a project's memory to the person's own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can't be moved into a project.
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public string? ProjectId { get; init; }
 }
 
 public sealed record ImportModelRequest
@@ -6347,6 +6860,12 @@ public sealed record DeleteModelRequest
     public string? NodeId { get; init; }
 }
 
+public sealed record SetModelAlwaysRunningRequest
+{
+    [JsonPropertyName("always_running")]
+    public required bool AlwaysRunning { get; init; }
+}
+
 public sealed record SetModelContextRequest
 {
     /// <summary>
@@ -6387,6 +6906,12 @@ public sealed record PutModelRatingRequest
     /// </summary>
     [JsonPropertyName("observations")]
     public bool? Observations { get; init; }
+}
+
+public sealed record SetModelSlotsRequest
+{
+    [JsonPropertyName("slots")]
+    public required long Slots { get; init; }
 }
 
 public sealed record SetModelSpeculationRequest
@@ -6578,6 +7103,27 @@ public sealed record TryTopicsRequest
     public JsonObject? Topics { get; init; }
 }
 
+public sealed record AddProjectFileRequest
+{
+    /// <summary>
+    /// Its name; the extension picks the reader, such as .md, .csv, or .pdf
+    /// </summary>
+    [JsonPropertyName("filename")]
+    public required string Filename { get; init; }
+
+    /// <summary>
+    /// A text file's content
+    /// </summary>
+    [JsonPropertyName("text")]
+    public string? Text { get; init; }
+
+    /// <summary>
+    /// Another file's bytes, such as a PDF's, in place of text
+    /// </summary>
+    [JsonPropertyName("content_base64")]
+    public string? ContentBase64 { get; init; }
+}
+
 public sealed record SignInRequest
 {
     [JsonPropertyName("username")]
@@ -6618,6 +7164,33 @@ public sealed record TranscribeRecordingRequest
     /// </summary>
     [JsonPropertyName("language")]
     public string? Language { get; init; }
+}
+
+public sealed record StartSwarmRequest
+{
+    [JsonPropertyName("prompt")]
+    public required string Prompt { get; init; }
+
+    /// <summary>
+    /// Empty is the profile's, or split. Known values: `split`, `race`; others may be added.
+    /// </summary>
+    [JsonPropertyName("mode")]
+    public string? Mode { get; init; }
+
+    /// <summary>
+    /// One of the caller's projects for a chat not yet in one.
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public string? ProjectId { get; init; }
+
+    /// <summary>
+    /// The caller's chat to run it in; empty starts one.
+    /// </summary>
+    [JsonPropertyName("conversation_id")]
+    public string? ConversationId { get; init; }
+
+    [JsonPropertyName("budget")]
+    public SwarmPolicy? Budget { get; init; }
 }
 
 public sealed record CreateTaskRequest
@@ -6809,7 +7382,7 @@ public sealed record UseVideoBuildRequest
 public sealed record OpenaiChatCompletionsRequest
 {
     /// <summary>
-    /// auto, profile:&lt;id&gt;, sai:&lt;slug&gt;, a model id, or raw:&lt;model id&gt; to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
+    /// auto, profile:&lt;id&gt;, sai:&lt;slug&gt;, a model id, raw:&lt;model id&gt; to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:&lt;profile&gt; (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id
     /// </summary>
     [JsonPropertyName("model")]
     public required string Model { get; init; }
@@ -6825,6 +7398,30 @@ public sealed record OpenaiChatCompletionsRequest
     /// </summary>
     [JsonPropertyName("temperature")]
     public double? Temperature { get; init; }
+
+    /// <summary>
+    /// Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93)
+    /// </summary>
+    [JsonPropertyName("seed")]
+    public long? Seed { get; init; }
+
+    /// <summary>
+    /// Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93)
+    /// </summary>
+    [JsonPropertyName("top_p")]
+    public double? TopP { get; init; }
+
+    /// <summary>
+    /// Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93)
+    /// </summary>
+    [JsonPropertyName("top_k")]
+    public long? TopK { get; init; }
+
+    /// <summary>
+    /// Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93)
+    /// </summary>
+    [JsonPropertyName("min_p")]
+    public double? MinP { get; init; }
 
     /// <summary>
     /// The most tokens each answer-writing call may use. Left out, the model's default.
@@ -7791,6 +8388,18 @@ public sealed record MyDevicePermissions
 }
 
 /// <summary>
+/// With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
+/// </summary>
+public sealed record MessageMetaLinkCheck
+{
+    [JsonPropertyName("dead")]
+    public List<string>? Dead { get; init; }
+
+    [JsonPropertyName("unknown")]
+    public List<string>? Unknown { get; init; }
+}
+
+/// <summary>
 /// How the answer was reached when its profile deliberates: the drafts compared and the outcome (#459, contract 1.23).
 /// </summary>
 public sealed record MessageMetaDeliberation
@@ -7923,6 +8532,42 @@ public sealed record QualityResultPerformance
 
     [JsonPropertyName("quantization")]
     public string? Quantization { get; init; }
+
+    /// <summary>
+    /// The llama.cpp release it ran on, such as b12361 (contract 1.89)
+    /// </summary>
+    [JsonPropertyName("llama_cpp")]
+    public string? LlamaCpp { get; init; }
+
+    /// <summary>
+    /// Whether a draft guessed ahead during the runs (contract 1.89) Known values: `on`, `off`; others may be added.
+    /// </summary>
+    [JsonPropertyName("speculation")]
+    public string? Speculation { get; init; }
+
+    /// <summary>
+    /// The share of the draft's guesses the model kept, 0 to 1, when speculation is on (contract 1.89)
+    /// </summary>
+    [JsonPropertyName("draft_accepted")]
+    public double? DraftAccepted { get; init; }
+
+    /// <summary>
+    /// The GPUs it ran on, every one when there are several (contract 1.89)
+    /// </summary>
+    [JsonPropertyName("devices")]
+    public List<string>? Devices { get; init; }
+
+    /// <summary>
+    /// The system memory the model's process held after the runs, measured (contract 1.90). Where the graphics share the computer's memory, as on a Mac, it includes what gpu_memory_bytes counts.
+    /// </summary>
+    [JsonPropertyName("system_memory_bytes")]
+    public long? SystemMemoryBytes { get; init; }
+
+    /// <summary>
+    /// The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it
+    /// </summary>
+    [JsonPropertyName("contexts")]
+    public List<QualityResultPerformanceContexts>? Contexts { get; init; }
 }
 
 /// <summary>
@@ -9546,6 +10191,54 @@ public sealed record MessageMetaDeliberationJudge
 
     [JsonPropertyName("node_name")]
     public string? NodeName { get; init; }
+}
+
+public sealed record QualityResultPerformanceContexts
+{
+    /// <summary>
+    /// The window, in tokens
+    /// </summary>
+    [JsonPropertyName("context")]
+    public required long Context { get; init; }
+
+    /// <summary>
+    /// Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+    /// </summary>
+    [JsonPropertyName("runs")]
+    public required string Runs { get; init; }
+
+    /// <summary>
+    /// Why it's short of full: window, a size past the model's own, or out_of_memory
+    /// </summary>
+    [JsonPropertyName("why")]
+    public string? Why { get; init; }
+
+    [JsonPropertyName("prompt_tokens")]
+    public long? PromptTokens { get; init; }
+
+    [JsonPropertyName("prompt_tokens_per_second")]
+    public double? PromptTokensPerSecond { get; init; }
+
+    [JsonPropertyName("tokens_per_second")]
+    public double? TokensPerSecond { get; init; }
+
+    [JsonPropertyName("first_token_ms")]
+    public double? FirstTokenMs { get; init; }
+
+    [JsonPropertyName("effective_tokens_per_second")]
+    public double? EffectiveTokensPerSecond { get; init; }
+
+    [JsonPropertyName("gpu_layers")]
+    public long? GpuLayers { get; init; }
+
+    [JsonPropertyName("gpu_layers_total")]
+    public long? GpuLayersTotal { get; init; }
+
+    [JsonPropertyName("gpu_memory_bytes")]
+    public long? GpuMemoryBytes { get; init; }
+
+    [JsonPropertyName("system_memory_bytes")]
+    public long? SystemMemoryBytes { get; init; }
 }
 
 /// <summary>

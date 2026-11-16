@@ -128,6 +128,9 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarException.code`,
 | `ErrorCodes.MODEL_NOT_EDITABLE` | Only a model you added can be renamed or tagged. |
 | `ErrorCodes.MODEL_NOT_FOUND` | No model has that ID. |
 | `ErrorCodes.MODEL_NOT_INSTALLED` | {{model_id}} isn't installed. |
+| `ErrorCodes.MODEL_SLOTS_CONTEXT` | With {{slots}} agents at once, each would get {{context_per_slot}} tokens of context, less than the {{needed}} a task needs. Choose a bigger context window or fewer agents. |
+| `ErrorCodes.MODEL_SLOTS_INVALID` | Choose 1 to {{max}} agents at once. |
+| `ErrorCodes.MODEL_SLOTS_MEMORY` | This model doesn't fit this computer's memory with {{slots}} agents at once. Choose fewer. |
 | `ErrorCodes.MODEL_UNHEALTHY` | The model stopped working. |
 | `ErrorCodes.MODEL_UPDATE_FAILED` | {{detail}} |
 | `ErrorCodes.NAME_INVALID` | A name is 1 to 80 characters. |
@@ -147,6 +150,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarException.code`,
 | `ErrorCodes.NO_PASSWORD` | You don't sign in with a password here. |
 | `ErrorCodes.NO_TEXT_FOUND` | No text found. Scanned PDFs need text recognition (OCR) before Toskar can read them. |
 | `ErrorCodes.OFFER_FAILED` | {{detail}} |
+| `ErrorCodes.OFFLINE` | This computer isn't connected to the internet. Check the connection, then try again. |
 | `ErrorCodes.ORIGIN_NOT_ALLOWED` | Websites cannot use Toskar without an API key. |
 | `ErrorCodes.OUT_OF_MEMORY` | The model ran out of memory. |
 | `ErrorCodes.OWNER_FIXED` | The Owner's role can't change, and nobody changes their own role or disables themselves. |
@@ -191,6 +195,9 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarException.code`,
 | `ErrorCodes.PROFILE_NOT_FOUND` | There's no such profile. |
 | `ErrorCodes.PROFILE_PINNED` | This key answers only with its own profile. Leave out the profile and model, or name that profile. |
 | `ErrorCodes.PROFILE_UPDATE_FAILED` | {{detail}} |
+| `ErrorCodes.PROJECT_FILE_NOT_FOUND` | That file isn't in the project. |
+| `ErrorCodes.PROJECT_NAME_REQUIRED` | Name the project. |
+| `ErrorCodes.PROJECT_NOT_FOUND` | That project was removed. |
 | `ErrorCodes.PROXY_REFUSED` | Your sign-in doesn't give you a role on this Toskar. Ask its Owner to add you to a group that does. |
 | `ErrorCodes.PUSH_DEVICE_ONLY` | Only a paired phone or tablet can turn on notifications. |
 | `ErrorCodes.PUSH_FAILED` | {{detail}} |
@@ -264,6 +271,8 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarException.code`,
 | `ErrorCodes.SUMMARY_FAILED` | The summary couldn't be read or saved: {{detail}} |
 | `ErrorCodes.SUMMARY_NOT_FOUND` | This chat hasn't been compacted yet. |
 | `ErrorCodes.SUPPORT_MODEL_BUSY` | The supporting model can't run right now. |
+| `ErrorCodes.SWARM_NOT_FOUND` | That swarm was removed. |
+| `ErrorCodes.SWARM_RUNNING` | This swarm is still running. Stop it first. |
 | `ErrorCodes.TASKS_LIST_FAILED` | {{detail}} |
 | `ErrorCodes.TASK_CREATE_FAILED` | {{detail}} |
 | `ErrorCodes.TASK_FAILED` | {{detail}} |

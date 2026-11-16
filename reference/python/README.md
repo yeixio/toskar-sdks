@@ -423,7 +423,7 @@ One server-sent event: its name ("message" without one) and its data.
 ### CONTRACT_VERSION
 
 ```python
-CONTRACT_VERSION = '1.86'
+CONTRACT_VERSION = '1.98'
 ```
 
 The client contract this SDK was built for.

@@ -4,7 +4,7 @@
 package ai.toskar
 
 /** The client contract this SDK was built for. */
-public const val CONTRACT_VERSION: String = "1.86"
+public const val CONTRACT_VERSION: String = "1.98"
 
 /**
  * The codes Toskar Core answers errors with, for [ToskarException.code]. A
@@ -377,6 +377,15 @@ public object ErrorCodes {
     /** {{model_id}} isn't installed. */
     public const val MODEL_NOT_INSTALLED: String = "MODEL_NOT_INSTALLED"
 
+    /** With {{slots}} agents at once, each would get {{context_per_slot}} tokens of context, less than the {{needed}} a task needs. Choose a bigger context window or fewer agents. */
+    public const val MODEL_SLOTS_CONTEXT: String = "MODEL_SLOTS_CONTEXT"
+
+    /** Choose 1 to {{max}} agents at once. */
+    public const val MODEL_SLOTS_INVALID: String = "MODEL_SLOTS_INVALID"
+
+    /** This model doesn't fit this computer's memory with {{slots}} agents at once. Choose fewer. */
+    public const val MODEL_SLOTS_MEMORY: String = "MODEL_SLOTS_MEMORY"
+
     /** The model stopped working. */
     public const val MODEL_UNHEALTHY: String = "MODEL_UNHEALTHY"
 
@@ -433,6 +442,9 @@ public object ErrorCodes {
 
     /** {{detail}} */
     public const val OFFER_FAILED: String = "OFFER_FAILED"
+
+    /** This computer isn't connected to the internet. Check the connection, then try again. */
+    public const val OFFLINE: String = "OFFLINE"
 
     /** Websites cannot use Toskar without an API key. */
     public const val ORIGIN_NOT_ALLOWED: String = "ORIGIN_NOT_ALLOWED"
@@ -565,6 +577,15 @@ public object ErrorCodes {
 
     /** {{detail}} */
     public const val PROFILE_UPDATE_FAILED: String = "PROFILE_UPDATE_FAILED"
+
+    /** That file isn't in the project. */
+    public const val PROJECT_FILE_NOT_FOUND: String = "PROJECT_FILE_NOT_FOUND"
+
+    /** Name the project. */
+    public const val PROJECT_NAME_REQUIRED: String = "PROJECT_NAME_REQUIRED"
+
+    /** That project was removed. */
+    public const val PROJECT_NOT_FOUND: String = "PROJECT_NOT_FOUND"
 
     /** Your sign-in doesn't give you a role on this Toskar. Ask its Owner to add you to a group that does. */
     public const val PROXY_REFUSED: String = "PROXY_REFUSED"
@@ -784,6 +805,12 @@ public object ErrorCodes {
 
     /** The supporting model can't run right now. */
     public const val SUPPORT_MODEL_BUSY: String = "SUPPORT_MODEL_BUSY"
+
+    /** That swarm was removed. */
+    public const val SWARM_NOT_FOUND: String = "SWARM_NOT_FOUND"
+
+    /** This swarm is still running. Stop it first. */
+    public const val SWARM_RUNNING: String = "SWARM_RUNNING"
 
     /** {{detail}} */
     public const val TASKS_LIST_FAILED: String = "TASKS_LIST_FAILED"

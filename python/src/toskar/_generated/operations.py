@@ -267,6 +267,11 @@ class Api:
             profile_id
             model_id: A model id, auto, or sai:<slug>
             effort: Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
+            temperature: For the answer; 0 gives the same most likely answer every time (#839, contract 1.93)
+            seed: As on /v1/chat/completions (#839, contract 1.93)
+            top_p
+            top_k
+            min_p
             thinking: off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
             time_zone: The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
             parent_id: Answer from this message in the chat, as a new version of the point after it (#447)
@@ -277,6 +282,9 @@ class Api:
             execution: Where the turn runs, such as local
             stream
             live: With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON.
+            project_id: One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own.
+            swarm: Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events. Known values: `split`, `race`; others may be added.
+            make_room: Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id.
         """
         return self._client._request(
             "POST", f"/api/v1/chat", query={}, body=body, answer=models.ChatAnswer, read="json"
@@ -316,10 +324,17 @@ class Api:
             "POST", f"/api/v1/connectors/{id}/check", query={}, body=None, answer=None, read="none"
         )
 
-    def list_conversations(self) -> list[models.Conversation]:
+    def list_conversations(
+        self, *, project_id: str | None = None, swarm_id: str | None = None
+    ) -> list[models.Conversation]:
         """List conversations"""
         return self._client._request(
-            "GET", f"/api/v1/conversations", query={}, body=None, answer=list[models.Conversation], read="json"
+            "GET",
+            f"/api/v1/conversations",
+            query={"project_id": project_id, "swarm_id": swarm_id},
+            body=None,
+            answer=list[models.Conversation],
+            read="json",
         )
 
     def create_conversation(self, *, body: dict[str, Any] | None = None) -> models.Conversation:
@@ -328,7 +343,8 @@ class Api:
         Body fields:
             title
             profile_id
-            model_id"""
+            model_id
+            project_id: Start the chat in one of the caller's projects (contract 1.87,"""
         return self._client._request(
             "POST", f"/api/v1/conversations", query={}, body=body, answer=models.Conversation, read="json"
         )
@@ -358,6 +374,7 @@ class Api:
             model_id
             memory_off: Turn memory off for this chat
             project: The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85).
+            project_id: Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87,
         """
         return self._client._request(
             "PATCH", f"/api/v1/conversations/{id}", query={}, body=body, answer=models.Conversation, read="json"
@@ -1028,7 +1045,9 @@ class Api:
             content
             category
             enabled
-            local_only"""
+            local_only
+            project_id: Empty moves a project's memory to the person's own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can't be moved into a project.
+        """
         return self._client._request(
             "PATCH", f"/api/v1/memory/{id}", query={}, body=body, answer=models.Memory, read="json"
         )
@@ -1191,6 +1210,22 @@ class Api:
             "DELETE", f"/api/v1/models/{id}", query={"node_id": node_id}, body=body, answer=None, read="none"
         )
 
+    def set_model_always_running(self, id: str, *, body: dict[str, Any]) -> models.ModelAlwaysRunning:
+        """Keep a model running
+
+        Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+
+        Body fields:
+            always_running (required)"""
+        return self._client._request(
+            "PUT",
+            f"/api/v1/models/{id}/always-running",
+            query={},
+            body=body,
+            answer=models.ModelAlwaysRunning,
+            read="json",
+        )
+
     def set_model_context(self, id: str, *, body: dict[str, Any]) -> models.ModelContext:
         """Set a model's context window
 
@@ -1260,6 +1295,17 @@ class Api:
         """Stop asking for a rating of a model"""
         return self._client._request(
             "POST", f"/api/v1/models/{id}/rating/dismiss", query={}, body=None, answer=None, read="none"
+        )
+
+    def set_model_slots(self, id: str, *, body: dict[str, Any]) -> models.ModelSlots:
+        """Set how many requests a model answers at once
+
+        How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+
+        Body fields:
+            slots (required)"""
+        return self._client._request(
+            "PUT", f"/api/v1/models/{id}/slots", query={}, body=body, answer=models.ModelSlots, read="json"
         )
 
     def set_model_speculation(self, id: str, *, body: dict[str, Any]) -> models.ModelSpeculation:
@@ -1929,6 +1975,62 @@ class Api:
             "POST", f"/api/v1/profiles/{id}/try-topics", query={}, body=body, answer=None, read="none"
         )
 
+    def list_projects(self) -> list[models.Project]:
+        """The caller's projects
+
+        Newest activity first, with how many chats each has (contract 1.87,"""
+        return self._client._request(
+            "GET", f"/api/v1/projects", query={}, body=None, answer=list[models.Project], read="json"
+        )
+
+    def create_project(self, *, body: models.ProjectInput | dict[str, Any]) -> models.Project:
+        """Make a project"""
+        return self._client._request(
+            "POST", f"/api/v1/projects", query={}, body=body, answer=models.Project, read="json"
+        )
+
+    def get_project(self, id: str) -> models.Project:
+        """One project"""
+        return self._client._request(
+            "GET", f"/api/v1/projects/{id}", query={}, body=None, answer=models.Project, read="json"
+        )
+
+    def update_project(self, id: str, *, body: models.ProjectInput | dict[str, Any]) -> models.Project:
+        """Change a project
+
+        Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer."""
+        return self._client._request(
+            "PATCH", f"/api/v1/projects/{id}", query={}, body=body, answer=models.Project, read="json"
+        )
+
+    def delete_project(self, id: str, *, chats: str | None = None) -> None:
+        """Delete a project
+
+        Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+        """
+        return self._client._request(
+            "DELETE", f"/api/v1/projects/{id}", query={"chats": chats}, body=None, answer=None, read="none"
+        )
+
+    def add_project_file(self, id: str, *, body: dict[str, Any]) -> models.Project:
+        """Add a file to a project
+
+        The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+
+        Body fields:
+            filename (required): Its name; the extension picks the reader, such as .md, .csv, or .pdf
+            text: A text file's content
+            content_base64: Another file's bytes, such as a PDF's, in place of text"""
+        return self._client._request(
+            "POST", f"/api/v1/projects/{id}/files", query={}, body=body, answer=models.Project, read="json"
+        )
+
+    def remove_project_file(self, id: str, name: str) -> None:
+        """Remove a file from a project"""
+        return self._client._request(
+            "DELETE", f"/api/v1/projects/{id}/files/{name}", query={}, body=None, answer=None, read="none"
+        )
+
     def get_community_ratings(self) -> models.CommunityRatings:
         """Everyone's ratings of the models here, from hardware like this computer's and overall
 
@@ -2105,6 +2207,56 @@ class Api:
             language: A hint such as en or de; empty detects the language"""
         return self._client._request(
             "POST", f"/api/v1/speech/transcribe", query={}, body=body, answer=models.Transcription, read="json"
+        )
+
+    def list_swarms(self, *, project_id: str | None = None) -> list[models.Swarm]:
+        """The caller's swarms
+
+        Newest first (contract 1.88,"""
+        return self._client._request(
+            "GET",
+            f"/api/v1/swarms",
+            query={"project_id": project_id},
+            body=None,
+            answer=list[models.Swarm],
+            read="json",
+        )
+
+    def start_swarm(self, *, body: dict[str, Any]) -> models.Swarm:
+        """Start a swarm
+
+        Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+
+        Body fields:
+            prompt (required)
+            mode: Empty is the profile's, or split. Known values: `split`, `race`; others may be added.
+            project_id: One of the caller's projects for a chat not yet in one.
+            conversation_id: The caller's chat to run it in; empty starts one.
+            budget"""
+        return self._client._request("POST", f"/api/v1/swarms", query={}, body=body, answer=models.Swarm, read="json")
+
+    def get_swarm(self, id: str) -> models.Swarm:
+        """One swarm
+
+        With its agents, their status, and what they're waiting on."""
+        return self._client._request(
+            "GET", f"/api/v1/swarms/{id}", query={}, body=None, answer=models.Swarm, read="json"
+        )
+
+    def delete_swarm(self, id: str) -> None:
+        """Delete a swarm
+
+        Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+        """
+        return self._client._request("DELETE", f"/api/v1/swarms/{id}", query={}, body=None, answer=None, read="none")
+
+    def stop_swarm(self, id: str) -> models.ChatStopped:
+        """Stop a swarm
+
+        Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+        """
+        return self._client._request(
+            "POST", f"/api/v1/swarms/{id}/stop", query={}, body=None, answer=models.ChatStopped, read="json"
         )
 
     def list_tasks(self) -> list[models.Task]:
@@ -2549,9 +2701,10 @@ class Api:
         return self._client._request("GET", f"/mcp", query={}, body=None, answer=None, read="none")
 
     def mcp_server(self, *, body: dict[str, Any] | None = None) -> None:
-        """Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+        """Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 
-        Checked like /v1. A request with an Origin header from another site is refused."""
+        Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
+        """
         return self._client._request("POST", f"/mcp", query={}, body=body, answer=None, read="none")
 
     def mcp_server_delete(self) -> None:
@@ -2572,10 +2725,14 @@ class Api:
         temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
 
         Body fields:
-            model (required): auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
+            model (required): auto, profile:<id>, sai:<slug>, a model id, raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:<profile> (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id
             messages (required)
             stream
             temperature: For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
+            seed: Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93)
+            top_p: Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93)
+            top_k: Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93)
+            min_p: Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93)
             max_tokens: The most tokens each answer-writing call may use. Left out, the model's default.
             max_completion_tokens: OpenAI's newer name for max_tokens; wins when both are sent.
             reasoning_effort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
@@ -2591,7 +2748,7 @@ class Api:
     def anthropic_messages(self, *, body: dict[str, Any]) -> None:
         """Anthropic-compatible messages, for coding agents
 
-        Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+        Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 
         Body fields:
             model (required)
@@ -2618,7 +2775,8 @@ class Api:
     def openai_list_models(self) -> models.OpenAIModelList:
         """OpenAI-compatible model list
 
-        auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>."""
+        auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
+        """
         return self._client._request(
             "GET", f"/v1/models", query={}, body=None, answer=models.OpenAIModelList, read="json"
         )
@@ -2626,7 +2784,7 @@ class Api:
     def openai_responses(self, *, body: dict[str, Any]) -> None:
         """OpenAI Responses, for coding agents
 
-        OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+        OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 
         Body fields:
             model (required)
@@ -2904,6 +3062,11 @@ class AsyncApi:
             profile_id
             model_id: A model id, auto, or sai:<slug>
             effort: Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
+            temperature: For the answer; 0 gives the same most likely answer every time (#839, contract 1.93)
+            seed: As on /v1/chat/completions (#839, contract 1.93)
+            top_p
+            top_k
+            min_p
             thinking: off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
             time_zone: The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
             parent_id: Answer from this message in the chat, as a new version of the point after it (#447)
@@ -2914,6 +3077,9 @@ class AsyncApi:
             execution: Where the turn runs, such as local
             stream
             live: With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON.
+            project_id: One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own.
+            swarm: Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events. Known values: `split`, `race`; others may be added.
+            make_room: Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id.
         """
         return await self._client._request(
             "POST", f"/api/v1/chat", query={}, body=body, answer=models.ChatAnswer, read="json"
@@ -2955,10 +3121,17 @@ class AsyncApi:
             "POST", f"/api/v1/connectors/{id}/check", query={}, body=None, answer=None, read="none"
         )
 
-    async def list_conversations(self) -> list[models.Conversation]:
+    async def list_conversations(
+        self, *, project_id: str | None = None, swarm_id: str | None = None
+    ) -> list[models.Conversation]:
         """List conversations"""
         return await self._client._request(
-            "GET", f"/api/v1/conversations", query={}, body=None, answer=list[models.Conversation], read="json"
+            "GET",
+            f"/api/v1/conversations",
+            query={"project_id": project_id, "swarm_id": swarm_id},
+            body=None,
+            answer=list[models.Conversation],
+            read="json",
         )
 
     async def create_conversation(self, *, body: dict[str, Any] | None = None) -> models.Conversation:
@@ -2967,7 +3140,8 @@ class AsyncApi:
         Body fields:
             title
             profile_id
-            model_id"""
+            model_id
+            project_id: Start the chat in one of the caller's projects (contract 1.87,"""
         return await self._client._request(
             "POST", f"/api/v1/conversations", query={}, body=body, answer=models.Conversation, read="json"
         )
@@ -2997,6 +3171,7 @@ class AsyncApi:
             model_id
             memory_off: Turn memory off for this chat
             project: The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85).
+            project_id: Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87,
         """
         return await self._client._request(
             "PATCH", f"/api/v1/conversations/{id}", query={}, body=body, answer=models.Conversation, read="json"
@@ -3683,7 +3858,9 @@ class AsyncApi:
             content
             category
             enabled
-            local_only"""
+            local_only
+            project_id: Empty moves a project's memory to the person's own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can't be moved into a project.
+        """
         return await self._client._request(
             "PATCH", f"/api/v1/memory/{id}", query={}, body=body, answer=models.Memory, read="json"
         )
@@ -3848,6 +4025,22 @@ class AsyncApi:
             "DELETE", f"/api/v1/models/{id}", query={"node_id": node_id}, body=body, answer=None, read="none"
         )
 
+    async def set_model_always_running(self, id: str, *, body: dict[str, Any]) -> models.ModelAlwaysRunning:
+        """Keep a model running
+
+        Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+
+        Body fields:
+            always_running (required)"""
+        return await self._client._request(
+            "PUT",
+            f"/api/v1/models/{id}/always-running",
+            query={},
+            body=body,
+            answer=models.ModelAlwaysRunning,
+            read="json",
+        )
+
     async def set_model_context(self, id: str, *, body: dict[str, Any]) -> models.ModelContext:
         """Set a model's context window
 
@@ -3917,6 +4110,17 @@ class AsyncApi:
         """Stop asking for a rating of a model"""
         return await self._client._request(
             "POST", f"/api/v1/models/{id}/rating/dismiss", query={}, body=None, answer=None, read="none"
+        )
+
+    async def set_model_slots(self, id: str, *, body: dict[str, Any]) -> models.ModelSlots:
+        """Set how many requests a model answers at once
+
+        How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+
+        Body fields:
+            slots (required)"""
+        return await self._client._request(
+            "PUT", f"/api/v1/models/{id}/slots", query={}, body=body, answer=models.ModelSlots, read="json"
         )
 
     async def set_model_speculation(self, id: str, *, body: dict[str, Any]) -> models.ModelSpeculation:
@@ -4598,6 +4802,62 @@ class AsyncApi:
             "POST", f"/api/v1/profiles/{id}/try-topics", query={}, body=body, answer=None, read="none"
         )
 
+    async def list_projects(self) -> list[models.Project]:
+        """The caller's projects
+
+        Newest activity first, with how many chats each has (contract 1.87,"""
+        return await self._client._request(
+            "GET", f"/api/v1/projects", query={}, body=None, answer=list[models.Project], read="json"
+        )
+
+    async def create_project(self, *, body: models.ProjectInput | dict[str, Any]) -> models.Project:
+        """Make a project"""
+        return await self._client._request(
+            "POST", f"/api/v1/projects", query={}, body=body, answer=models.Project, read="json"
+        )
+
+    async def get_project(self, id: str) -> models.Project:
+        """One project"""
+        return await self._client._request(
+            "GET", f"/api/v1/projects/{id}", query={}, body=None, answer=models.Project, read="json"
+        )
+
+    async def update_project(self, id: str, *, body: models.ProjectInput | dict[str, Any]) -> models.Project:
+        """Change a project
+
+        Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer."""
+        return await self._client._request(
+            "PATCH", f"/api/v1/projects/{id}", query={}, body=body, answer=models.Project, read="json"
+        )
+
+    async def delete_project(self, id: str, *, chats: str | None = None) -> None:
+        """Delete a project
+
+        Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+        """
+        return await self._client._request(
+            "DELETE", f"/api/v1/projects/{id}", query={"chats": chats}, body=None, answer=None, read="none"
+        )
+
+    async def add_project_file(self, id: str, *, body: dict[str, Any]) -> models.Project:
+        """Add a file to a project
+
+        The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+
+        Body fields:
+            filename (required): Its name; the extension picks the reader, such as .md, .csv, or .pdf
+            text: A text file's content
+            content_base64: Another file's bytes, such as a PDF's, in place of text"""
+        return await self._client._request(
+            "POST", f"/api/v1/projects/{id}/files", query={}, body=body, answer=models.Project, read="json"
+        )
+
+    async def remove_project_file(self, id: str, name: str) -> None:
+        """Remove a file from a project"""
+        return await self._client._request(
+            "DELETE", f"/api/v1/projects/{id}/files/{name}", query={}, body=None, answer=None, read="none"
+        )
+
     async def get_community_ratings(self) -> models.CommunityRatings:
         """Everyone's ratings of the models here, from hardware like this computer's and overall
 
@@ -4778,6 +5038,60 @@ class AsyncApi:
             language: A hint such as en or de; empty detects the language"""
         return await self._client._request(
             "POST", f"/api/v1/speech/transcribe", query={}, body=body, answer=models.Transcription, read="json"
+        )
+
+    async def list_swarms(self, *, project_id: str | None = None) -> list[models.Swarm]:
+        """The caller's swarms
+
+        Newest first (contract 1.88,"""
+        return await self._client._request(
+            "GET",
+            f"/api/v1/swarms",
+            query={"project_id": project_id},
+            body=None,
+            answer=list[models.Swarm],
+            read="json",
+        )
+
+    async def start_swarm(self, *, body: dict[str, Any]) -> models.Swarm:
+        """Start a swarm
+
+        Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+
+        Body fields:
+            prompt (required)
+            mode: Empty is the profile's, or split. Known values: `split`, `race`; others may be added.
+            project_id: One of the caller's projects for a chat not yet in one.
+            conversation_id: The caller's chat to run it in; empty starts one.
+            budget"""
+        return await self._client._request(
+            "POST", f"/api/v1/swarms", query={}, body=body, answer=models.Swarm, read="json"
+        )
+
+    async def get_swarm(self, id: str) -> models.Swarm:
+        """One swarm
+
+        With its agents, their status, and what they're waiting on."""
+        return await self._client._request(
+            "GET", f"/api/v1/swarms/{id}", query={}, body=None, answer=models.Swarm, read="json"
+        )
+
+    async def delete_swarm(self, id: str) -> None:
+        """Delete a swarm
+
+        Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+        """
+        return await self._client._request(
+            "DELETE", f"/api/v1/swarms/{id}", query={}, body=None, answer=None, read="none"
+        )
+
+    async def stop_swarm(self, id: str) -> models.ChatStopped:
+        """Stop a swarm
+
+        Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+        """
+        return await self._client._request(
+            "POST", f"/api/v1/swarms/{id}/stop", query={}, body=None, answer=models.ChatStopped, read="json"
         )
 
     async def list_tasks(self) -> list[models.Task]:
@@ -5230,9 +5544,10 @@ class AsyncApi:
         return await self._client._request("GET", f"/mcp", query={}, body=None, answer=None, read="none")
 
     async def mcp_server(self, *, body: dict[str, Any] | None = None) -> None:
-        """Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+        """Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 
-        Checked like /v1. A request with an Origin header from another site is refused."""
+        Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
+        """
         return await self._client._request("POST", f"/mcp", query={}, body=body, answer=None, read="none")
 
     async def mcp_server_delete(self) -> None:
@@ -5255,10 +5570,14 @@ class AsyncApi:
         temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
 
         Body fields:
-            model (required): auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
+            model (required): auto, profile:<id>, sai:<slug>, a model id, raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:<profile> (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id
             messages (required)
             stream
             temperature: For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
+            seed: Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93)
+            top_p: Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93)
+            top_k: Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93)
+            min_p: Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93)
             max_tokens: The most tokens each answer-writing call may use. Left out, the model's default.
             max_completion_tokens: OpenAI's newer name for max_tokens; wins when both are sent.
             reasoning_effort: Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
@@ -5274,7 +5593,7 @@ class AsyncApi:
     async def anthropic_messages(self, *, body: dict[str, Any]) -> None:
         """Anthropic-compatible messages, for coding agents
 
-        Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+        Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 
         Body fields:
             model (required)
@@ -5301,7 +5620,8 @@ class AsyncApi:
     async def openai_list_models(self) -> models.OpenAIModelList:
         """OpenAI-compatible model list
 
-        auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>."""
+        auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
+        """
         return await self._client._request(
             "GET", f"/v1/models", query={}, body=None, answer=models.OpenAIModelList, read="json"
         )
@@ -5309,7 +5629,7 @@ class AsyncApi:
     async def openai_responses(self, *, body: dict[str, Any]) -> None:
         """OpenAI Responses, for coding agents
 
-        OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+        OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 
         Body fields:
             model (required)

@@ -196,9 +196,15 @@ public class Api internal constructor(private val toskar: Toskar) {
     public fun checkConnector(id: String): Unit =
         toskar.call("POST", "/api/v1/connectors/{id}/check", listOf(id))
 
-    /** List conversations */
-    public fun listConversations(): List<Conversation> =
-        toskar.call("GET", "/api/v1/conversations", listOf())
+    /**
+     * List conversations
+     *
+     * @param projectId Only the chats in this project (contract 1.87,
+     * @param swarmId A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out.
+     */
+    @JvmOverloads
+    public fun listConversations(projectId: String? = null, swarmId: String? = null): List<Conversation> =
+        toskar.call("GET", "/api/v1/conversations", listOf(), query = listOf("project_id" to projectId, "swarm_id" to swarmId))
 
     /** Create conversation */
     @JvmOverloads
@@ -750,6 +756,14 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("DELETE", "/api/v1/models/{id}", listOf(id), query = listOf("node_id" to nodeId), body = toskar.json(body))
 
     /**
+     * Keep a model running
+     *
+     * Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+     */
+    public fun setModelAlwaysRunning(id: String, body: SetModelAlwaysRunningRequest): ModelAlwaysRunning =
+        toskar.call("PUT", "/api/v1/models/{id}/always-running", listOf(id), body = toskar.json(body))
+
+    /**
      * Set a model's context window
      *
      * The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -789,6 +803,14 @@ public class Api internal constructor(private val toskar: Toskar) {
     /** Stop asking for a rating of a model */
     public fun dismissModelRating(id: String): Unit =
         toskar.call("POST", "/api/v1/models/{id}/rating/dismiss", listOf(id))
+
+    /**
+     * Set how many requests a model answers at once
+     *
+     * How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+     */
+    public fun setModelSlots(id: String, body: SetModelSlotsRequest): ModelSlots =
+        toskar.call("PUT", "/api/v1/models/{id}/slots", listOf(id), body = toskar.json(body))
 
     /**
      * Turn guessing ahead Auto or Off for a model
@@ -1236,6 +1258,53 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("POST", "/api/v1/profiles/{id}/try-topics", listOf(id), body = toskar.json(body))
 
     /**
+     * The caller's projects
+     *
+     * Newest activity first, with how many chats each has (contract 1.87,
+     */
+    public fun listProjects(): List<Project> =
+        toskar.call("GET", "/api/v1/projects", listOf())
+
+    /** Make a project */
+    public fun createProject(body: ProjectInput): Project =
+        toskar.call("POST", "/api/v1/projects", listOf(), body = toskar.json(body))
+
+    /** One project */
+    public fun getProject(id: String): Project =
+        toskar.call("GET", "/api/v1/projects/{id}", listOf(id))
+
+    /**
+     * Change a project
+     *
+     * Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+     */
+    public fun updateProject(id: String, body: ProjectInput): Project =
+        toskar.call("PATCH", "/api/v1/projects/{id}", listOf(id), body = toskar.json(body))
+
+    /**
+     * Delete a project
+     *
+     * Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+     *
+     * @param chats delete deletes the project's chats too, with their files.
+     */
+    @JvmOverloads
+    public fun deleteProject(id: String, chats: String? = null): Unit =
+        toskar.call("DELETE", "/api/v1/projects/{id}", listOf(id), query = listOf("chats" to chats))
+
+    /**
+     * Add a file to a project
+     *
+     * The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+     */
+    public fun addProjectFile(id: String, body: AddProjectFileRequest): Project =
+        toskar.call("POST", "/api/v1/projects/{id}/files", listOf(id), body = toskar.json(body))
+
+    /** Remove a file from a project */
+    public fun removeProjectFile(id: String, name: String): Unit =
+        toskar.call("DELETE", "/api/v1/projects/{id}/files/{name}", listOf(id, name))
+
+    /**
      * Everyone's ratings of the models here, from hardware like this computer's and overall
      *
      * Empty unless `community_ratings` is on. The public summary is downloaded at most once a day; when that fails, the last one is used and `error` says why.
@@ -1368,6 +1437,49 @@ public class Api internal constructor(private val toskar: Toskar) {
      */
     public fun transcribeRecording(body: TranscribeRecordingRequest): Transcription =
         toskar.call("POST", "/api/v1/speech/transcribe", listOf(), body = toskar.json(body))
+
+    /**
+     * The caller's swarms
+     *
+     * Newest first (contract 1.88,
+     *
+     * @param projectId Only this project's swarms.
+     */
+    @JvmOverloads
+    public fun listSwarms(projectId: String? = null): List<Swarm> =
+        toskar.call("GET", "/api/v1/swarms", listOf(), query = listOf("project_id" to projectId))
+
+    /**
+     * Start a swarm
+     *
+     * Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+     */
+    public fun startSwarm(body: StartSwarmRequest): Swarm =
+        toskar.call("POST", "/api/v1/swarms", listOf(), body = toskar.json(body))
+
+    /**
+     * One swarm
+     *
+     * With its agents, their status, and what they're waiting on.
+     */
+    public fun getSwarm(id: String): Swarm =
+        toskar.call("GET", "/api/v1/swarms/{id}", listOf(id))
+
+    /**
+     * Delete a swarm
+     *
+     * Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+     */
+    public fun deleteSwarm(id: String): Unit =
+        toskar.call("DELETE", "/api/v1/swarms/{id}", listOf(id))
+
+    /**
+     * Stop a swarm
+     *
+     * Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+     */
+    public fun stopSwarm(id: String): ChatStopped =
+        toskar.call("POST", "/api/v1/swarms/{id}/stop", listOf(id))
 
     /** Recent tasks */
     public fun listTasks(): List<Task> =
@@ -1681,9 +1793,9 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("GET", "/mcp", listOf())
 
     /**
-     * Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+     * Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
      *
-     * Checked like /v1. A request with an Origin header from another site is refused.
+     * Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
      */
     @JvmOverloads
     public fun mcpServer(body: JsonObject? = null): Unit =
@@ -1712,7 +1824,7 @@ public class Api internal constructor(private val toskar: Toskar) {
     /**
      * Anthropic-compatible messages, for coding agents
      *
-     * Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+     * Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
      */
     public fun anthropicMessages(body: AnthropicMessagesRequest): Unit =
         toskar.call("POST", "/v1/messages", listOf(), body = toskar.json(body))
@@ -1728,7 +1840,7 @@ public class Api internal constructor(private val toskar: Toskar) {
     /**
      * OpenAI-compatible model list
      *
-     * auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+     * auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
      */
     public fun openaiListModels(): OpenAIModelList =
         toskar.call("GET", "/v1/models", listOf())
@@ -1736,7 +1848,7 @@ public class Api internal constructor(private val toskar: Toskar) {
     /**
      * OpenAI Responses, for coding agents
      *
-     * OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+     * OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
      */
     public fun openaiResponses(body: OpenaiResponsesRequest): Unit =
         toskar.call("POST", "/v1/responses", listOf(), body = toskar.json(body))

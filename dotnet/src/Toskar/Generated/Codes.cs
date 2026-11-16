@@ -6,8 +6,8 @@ namespace Toskar;
 /// <summary>The client contract this SDK was built for.</summary>
 public static class Contract
 {
-    /// <summary>The contract version, such as 1.86.</summary>
-    public const string Version = "1.86";
+    /// <summary>The contract version, such as 1.98.</summary>
+    public const string Version = "1.98";
 }
 
 /// <summary>
@@ -627,6 +627,21 @@ public static class ErrorCodes
     public const string MODEL_NOT_INSTALLED = "MODEL_NOT_INSTALLED";
 
     /// <summary>
+    /// With {{slots}} agents at once, each would get {{context_per_slot}} tokens of context, less than the {{needed}} a task needs. Choose a bigger context window or fewer agents.
+    /// </summary>
+    public const string MODEL_SLOTS_CONTEXT = "MODEL_SLOTS_CONTEXT";
+
+    /// <summary>
+    /// Choose 1 to {{max}} agents at once.
+    /// </summary>
+    public const string MODEL_SLOTS_INVALID = "MODEL_SLOTS_INVALID";
+
+    /// <summary>
+    /// This model doesn't fit this computer's memory with {{slots}} agents at once. Choose fewer.
+    /// </summary>
+    public const string MODEL_SLOTS_MEMORY = "MODEL_SLOTS_MEMORY";
+
+    /// <summary>
     /// The model stopped working.
     /// </summary>
     public const string MODEL_UNHEALTHY = "MODEL_UNHEALTHY";
@@ -720,6 +735,11 @@ public static class ErrorCodes
     /// {{detail}}
     /// </summary>
     public const string OFFER_FAILED = "OFFER_FAILED";
+
+    /// <summary>
+    /// This computer isn't connected to the internet. Check the connection, then try again.
+    /// </summary>
+    public const string OFFLINE = "OFFLINE";
 
     /// <summary>
     /// Websites cannot use Toskar without an API key.
@@ -940,6 +960,21 @@ public static class ErrorCodes
     /// {{detail}}
     /// </summary>
     public const string PROFILE_UPDATE_FAILED = "PROFILE_UPDATE_FAILED";
+
+    /// <summary>
+    /// That file isn't in the project.
+    /// </summary>
+    public const string PROJECT_FILE_NOT_FOUND = "PROJECT_FILE_NOT_FOUND";
+
+    /// <summary>
+    /// Name the project.
+    /// </summary>
+    public const string PROJECT_NAME_REQUIRED = "PROJECT_NAME_REQUIRED";
+
+    /// <summary>
+    /// That project was removed.
+    /// </summary>
+    public const string PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND";
 
     /// <summary>
     /// Your sign-in doesn't give you a role on this Toskar. Ask its Owner to add you to a group that does.
@@ -1305,6 +1340,16 @@ public static class ErrorCodes
     /// The supporting model can't run right now.
     /// </summary>
     public const string SUPPORT_MODEL_BUSY = "SUPPORT_MODEL_BUSY";
+
+    /// <summary>
+    /// That swarm was removed.
+    /// </summary>
+    public const string SWARM_NOT_FOUND = "SWARM_NOT_FOUND";
+
+    /// <summary>
+    /// This swarm is still running. Stop it first.
+    /// </summary>
+    public const string SWARM_RUNNING = "SWARM_RUNNING";
 
     /// <summary>
     /// {{detail}}

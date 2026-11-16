@@ -108,6 +108,21 @@ Parameters:
 Task<M.AddedPerson> AddPersonAsync(M.AddPersonRequest body, CancellationToken cancellationToken = default)
 ```
 
+### AddProjectFileAsync(id, body)
+
+Add a file to a project
+
+The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+
+Parameters:
+
+- `id`: The id.
+- `body`: The request.
+
+```csharp
+Task<M.Project> AddProjectFileAsync(string id, M.AddProjectFileRequest body, CancellationToken cancellationToken = default)
+```
+
 ### AnthropicCountTokensAsync()
 
 About how many tokens a Messages request's input takes
@@ -122,7 +137,7 @@ Task AnthropicCountTokensAsync(CancellationToken cancellationToken = default)
 
 Anthropic-compatible messages, for coding agents
 
-Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 
 Parameters:
 
@@ -506,6 +521,18 @@ Parameters:
 Task<JsonObject> CreateProfileAsync(JsonObject body, CancellationToken cancellationToken = default)
 ```
 
+### CreateProjectAsync(body)
+
+Make a project
+
+Parameters:
+
+- `body`: The request.
+
+```csharp
+Task<M.Project> CreateProjectAsync(M.ProjectInput body, CancellationToken cancellationToken = default)
+```
+
 ### CreateTaskAsync(body)
 
 Run a prompt as a task
@@ -731,12 +758,41 @@ Parameters:
 Task DeleteProfileAsync(string id, CancellationToken cancellationToken = default)
 ```
 
+### DeleteProjectAsync(id, chats)
+
+Delete a project
+
+Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+
+Parameters:
+
+- `id`: The id.
+- `chats`: delete deletes the project's chats too, with their files.
+
+```csharp
+Task DeleteProjectAsync(string id, string? chats = null, CancellationToken cancellationToken = default)
+```
+
 ### DeleteRunRecordsAsync()
 
 Delete run records now
 
 ```csharp
 Task DeleteRunRecordsAsync(CancellationToken cancellationToken = default)
+```
+
+### DeleteSwarmAsync(id)
+
+Delete a swarm
+
+Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+
+Parameters:
+
+- `id`: The id.
+
+```csharp
+Task DeleteSwarmAsync(string id, CancellationToken cancellationToken = default)
 ```
 
 ### DeployedAIsAsync()
@@ -1367,6 +1423,18 @@ The profiles each pinnable role is kept to (#345)
 Task<M.ProfilePins> GetProfilePinsAsync(CancellationToken cancellationToken = default)
 ```
 
+### GetProjectAsync(id)
+
+One project
+
+Parameters:
+
+- `id`: The id.
+
+```csharp
+Task<M.Project> GetProjectAsync(string id, CancellationToken cancellationToken = default)
+```
+
 ### GetPromptCacheAsync(days)
 
 How much of chats' later turns each model read from its prompt cache
@@ -1465,6 +1533,20 @@ AGPL corresponding-source offer
 
 ```csharp
 Task<M.SourceOffer> GetSourceAsync(CancellationToken cancellationToken = default)
+```
+
+### GetSwarmAsync(id)
+
+One swarm
+
+With its agents, their status, and what they're waiting on.
+
+Parameters:
+
+- `id`: The id.
+
+```csharp
+Task<M.Swarm> GetSwarmAsync(string id, CancellationToken cancellationToken = default)
 ```
 
 ### GetTaskAsync(id)
@@ -1722,12 +1804,17 @@ Parameters:
 Task<List<M.Message>> ListConversationMessagesAsync(string id, CancellationToken cancellationToken = default)
 ```
 
-### ListConversationsAsync()
+### ListConversationsAsync(projectId, swarmId)
 
 List conversations
 
+Parameters:
+
+- `projectId`: Only the chats in this project (contract 1.87,
+- `swarmId`: A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out.
+
 ```csharp
-Task<List<M.Conversation>> ListConversationsAsync(CancellationToken cancellationToken = default)
+Task<List<M.Conversation>> ListConversationsAsync(string? projectId = null, string? swarmId = null, CancellationToken cancellationToken = default)
 ```
 
 ### ListDevicesAsync(kind)
@@ -1949,6 +2036,16 @@ List AI profiles
 Task<List<JsonObject>> ListProfilesAsync(CancellationToken cancellationToken = default)
 ```
 
+### ListProjectsAsync()
+
+The caller's projects
+
+Newest activity first, with how many chats each has (contract 1.87,
+
+```csharp
+Task<List<M.Project>> ListProjectsAsync(CancellationToken cancellationToken = default)
+```
+
 ### ListRunningModelsAsync()
 
 Loaded model instances on this and paired computers
@@ -1976,6 +2073,20 @@ Runtimes and whether each is installed
 
 ```csharp
 Task<List<M.RuntimeInfo>> ListRuntimesAsync(CancellationToken cancellationToken = default)
+```
+
+### ListSwarmsAsync(projectId)
+
+The caller's swarms
+
+Newest first (contract 1.88,
+
+Parameters:
+
+- `projectId`: Only this project's swarms.
+
+```csharp
+Task<List<M.Swarm>> ListSwarmsAsync(string? projectId = null, CancellationToken cancellationToken = default)
 ```
 
 ### ListTasksAsync()
@@ -2097,9 +2208,9 @@ Task McpOAuthCallbackAsync(CancellationToken cancellationToken = default)
 
 ### McpServerAsync(body)
 
-Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 
-Checked like /v1. A request with an Origin header from another site is refused.
+Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 
 Parameters:
 
@@ -2220,7 +2331,7 @@ Task<M.OpenAIChatCompletion> OpenaiChatCompletionsAsync(M.OpenaiChatCompletionsR
 
 OpenAI-compatible model list
 
-auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
 
 ```csharp
 Task<M.OpenAIModelList> OpenaiListModelsAsync(CancellationToken cancellationToken = default)
@@ -2230,7 +2341,7 @@ Task<M.OpenAIModelList> OpenaiListModelsAsync(CancellationToken cancellationToke
 
 OpenAI Responses, for coding agents
 
-OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 
 Parameters:
 
@@ -2623,6 +2734,19 @@ Parameters:
 Task RemovePortalVisitorAsync(string id, string vid, CancellationToken cancellationToken = default)
 ```
 
+### RemoveProjectFileAsync(id, name)
+
+Remove a file from a project
+
+Parameters:
+
+- `id`: The id.
+- `name`: The name.
+
+```csharp
+Task RemoveProjectFileAsync(string id, string name, CancellationToken cancellationToken = default)
+```
+
 ### RemoveVideoModelAsync(id)
 
 Delete an installed video model to free its space
@@ -2847,6 +2971,21 @@ Parameters:
 Task<M.ExternalServer> SetExternalServerAsync(M.SetExternalServerRequest body, CancellationToken cancellationToken = default)
 ```
 
+### SetModelAlwaysRunningAsync(id, body)
+
+Keep a model running
+
+Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+
+Parameters:
+
+- `id`: The id.
+- `body`: The request.
+
+```csharp
+Task<M.ModelAlwaysRunning> SetModelAlwaysRunningAsync(string id, M.SetModelAlwaysRunningRequest body, CancellationToken cancellationToken = default)
+```
+
 ### SetModelContextAsync(id, body)
 
 Set a model's context window
@@ -2875,6 +3014,21 @@ Parameters:
 
 ```csharp
 Task<M.ModelVision> SetModelProjectorAsync(string id, M.SetModelProjectorRequest body, CancellationToken cancellationToken = default)
+```
+
+### SetModelSlotsAsync(id, body)
+
+Set how many requests a model answers at once
+
+How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+
+Parameters:
+
+- `id`: The id.
+- `body`: The request.
+
+```csharp
+Task<M.ModelSlots> SetModelSlotsAsync(string id, M.SetModelSlotsRequest body, CancellationToken cancellationToken = default)
 ```
 
 ### SetModelSpeculationAsync(id, body)
@@ -3159,6 +3313,20 @@ Body {plan}: monthly or yearly. Opens a Stripe checkout at yeix.io, which bills 
 Task StartSubscriptionCheckoutAsync(CancellationToken cancellationToken = default)
 ```
 
+### StartSwarmAsync(body)
+
+Start a swarm
+
+Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+
+Parameters:
+
+- `body`: The request.
+
+```csharp
+Task<M.Swarm> StartSwarmAsync(M.StartSwarmRequest body, CancellationToken cancellationToken = default)
+```
+
 ### StartTrainingAsync(id, body)
 
 Start training
@@ -3207,6 +3375,20 @@ Parameters:
 
 ```csharp
 Task<M.OK> StopModelAsync(string id, M.StopModelRequest? body = null, CancellationToken cancellationToken = default)
+```
+
+### StopSwarmAsync(id)
+
+Stop a swarm
+
+Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+
+Parameters:
+
+- `id`: The id.
+
+```csharp
+Task<M.ChatStopped> StopSwarmAsync(string id, CancellationToken cancellationToken = default)
 ```
 
 ### TestNotificationDestinationAsync(id)
@@ -3485,6 +3667,21 @@ Parameters:
 
 ```csharp
 Task<JsonObject> UpdateProfileAsync(string id, JsonObject body, CancellationToken cancellationToken = default)
+```
+
+### UpdateProjectAsync(id, body)
+
+Change a project
+
+Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+
+Parameters:
+
+- `id`: The id.
+- `body`: The request.
+
+```csharp
+Task<M.Project> UpdateProjectAsync(string id, M.ProjectInput body, CancellationToken cancellationToken = default)
 ```
 
 ### UpdateSettingsAsync(body)

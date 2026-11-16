@@ -257,8 +257,12 @@ pub struct RunningModelView {
     pub node_id: String,
     pub node_name: String,
     pub status: String,
+    /// The catalog's estimate of the memory it needs
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory_bytes: Option<i64>,
+    /// The system memory its process holds, measured a few seconds ago at most (contract 1.90). On Linux, the memory it allocated, without the model file it maps.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resident_bytes: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub endpoint: Option<String>,
     /// Generation speed in the model's latest replies
@@ -271,6 +275,9 @@ pub struct RunningModelView {
     pub accelerator: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none", with = "time::serde::rfc3339::option")]
     pub last_used_at: Option<OffsetDateTime>,
+    /// A model kept loaded on its computer (#966, contract 1.96)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub always_running: Option<bool>,
     /// "embedding" or "reranking" for a supporting model serving knowledge search, and empty for a chat model. Known values: `embedding`, `reranking`; others may be added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
@@ -437,6 +444,9 @@ pub struct Model {
     /// Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub speculation: Option<String>,
+    /// A chat model installed on this computer that is kept loaded (#966, contract 1.94).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub always_running: Option<bool>,
     /// The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_window: Option<i64>,
@@ -446,6 +456,9 @@ pub struct Model {
     /// The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_options: Option<Vec<ModelContextOptions>>,
+    /// How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slots: Option<i64>,
     /// How well the model writes each language it has a level for (§13–14, §31), best first.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub languages: Option<Vec<ModelLanguages>>,
@@ -465,6 +478,15 @@ pub struct Conversation {
     /// The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project: Option<String>,
+    /// The project the chat is in, if any: a chat is in one project at most (contract 1.87, #1136).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    /// The swarm the chat belongs to: its coordinator's chat, or one of its agents' (contract 1.88, #1135).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub swarm_id: Option<String>,
+    /// agent:N for an agent's chat; empty for the coordinator's or a chat in no swarm.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub swarm_role: Option<String>,
     /// `compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342).
     pub compact_off: bool,
     #[serde(with = "time::serde::rfc3339")]
@@ -482,6 +504,9 @@ impl Default for Conversation {
             model_id: Default::default(),
             memory_off: Default::default(),
             project: Default::default(),
+            project_id: Default::default(),
+            swarm_id: Default::default(),
+            swarm_role: Default::default(),
             compact_off: Default::default(),
             created_at: OffsetDateTime::UNIX_EPOCH,
             updated_at: OffsetDateTime::UNIX_EPOCH,
@@ -643,6 +668,236 @@ impl Default for Artifact {
     }
 }
 
+/// Related chats kept together with what they share: instructions, files, a folder on the Toskar computer, a default profile and model, and a memory of their own (contract 1.87, #1136). It belongs to the person who made it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Project {
+    pub id: String,
+    pub name: String,
+    /// The person's own instructions for every chat in the project. They come after a profile's and before the person's style.
+    pub instructions: String,
+    /// Where the project's chats work on the Toskar computer
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    /// `memory_off` keeps the project's chats from saving or reading the project's own memory. The person's memory follows each chat's Memory control.
+    pub memory_off: bool,
+    /// The ids of knowledge sources linked to the project, which its chats search as well as its files.
+    #[serde(default)]
+    pub knowledge: Vec<String>,
+    /// The files added to the project's knowledge.
+    #[serde(default)]
+    pub files: Vec<ProjectFile>,
+    /// How many chats are in the project.
+    pub chat_count: i64,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    /// The project's last activity: a change to it, or to one of its chats.
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
+}
+
+impl Default for Project {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            name: Default::default(),
+            instructions: Default::default(),
+            folder: Default::default(),
+            profile_id: Default::default(),
+            model_id: Default::default(),
+            memory_off: Default::default(),
+            knowledge: Default::default(),
+            files: Default::default(),
+            chat_count: Default::default(),
+            created_at: OffsetDateTime::UNIX_EPOCH,
+            updated_at: OffsetDateTime::UNIX_EPOCH,
+        }
+    }
+}
+
+/// A project's fields; one left out stays as it is.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ProjectInput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+    /// The full path of a folder on the Toskar computer for the project's chats to work in, or empty for none. Needs the admin role.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_off: Option<bool>,
+    /// Knowledge source ids to link. Needs the member role.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub knowledge: Option<Vec<String>>,
+}
+
+/// One file in a project's knowledge.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ProjectFile {
+    pub name: String,
+    pub size: i64,
+}
+
+/// Several agents working at once on one request, each in a chat of its own in the coordinator chat's project (contract 1.88, #1135). It belongs to the person who started it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Swarm {
+    pub id: String,
+    pub project_id: String,
+    /// The coordinator's chat, where the merged answer goes.
+    pub conversation_id: String,
+    /// Known values: `split`, `race`; others may be added.
+    pub mode: String,
+    /// Known values: `running`, `merging`, `done`, `stopped`, `failed`; others may be added.
+    pub status: String,
+    pub request: String,
+    pub budget: SwarmBudget,
+    /// The swarm's agents, in order. Empty until the coordinator has planned the parts.
+    #[serde(default)]
+    pub agents: Vec<SwarmAgent>,
+    /// A race's winning agent, 0 when the answers were merged or it's not a race.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub winner: Option<i64>,
+    /// `note` says why the swarm ran differently than asked, such as running as one agent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    /// Every agent's tokens so far.
+    pub tokens: i64,
+    pub seconds: f64,
+    /// The folder a task swarm worked in. In a Git repository each agent worked on a branch of its own, kept for 7 days or until the swarm is deleted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder: Option<String>,
+    /// A task swarm's result: the agents' work merged, or a race winner's. Empty for a question, or a folder that isn't in Git.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    /// How the project's checks went on the result. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checks: Option<String>,
+    /// Agents' changes that couldn't be merged, each still on its agent's branch.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conflicts: Option<Vec<SwarmConflict>>,
+    /// The result is in the person's folder as uncommitted changes, after they allowed it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub applied: Option<bool>,
+    /// Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub waiting: Option<Vec<Map<String, Value>>>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "time::serde::rfc3339::option")]
+    pub finished_at: Option<OffsetDateTime>,
+}
+
+impl Default for Swarm {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            project_id: Default::default(),
+            conversation_id: Default::default(),
+            mode: Default::default(),
+            status: Default::default(),
+            request: Default::default(),
+            budget: Default::default(),
+            agents: Default::default(),
+            winner: Default::default(),
+            note: Default::default(),
+            tokens: Default::default(),
+            seconds: Default::default(),
+            folder: Default::default(),
+            branch: Default::default(),
+            checks: Default::default(),
+            conflicts: Default::default(),
+            applied: Default::default(),
+            waiting: Default::default(),
+            created_at: OffsetDateTime::UNIX_EPOCH,
+            finished_at: Default::default(),
+        }
+    }
+}
+
+/// One agent in a swarm: its part, where it runs, and how it went (contract 1.88, #1135).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SwarmAgent {
+    /// Its number, from 1.
+    pub agent: i64,
+    /// The agent's own chat, which can be opened and continued.
+    pub conversation_id: String,
+    /// agent:N.
+    pub role: String,
+    /// What it was asked to do: its part, or in a race the whole request.
+    pub part: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    /// Known values: `queued`, `running`, `done`, `failed`, `stopped`, `out_of_budget`; others may be added.
+    pub status: String,
+    /// The start of its answer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    pub tokens: i64,
+    pub seconds: f64,
+    /// The files or folders a task's part expects to change.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub paths: Option<Vec<String>>,
+    /// A task agent's own branch, with its work committed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    /// How the project's checks went on its branch in a race. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checks: Option<String>,
+}
+
+/// An agent's change that couldn't be merged with the others', even by a fix-up agent (contract 1.88, #1135).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SwarmConflict {
+    /// The agent whose change wasn't merged.
+    pub agent: i64,
+    /// Has its change.
+    pub branch: String,
+    /// The files that conflicted.
+    #[serde(default)]
+    pub files: Vec<String>,
+}
+
+/// What a swarm may use (contract 1.88, #1135).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SwarmBudget {
+    /// The most agents it has.
+    pub agents: i64,
+    /// The most the whole swarm may use.
+    pub tokens: i64,
+    /// The most it may run.
+    pub minutes: i64,
+}
+
+/// Swarm controls (contract 1.88, #1135): a profile's orchestration.swarm, or one swarm's budget. Every field is optional; empty keeps the default.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SwarmPolicy {
+    /// split: a coordinator splits the job into parts that agents do at once. race: agents on different models each do the whole request, and the best answer wins or they're merged. Empty is split. Known values: `split`, `race`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<String>,
+    /// A race's models, one agent each, in order. A split's agents take them in turn.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub models: Option<Vec<String>>,
+    /// The most agents. Empty is the profile's max_workers
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agents: Option<i64>,
+    /// The most the whole swarm may use. Empty is 400000.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tokens: Option<i64>,
+    /// The most a swarm may run. Empty is 5 for a question and 30 for a task.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minutes: Option<i64>,
+}
+
 /// One durable fact or preference.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Memory {
@@ -658,6 +913,9 @@ pub struct Memory {
     /// The language the memory is written in, as a BCP 47 tag detected on this computer (multilingual spec §18), or "" when it is too short to tell. A memory is found in any language; this says which one its text is in.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    /// The project the memory belongs to, learned in one of its chats, or "" for the person's own memory (#1136).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
@@ -675,6 +933,7 @@ impl Default for Memory {
             enabled: Default::default(),
             local_only: Default::default(),
             language: Default::default(),
+            project_id: Default::default(),
             created_at: OffsetDateTime::UNIX_EPOCH,
             updated_at: OffsetDateTime::UNIX_EPOCH,
         }
@@ -1876,6 +2135,9 @@ pub struct MessageMeta {
     /// `notice` tells the user something changed that may affect the answer, such as a smaller model answering after the chosen one failed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
+    /// With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link_check: Option<MessageMetaLinkCheck>,
     /// Attached to a question or produced with an answer.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub files: Option<Vec<FileRef>>,
@@ -2434,6 +2696,23 @@ pub struct ModelContext {
     pub model_id: String,
     /// 0 for Auto
     pub context_window: i64,
+}
+
+/// How many requests a model answers at once (#1135).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ModelSlots {
+    pub model_id: String,
+    pub slots: i64,
+}
+
+/// Whether a model is kept running (#966).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ModelAlwaysRunning {
+    pub model_id: String,
+    pub always_running: bool,
+    /// This computer's memory less what the models kept running need, when it's known (contract 1.95)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_left_bytes: Option<i64>,
 }
 
 /// A model's guess-ahead choice (#835).
@@ -3873,6 +4152,18 @@ pub struct ChatRequest {
     /// Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effort: Option<String>,
+    /// For the answer; 0 gives the same most likely answer every time (#839, contract 1.93)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f64>,
+    /// As on /v1/chat/completions (#839, contract 1.93)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seed: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_k: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_p: Option<f64>,
     /// off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub thinking: Option<String>,
@@ -3902,6 +4193,15 @@ pub struct ChatRequest {
     /// With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub live: Option<bool>,
+    /// One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    /// Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events. Known values: `split`, `race`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub swarm: Option<String>,
+    /// Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub make_room: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -3923,6 +4223,9 @@ pub struct CreateConversationRequest {
     pub profile_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_id: Option<String>,
+    /// Start the chat in one of the caller's projects (contract 1.87,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -3945,6 +4248,9 @@ pub struct UpdateConversationRequest {
     /// The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project: Option<String>,
+    /// Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4160,6 +4466,9 @@ pub struct UpdateMemoryRequest {
     pub enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_only: Option<bool>,
+    /// Empty moves a project's memory to the person's own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can't be moved into a project.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4201,6 +4510,11 @@ pub struct DeleteModelRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SetModelAlwaysRunningRequest {
+    pub always_running: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct SetModelContextRequest {
     /// Tokens, up to the model's own window; 0 for Auto.
     pub context_window: i64,
@@ -4229,6 +4543,11 @@ pub struct PutModelRatingRequest {
     /// Include how the model runs here in a shared rating
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub observations: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SetModelSlotsRequest {
+    pub slots: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4370,6 +4689,18 @@ pub struct TryTopicsRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AddProjectFileRequest {
+    /// Its name; the extension picks the reader, such as .md, .csv, or .pdf
+    pub filename: String,
+    /// A text file's content
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    /// Another file's bytes, such as a PDF's, in place of text
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_base64: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct SignInRequest {
     pub username: String,
     pub password: String,
@@ -4397,6 +4728,22 @@ pub struct TranscribeRecordingRequest {
     /// A hint such as en or de; empty detects the language
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct StartSwarmRequest {
+    pub prompt: String,
+    /// Empty is the profile's, or split. Known values: `split`, `race`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<String>,
+    /// One of the caller's projects for a chat not yet in one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    /// The caller's chat to run it in; empty starts one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversation_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub budget: Option<SwarmPolicy>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4540,7 +4887,7 @@ pub struct UseVideoBuildRequest {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct OpenaiChatCompletionsRequest {
-    /// auto, profile:&lt;id&gt;, sai:&lt;slug&gt;, a model id, or raw:&lt;model id&gt; to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
+    /// auto, profile:&lt;id&gt;, sai:&lt;slug&gt;, a model id, raw:&lt;model id&gt; to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:&lt;profile&gt; (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id
     pub model: String,
     #[serde(default)]
     pub messages: Vec<OpenaiChatCompletionsRequestMessages>,
@@ -4549,6 +4896,18 @@ pub struct OpenaiChatCompletionsRequest {
     /// For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
+    /// Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seed: Option<i64>,
+    /// Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f64>,
+    /// Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_k: Option<i64>,
+    /// Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_p: Option<f64>,
     /// The most tokens each answer-writing call may use. Left out, the model's default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<i64>,
@@ -5092,6 +5451,15 @@ pub struct MyDevicePermissions {
     pub raw: Option<bool>,
 }
 
+/// With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct MessageMetaLinkCheck {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dead: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unknown: Option<Vec<String>>,
+}
+
 /// How the answer was reached when its profile deliberates: the drafts compared and the outcome (#459, contract 1.23).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct MessageMetaDeliberation {
@@ -5160,6 +5528,24 @@ pub struct QualityResultPerformance {
     pub context_window: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub quantization: Option<String>,
+    /// The llama.cpp release it ran on, such as b12361 (contract 1.89)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub llama_cpp: Option<String>,
+    /// Whether a draft guessed ahead during the runs (contract 1.89) Known values: `on`, `off`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speculation: Option<String>,
+    /// The share of the draft's guesses the model kept, 0 to 1, when speculation is on (contract 1.89)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub draft_accepted: Option<f64>,
+    /// The GPUs it ran on, every one when there are several (contract 1.89)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub devices: Option<Vec<String>>,
+    /// The system memory the model's process held after the runs, measured (contract 1.90). Where the graphics share the computer's memory, as on a Mac, it includes what gpu_memory_bytes counts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_memory_bytes: Option<i64>,
+    /// The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contexts: Option<Vec<QualityResultPerformanceContexts>>,
 }
 
 /// Whether a computer can run a model.
@@ -6095,6 +6481,35 @@ pub struct MessageMetaDeliberationJudge {
     pub node_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub node_name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct QualityResultPerformanceContexts {
+    /// The window, in tokens
+    pub context: i64,
+    /// Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+    pub runs: String,
+    /// Why it's short of full: window, a size past the model's own, or out_of_memory
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub why: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt_tokens: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt_tokens_per_second: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tokens_per_second: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_token_ms: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effective_tokens_per_second: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gpu_layers: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gpu_layers_total: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gpu_memory_bytes: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_memory_bytes: Option<i64>,
 }
 
 /// A model configuration's ratings given for one language, for everyone who runs it that way: never split by hardware.

@@ -78,6 +78,16 @@ Add a person and make their invite link (Admins add Members and Visitors; the Ow
 pub async fn add_person(&self, body: &models::AddPersonRequest) -> Result<models::AddedPerson>
 ```
 
+### add_project_file(id, body)
+
+Add a file to a project
+
+The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+
+```rust
+pub async fn add_project_file(&self, id: &str, body: &models::AddProjectFileRequest) -> Result<models::Project>
+```
+
 ### anthropic_count_tokens()
 
 About how many tokens a Messages request's input takes
@@ -92,7 +102,7 @@ pub async fn anthropic_count_tokens(&self) -> Result<()>
 
 Anthropic-compatible messages, for coding agents
 
-Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:&lt;model&gt; does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:&lt;model&gt; does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:&lt;profile&gt; (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 
 ```rust
 pub async fn anthropic_messages(&self, body: &models::AnthropicMessagesRequest) -> Result<()>
@@ -364,6 +374,14 @@ Create a profile
 pub async fn create_profile(&self, body: &Map<String, Value>) -> Result<Map<String, Value>>
 ```
 
+### create_project(body)
+
+Make a project
+
+```rust
+pub async fn create_project(&self, body: &models::ProjectInput) -> Result<models::Project>
+```
+
 ### create_task(body)
 
 Run a prompt as a task
@@ -521,12 +539,34 @@ Delete a custom profile
 pub async fn delete_profile(&self, id: &str) -> Result<()>
 ```
 
+### delete_project(id, chats)
+
+Delete a project
+
+Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+
+- `chats`: delete deletes the project's chats too, with their files.
+
+```rust
+pub async fn delete_project(&self, id: &str, chats: Option<&str>) -> Result<()>
+```
+
 ### delete_run_records()
 
 Delete run records now
 
 ```rust
 pub async fn delete_run_records(&self) -> Result<()>
+```
+
+### delete_swarm(id)
+
+Delete a swarm
+
+Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+
+```rust
+pub async fn delete_swarm(&self, id: &str) -> Result<()>
 ```
 
 ### deploy_revision(id, rev)
@@ -1026,6 +1066,14 @@ The profiles each pinnable role is kept to (#345)
 pub async fn get_profile_pins(&self) -> Result<models::ProfilePins>
 ```
 
+### get_project(id)
+
+One project
+
+```rust
+pub async fn get_project(&self, id: &str) -> Result<models::Project>
+```
+
 ### get_prompt_cache(days)
 
 How much of chats' later turns each model read from its prompt cache
@@ -1118,6 +1166,16 @@ AGPL corresponding-source offer
 
 ```rust
 pub async fn get_source(&self) -> Result<models::SourceOffer>
+```
+
+### get_swarm(id)
+
+One swarm
+
+With its agents, their status, and what they're waiting on.
+
+```rust
+pub async fn get_swarm(&self, id: &str) -> Result<models::Swarm>
 ```
 
 ### get_task(id)
@@ -1323,12 +1381,15 @@ Messages of a conversation, with sources, steps, and files
 pub async fn list_conversation_messages(&self, id: &str) -> Result<Vec<models::Message>>
 ```
 
-### list_conversations()
+### list_conversations(project_id, swarm_id)
 
 List conversations
 
+- `project_id`: Only the chats in this project (contract 1.87,
+- `swarm_id`: A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out.
+
 ```rust
-pub async fn list_conversations(&self) -> Result<Vec<models::Conversation>>
+pub async fn list_conversations(&self, project_id: Option<&str>, swarm_id: Option<&str>) -> Result<Vec<models::Conversation>>
 ```
 
 ### list_devices(kind)
@@ -1515,6 +1576,16 @@ List AI profiles
 pub async fn list_profiles(&self) -> Result<Vec<Map<String, Value>>>
 ```
 
+### list_projects()
+
+The caller's projects
+
+Newest activity first, with how many chats each has (contract 1.87,
+
+```rust
+pub async fn list_projects(&self) -> Result<Vec<models::Project>>
+```
+
 ### list_running_models()
 
 Loaded model instances on this and paired computers
@@ -1537,6 +1608,18 @@ Runtimes and whether each is installed
 
 ```rust
 pub async fn list_runtimes(&self) -> Result<Vec<models::RuntimeInfo>>
+```
+
+### list_swarms(project_id)
+
+The caller's swarms
+
+Newest first (contract 1.88,
+
+- `project_id`: Only this project's swarms.
+
+```rust
+pub async fn list_swarms(&self, project_id: Option<&str>) -> Result<Vec<models::Swarm>>
 ```
 
 ### list_tasks()
@@ -1635,9 +1718,9 @@ pub async fn mcp_o_auth_callback(&self) -> Result<()>
 
 ### mcp_server(body)
 
-Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 
-Checked like /v1. A request with an Origin header from another site is refused.
+Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=&lt;id&gt;; it needs the member role (#1135, contract 1.88).
 
 ```rust
 pub async fn mcp_server(&self, body: Option<&Map<String, Value>>) -> Result<()>
@@ -1733,7 +1816,7 @@ pub async fn openai_chat_completions(&self, body: &models::OpenaiChatCompletions
 
 OpenAI-compatible model list
 
-auto, each profile as profile:&lt;id&gt;, and each deployed specialized AI as sai:&lt;slug&gt;.
+auto, each profile as profile:&lt;id&gt;, each profile whose strategy is swarm as swarm:&lt;id&gt; (#1135, contract 1.88), and each deployed specialized AI as sai:&lt;slug&gt;.
 
 ```rust
 pub async fn openai_list_models(&self) -> Result<models::OpenAIModelList>
@@ -1743,7 +1826,7 @@ pub async fn openai_list_models(&self) -> Result<models::OpenAIModelList>
 
 OpenAI Responses, for coding agents
 
-OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:&lt;model&gt; does.
+OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:&lt;model&gt; does. model swarm:&lt;profile&gt; (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 
 ```rust
 pub async fn openai_responses(&self, body: &models::OpenaiResponsesRequest) -> Result<()>
@@ -2024,6 +2107,14 @@ They're disabled and signed out at once.
 pub async fn remove_portal_visitor(&self, id: &str, vid: &str) -> Result<()>
 ```
 
+### remove_project_file(id, name)
+
+Remove a file from a project
+
+```rust
+pub async fn remove_project_file(&self, id: &str, name: &str) -> Result<()>
+```
+
 ### remove_video_model(id)
 
 Delete an installed video model to free its space
@@ -2178,6 +2269,16 @@ The key is stored in the secrets folder and never returned. An empty api_key kee
 pub async fn set_external_server(&self, body: &models::SetExternalServerRequest) -> Result<models::ExternalServer>
 ```
 
+### set_model_always_running(id, body)
+
+Keep a model running
+
+Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+
+```rust
+pub async fn set_model_always_running(&self, id: &str, body: &models::SetModelAlwaysRunningRequest) -> Result<models::ModelAlwaysRunning>
+```
+
 ### set_model_context(id, body)
 
 Set a model's context window
@@ -2196,6 +2297,16 @@ A GGUF vision projector (mmproj) on this computer, copied beside the model so it
 
 ```rust
 pub async fn set_model_projector(&self, id: &str, body: &models::SetModelProjectorRequest) -> Result<models::ModelVision>
+```
+
+### set_model_slots(id, body)
+
+Set how many requests a model answers at once
+
+How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+
+```rust
+pub async fn set_model_slots(&self, id: &str, body: &models::SetModelSlotsRequest) -> Result<models::ModelSlots>
 ```
 
 ### set_model_speculation(id, body)
@@ -2392,6 +2503,16 @@ Body {plan}: monthly or yearly. Opens a Stripe checkout at yeix.io, which bills 
 pub async fn start_subscription_checkout(&self) -> Result<()>
 ```
 
+### start_swarm(body)
+
+Start a swarm
+
+Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+
+```rust
+pub async fn start_swarm(&self, body: &models::StartSwarmRequest) -> Result<models::Swarm>
+```
+
 ### start_training(id, body)
 
 Start training
@@ -2424,6 +2545,16 @@ Unload a model instance
 
 ```rust
 pub async fn stop_model(&self, id: &str, body: Option<&models::StopModelRequest>) -> Result<models::OK>
+```
+
+### stop_swarm(id)
+
+Stop a swarm
+
+Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+
+```rust
+pub async fn stop_swarm(&self, id: &str) -> Result<models::ChatStopped>
 ```
 
 ### test_notification_destination(id)
@@ -2624,6 +2755,16 @@ Update a profile, including its orchestration controls
 
 ```rust
 pub async fn update_profile(&self, id: &str, body: &Map<String, Value>) -> Result<Map<String, Value>>
+```
+
+### update_project(id, body)
+
+Change a project
+
+Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+
+```rust
+pub async fn update_project(&self, id: &str, body: &models::ProjectInput) -> Result<models::Project>
 ```
 
 ### update_settings(body)

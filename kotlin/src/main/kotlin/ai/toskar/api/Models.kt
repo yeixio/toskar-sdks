@@ -186,7 +186,10 @@ public data class RunningModelView @JvmOverloads constructor(
     @SerialName("node_id") public val nodeId: String,
     @SerialName("node_name") public val nodeName: String,
     @SerialName("status") public val status: String,
+    /** The catalog's estimate of the memory it needs */
     @SerialName("memory_bytes") public val memoryBytes: Long? = null,
+    /** The system memory its process holds, measured a few seconds ago at most (contract 1.90). On Linux, the memory it allocated, without the model file it maps. */
+    @SerialName("resident_bytes") public val residentBytes: Long? = null,
     @SerialName("endpoint") public val endpoint: String? = null,
     /** Generation speed in the model's latest replies */
     @SerialName("speed_tok_per_sec") public val speedTokPerSec: Double? = null,
@@ -194,6 +197,8 @@ public data class RunningModelView @JvmOverloads constructor(
     /** The devices the model is on, or CPU */
     @SerialName("accelerator") public val accelerator: String? = null,
     @SerialName("last_used_at") public val lastUsedAt: Instant? = null,
+    /** A model kept loaded on its computer (#966, contract 1.96) */
+    @SerialName("always_running") public val alwaysRunning: Boolean? = null,
     /** "embedding" or "reranking" for a supporting model serving knowledge search, and empty for a chat model. Known values: `embedding`, `reranking`; others may be added. */
     @SerialName("mode") public val mode: String? = null,
     /** Where the model runs, from the runtime's own report; absent when that is not known. */
@@ -309,12 +314,16 @@ public data class Model @JvmOverloads constructor(
     @SerialName("support_role") public val supportRole: String? = null,
     /** Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added. */
     @SerialName("speculation") public val speculation: String? = null,
+    /** A chat model installed on this computer that is kept loaded (#966, contract 1.94). */
+    @SerialName("always_running") public val alwaysRunning: Boolean? = null,
     /** The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69). */
     @SerialName("context_window") public val contextWindow: Long? = null,
     /** The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69). */
     @SerialName("context_choice") public val contextChoice: Long? = null,
     /** The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69). */
     @SerialName("context_options") public val contextOptions: List<ModelContextOptions>? = null,
+    /** How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models. */
+    @SerialName("slots") public val slots: Long? = null,
     /** How well the model writes each language it has a level for (§13–14, §31), best first. */
     @SerialName("languages") public val languages: List<ModelLanguages>? = null,
 )
@@ -334,6 +343,12 @@ public data class Conversation @JvmOverloads constructor(
     @SerialName("model_id") public val modelId: String? = null,
     /** The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done */
     @SerialName("project") public val project: String? = null,
+    /** The project the chat is in, if any: a chat is in one project at most (contract 1.87, #1136). */
+    @SerialName("project_id") public val projectId: String? = null,
+    /** The swarm the chat belongs to: its coordinator's chat, or one of its agents' (contract 1.88, #1135). */
+    @SerialName("swarm_id") public val swarmId: String? = null,
+    /** agent:N for an agent's chat; empty for the coordinator's or a chat in no swarm. */
+    @SerialName("swarm_role") public val swarmRole: String? = null,
 )
 
 /** Wraps ErrorBody for JSON responses. */
@@ -424,6 +439,153 @@ public data class Artifact @JvmOverloads constructor(
     @SerialName("details") public val details: JsonObject? = null,
 )
 
+/** Related chats kept together with what they share: instructions, files, a folder on the Toskar computer, a default profile and model, and a memory of their own (contract 1.87, #1136). It belongs to the person who made it. */
+@Serializable
+public data class Project @JvmOverloads constructor(
+    @SerialName("id") public val id: String,
+    @SerialName("name") public val name: String,
+    /** The person's own instructions for every chat in the project. They come after a profile's and before the person's style. */
+    @SerialName("instructions") public val instructions: String,
+    /** `memory_off` keeps the project's chats from saving or reading the project's own memory. The person's memory follows each chat's Memory control. */
+    @SerialName("memory_off") public val memoryOff: Boolean,
+    /** The ids of knowledge sources linked to the project, which its chats search as well as its files. */
+    @SerialName("knowledge") public val knowledge: List<String>,
+    /** The files added to the project's knowledge. */
+    @SerialName("files") public val files: List<ProjectFile>,
+    /** How many chats are in the project. */
+    @SerialName("chat_count") public val chatCount: Long,
+    @SerialName("created_at") public val createdAt: Instant,
+    /** The project's last activity: a change to it, or to one of its chats. */
+    @SerialName("updated_at") public val updatedAt: Instant,
+    /** Where the project's chats work on the Toskar computer */
+    @SerialName("folder") public val folder: String? = null,
+    @SerialName("profile_id") public val profileId: String? = null,
+    @SerialName("model_id") public val modelId: String? = null,
+)
+
+/** A project's fields; one left out stays as it is. */
+@Serializable
+public data class ProjectInput @JvmOverloads constructor(
+    @SerialName("name") public val name: String? = null,
+    @SerialName("instructions") public val instructions: String? = null,
+    /** The full path of a folder on the Toskar computer for the project's chats to work in, or empty for none. Needs the admin role. */
+    @SerialName("folder") public val folder: String? = null,
+    @SerialName("profile_id") public val profileId: String? = null,
+    @SerialName("model_id") public val modelId: String? = null,
+    @SerialName("memory_off") public val memoryOff: Boolean? = null,
+    /** Knowledge source ids to link. Needs the member role. */
+    @SerialName("knowledge") public val knowledge: List<String>? = null,
+)
+
+/** One file in a project's knowledge. */
+@Serializable
+public data class ProjectFile @JvmOverloads constructor(
+    @SerialName("name") public val name: String,
+    @SerialName("size") public val size: Long,
+)
+
+/** Several agents working at once on one request, each in a chat of its own in the coordinator chat's project (contract 1.88, #1135). It belongs to the person who started it. */
+@Serializable
+public data class Swarm @JvmOverloads constructor(
+    @SerialName("id") public val id: String,
+    @SerialName("project_id") public val projectId: String,
+    /** The coordinator's chat, where the merged answer goes. */
+    @SerialName("conversation_id") public val conversationId: String,
+    /** Known values: `split`, `race`; others may be added. */
+    @SerialName("mode") public val mode: String,
+    /** Known values: `running`, `merging`, `done`, `stopped`, `failed`; others may be added. */
+    @SerialName("status") public val status: String,
+    @SerialName("request") public val request: String,
+    @SerialName("budget") public val budget: SwarmBudget,
+    /** The swarm's agents, in order. Empty until the coordinator has planned the parts. */
+    @SerialName("agents") public val agents: List<SwarmAgent>,
+    /** Every agent's tokens so far. */
+    @SerialName("tokens") public val tokens: Long,
+    @SerialName("seconds") public val seconds: Double,
+    @SerialName("created_at") public val createdAt: Instant,
+    /** A race's winning agent, 0 when the answers were merged or it's not a race. */
+    @SerialName("winner") public val winner: Long? = null,
+    /** `note` says why the swarm ran differently than asked, such as running as one agent. */
+    @SerialName("note") public val note: String? = null,
+    /** The folder a task swarm worked in. In a Git repository each agent worked on a branch of its own, kept for 7 days or until the swarm is deleted. */
+    @SerialName("folder") public val folder: String? = null,
+    /** A task swarm's result: the agents' work merged, or a race winner's. Empty for a question, or a folder that isn't in Git. */
+    @SerialName("branch") public val branch: String? = null,
+    /** How the project's checks went on the result. Absent when none ran. Known values: `passed`, `failed`; others may be added. */
+    @SerialName("checks") public val checks: String? = null,
+    /** Agents' changes that couldn't be merged, each still on its agent's branch. */
+    @SerialName("conflicts") public val conflicts: List<SwarmConflict>? = null,
+    /** The result is in the person's folder as uncommitted changes, after they allowed it. */
+    @SerialName("applied") public val applied: Boolean? = null,
+    /** Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by. */
+    @SerialName("waiting") public val waiting: List<JsonObject>? = null,
+    @SerialName("finished_at") public val finishedAt: Instant? = null,
+)
+
+/** One agent in a swarm: its part, where it runs, and how it went (contract 1.88, #1135). */
+@Serializable
+public data class SwarmAgent @JvmOverloads constructor(
+    /** Its number, from 1. */
+    @SerialName("agent") public val agent: Long,
+    /** The agent's own chat, which can be opened and continued. */
+    @SerialName("conversation_id") public val conversationId: String,
+    /** agent:N. */
+    @SerialName("role") public val role: String,
+    /** What it was asked to do: its part, or in a race the whole request. */
+    @SerialName("part") public val part: String,
+    /** Known values: `queued`, `running`, `done`, `failed`, `stopped`, `out_of_budget`; others may be added. */
+    @SerialName("status") public val status: String,
+    @SerialName("tokens") public val tokens: Long,
+    @SerialName("seconds") public val seconds: Double,
+    @SerialName("model_id") public val modelId: String? = null,
+    @SerialName("node_id") public val nodeId: String? = null,
+    /** The start of its answer. */
+    @SerialName("summary") public val summary: String? = null,
+    /** The files or folders a task's part expects to change. */
+    @SerialName("paths") public val paths: List<String>? = null,
+    /** A task agent's own branch, with its work committed. */
+    @SerialName("branch") public val branch: String? = null,
+    /** How the project's checks went on its branch in a race. Absent when none ran. Known values: `passed`, `failed`; others may be added. */
+    @SerialName("checks") public val checks: String? = null,
+)
+
+/** An agent's change that couldn't be merged with the others', even by a fix-up agent (contract 1.88, #1135). */
+@Serializable
+public data class SwarmConflict @JvmOverloads constructor(
+    /** The agent whose change wasn't merged. */
+    @SerialName("agent") public val agent: Long,
+    /** Has its change. */
+    @SerialName("branch") public val branch: String,
+    /** The files that conflicted. */
+    @SerialName("files") public val files: List<String>,
+)
+
+/** What a swarm may use (contract 1.88, #1135). */
+@Serializable
+public data class SwarmBudget @JvmOverloads constructor(
+    /** The most agents it has. */
+    @SerialName("agents") public val agents: Long,
+    /** The most the whole swarm may use. */
+    @SerialName("tokens") public val tokens: Long,
+    /** The most it may run. */
+    @SerialName("minutes") public val minutes: Long,
+)
+
+/** Swarm controls (contract 1.88, #1135): a profile's orchestration.swarm, or one swarm's budget. Every field is optional; empty keeps the default. */
+@Serializable
+public data class SwarmPolicy @JvmOverloads constructor(
+    /** split: a coordinator splits the job into parts that agents do at once. race: agents on different models each do the whole request, and the best answer wins or they're merged. Empty is split. Known values: `split`, `race`; others may be added. */
+    @SerialName("mode") public val mode: String? = null,
+    /** A race's models, one agent each, in order. A split's agents take them in turn. */
+    @SerialName("models") public val models: List<String>? = null,
+    /** The most agents. Empty is the profile's max_workers */
+    @SerialName("agents") public val agents: Long? = null,
+    /** The most the whole swarm may use. Empty is 400000. */
+    @SerialName("tokens") public val tokens: Long? = null,
+    /** The most a swarm may run. Empty is 5 for a question and 30 for a task. */
+    @SerialName("minutes") public val minutes: Long? = null,
+)
+
 /** One durable fact or preference. */
 @Serializable
 public data class Memory @JvmOverloads constructor(
@@ -439,6 +601,8 @@ public data class Memory @JvmOverloads constructor(
     @SerialName("source_ref") public val sourceRef: String? = null,
     /** The language the memory is written in, as a BCP 47 tag detected on this computer (multilingual spec §18), or "" when it is too short to tell. A memory is found in any language; this says which one its text is in. */
     @SerialName("language") public val language: String? = null,
+    /** The project the memory belongs to, learned in one of its chats, or "" for the person's own memory (#1136). */
+    @SerialName("project_id") public val projectId: String? = null,
 )
 
 /** One connected knowledge source. */
@@ -1140,6 +1304,8 @@ public data class MessageMeta @JvmOverloads constructor(
     @SerialName("steps") public val steps: List<ActivityStep>? = null,
     /** `notice` tells the user something changed that may affect the answer, such as a smaller model answering after the chosen one failed. */
     @SerialName("notice") public val notice: String? = null,
+    /** With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97) */
+    @SerialName("link_check") public val linkCheck: MessageMetaLinkCheck? = null,
     /** Attached to a question or produced with an answer. */
     @SerialName("files") public val files: List<FileRef>? = null,
     /** `run_id` names the run trace behind the answer (§35), at GET /api/v1/runs/{id}. */
@@ -1575,6 +1741,22 @@ public data class ModelContext @JvmOverloads constructor(
     @SerialName("model_id") public val modelId: String,
     /** 0 for Auto */
     @SerialName("context_window") public val contextWindow: Long,
+)
+
+/** How many requests a model answers at once (#1135). */
+@Serializable
+public data class ModelSlots @JvmOverloads constructor(
+    @SerialName("model_id") public val modelId: String,
+    @SerialName("slots") public val slots: Long,
+)
+
+/** Whether a model is kept running (#966). */
+@Serializable
+public data class ModelAlwaysRunning @JvmOverloads constructor(
+    @SerialName("model_id") public val modelId: String,
+    @SerialName("always_running") public val alwaysRunning: Boolean,
+    /** This computer's memory less what the models kept running need, when it's known (contract 1.95) */
+    @SerialName("memory_left_bytes") public val memoryLeftBytes: Long? = null,
 )
 
 /** A model's guess-ahead choice (#835). */
@@ -2521,6 +2703,13 @@ public data class ChatRequest @JvmOverloads constructor(
     @SerialName("model_id") public val modelId: String? = null,
     /** Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added. */
     @SerialName("effort") public val effort: String? = null,
+    /** For the answer; 0 gives the same most likely answer every time (#839, contract 1.93) */
+    @SerialName("temperature") public val temperature: Double? = null,
+    /** As on /v1/chat/completions (#839, contract 1.93) */
+    @SerialName("seed") public val seed: Long? = null,
+    @SerialName("top_p") public val topP: Double? = null,
+    @SerialName("top_k") public val topK: Long? = null,
+    @SerialName("min_p") public val minP: Double? = null,
     /** off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added. */
     @SerialName("thinking") public val thinking: String? = null,
     /** The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown */
@@ -2540,6 +2729,12 @@ public data class ChatRequest @JvmOverloads constructor(
     @SerialName("stream") public val stream: Boolean? = null,
     /** With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON. */
     @SerialName("live") public val live: Boolean? = null,
+    /** One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own. */
+    @SerialName("project_id") public val projectId: String? = null,
+    /** Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events. Known values: `split`, `race`; others may be added. */
+    @SerialName("swarm") public val swarm: String? = null,
+    /** Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id. */
+    @SerialName("make_room") public val makeRoom: Boolean? = null,
 )
 
 @Serializable
@@ -2557,6 +2752,8 @@ public data class CreateConversationRequest @JvmOverloads constructor(
     @SerialName("title") public val title: String? = null,
     @SerialName("profile_id") public val profileId: String? = null,
     @SerialName("model_id") public val modelId: String? = null,
+    /** Start the chat in one of the caller's projects (contract 1.87, */
+    @SerialName("project_id") public val projectId: String? = null,
 )
 
 @Serializable
@@ -2573,6 +2770,8 @@ public data class UpdateConversationRequest @JvmOverloads constructor(
     @SerialName("memory_off") public val memoryOff: Boolean? = null,
     /** The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85). */
     @SerialName("project") public val project: String? = null,
+    /** Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87, */
+    @SerialName("project_id") public val projectId: String? = null,
 )
 
 @Serializable
@@ -2741,6 +2940,8 @@ public data class UpdateMemoryRequest @JvmOverloads constructor(
     @SerialName("category") public val category: String? = null,
     @SerialName("enabled") public val enabled: Boolean? = null,
     @SerialName("local_only") public val localOnly: Boolean? = null,
+    /** Empty moves a project's memory to the person's own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can't be moved into a project. */
+    @SerialName("project_id") public val projectId: String? = null,
 )
 
 @Serializable
@@ -2773,6 +2974,11 @@ public data class DeleteModelRequest @JvmOverloads constructor(
 )
 
 @Serializable
+public data class SetModelAlwaysRunningRequest @JvmOverloads constructor(
+    @SerialName("always_running") public val alwaysRunning: Boolean,
+)
+
+@Serializable
 public data class SetModelContextRequest @JvmOverloads constructor(
     /** Tokens, up to the model's own window; 0 for Auto. */
     @SerialName("context_window") public val contextWindow: Long,
@@ -2796,6 +3002,11 @@ public data class PutModelRatingRequest @JvmOverloads constructor(
     @SerialName("share") public val share: Boolean? = null,
     /** Include how the model runs here in a shared rating */
     @SerialName("observations") public val observations: Boolean? = null,
+)
+
+@Serializable
+public data class SetModelSlotsRequest @JvmOverloads constructor(
+    @SerialName("slots") public val slots: Long,
 )
 
 @Serializable
@@ -2910,6 +3121,16 @@ public data class TryTopicsRequest @JvmOverloads constructor(
 )
 
 @Serializable
+public data class AddProjectFileRequest @JvmOverloads constructor(
+    /** Its name; the extension picks the reader, such as .md, .csv, or .pdf */
+    @SerialName("filename") public val filename: String,
+    /** A text file's content */
+    @SerialName("text") public val text: String? = null,
+    /** Another file's bytes, such as a PDF's, in place of text */
+    @SerialName("content_base64") public val contentBase64: String? = null,
+)
+
+@Serializable
 public data class SignInRequest @JvmOverloads constructor(
     @SerialName("username") public val username: String,
     @SerialName("password") public val password: String,
@@ -2933,6 +3154,18 @@ public data class TranscribeRecordingRequest @JvmOverloads constructor(
     @SerialName("artifact_id") public val artifactId: String,
     /** A hint such as en or de; empty detects the language */
     @SerialName("language") public val language: String? = null,
+)
+
+@Serializable
+public data class StartSwarmRequest @JvmOverloads constructor(
+    @SerialName("prompt") public val prompt: String,
+    /** Empty is the profile's, or split. Known values: `split`, `race`; others may be added. */
+    @SerialName("mode") public val mode: String? = null,
+    /** One of the caller's projects for a chat not yet in one. */
+    @SerialName("project_id") public val projectId: String? = null,
+    /** The caller's chat to run it in; empty starts one. */
+    @SerialName("conversation_id") public val conversationId: String? = null,
+    @SerialName("budget") public val budget: SwarmPolicy? = null,
 )
 
 @Serializable
@@ -3044,12 +3277,20 @@ public data class UseVideoBuildRequest @JvmOverloads constructor(
 
 @Serializable
 public data class OpenaiChatCompletionsRequest @JvmOverloads constructor(
-    /** auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71) */
+    /** auto, profile:<id>, sai:<slug>, a model id, raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:<profile> (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id */
     @SerialName("model") public val model: String,
     @SerialName("messages") public val messages: List<OpenaiChatCompletionsRequestMessages>,
     @SerialName("stream") public val stream: Boolean? = null,
     /** For the answer; 0 gives the same most likely answer every time. Left out, the model's default. */
     @SerialName("temperature") public val temperature: Double? = null,
+    /** Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93) */
+    @SerialName("seed") public val seed: Long? = null,
+    /** Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93) */
+    @SerialName("top_p") public val topP: Double? = null,
+    /** Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93) */
+    @SerialName("top_k") public val topK: Long? = null,
+    /** Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93) */
+    @SerialName("min_p") public val minP: Double? = null,
     /** The most tokens each answer-writing call may use. Left out, the model's default. */
     @SerialName("max_tokens") public val maxTokens: Long? = null,
     /** OpenAI's newer name for max_tokens; wins when both are sent. */
@@ -3481,6 +3722,13 @@ public data class MyDevicePermissions @JvmOverloads constructor(
     @SerialName("raw") public val raw: Boolean? = null,
 )
 
+/** With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97) */
+@Serializable
+public data class MessageMetaLinkCheck @JvmOverloads constructor(
+    @SerialName("dead") public val dead: List<String>? = null,
+    @SerialName("unknown") public val unknown: List<String>? = null,
+)
+
 /** How the answer was reached when its profile deliberates: the drafts compared and the outcome (#459, contract 1.23). */
 @Serializable
 public data class MessageMetaDeliberation @JvmOverloads constructor(
@@ -3539,6 +3787,18 @@ public data class QualityResultPerformance @JvmOverloads constructor(
     @SerialName("gpu_memory_bytes") public val gpuMemoryBytes: Long? = null,
     @SerialName("context_window") public val contextWindow: Long? = null,
     @SerialName("quantization") public val quantization: String? = null,
+    /** The llama.cpp release it ran on, such as b12361 (contract 1.89) */
+    @SerialName("llama_cpp") public val llamaCpp: String? = null,
+    /** Whether a draft guessed ahead during the runs (contract 1.89) Known values: `on`, `off`; others may be added. */
+    @SerialName("speculation") public val speculation: String? = null,
+    /** The share of the draft's guesses the model kept, 0 to 1, when speculation is on (contract 1.89) */
+    @SerialName("draft_accepted") public val draftAccepted: Double? = null,
+    /** The GPUs it ran on, every one when there are several (contract 1.89) */
+    @SerialName("devices") public val devices: List<String>? = null,
+    /** The system memory the model's process held after the runs, measured (contract 1.90). Where the graphics share the computer's memory, as on a Mac, it includes what gpu_memory_bytes counts. */
+    @SerialName("system_memory_bytes") public val systemMemoryBytes: Long? = null,
+    /** The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it */
+    @SerialName("contexts") public val contexts: List<QualityResultPerformanceContexts>? = null,
 )
 
 /** Whether a computer can run a model. */
@@ -4263,6 +4523,25 @@ public data class MessageMetaDeliberationJudge @JvmOverloads constructor(
     @SerialName("model_id") public val modelId: String? = null,
     @SerialName("node_id") public val nodeId: String? = null,
     @SerialName("node_name") public val nodeName: String? = null,
+)
+
+@Serializable
+public data class QualityResultPerformanceContexts @JvmOverloads constructor(
+    /** The window, in tokens */
+    @SerialName("context") public val context: Long,
+    /** Known values: `full`, `partial`, `cpu`, `no`; others may be added. */
+    @SerialName("runs") public val runs: String,
+    /** Why it's short of full: window, a size past the model's own, or out_of_memory */
+    @SerialName("why") public val why: String? = null,
+    @SerialName("prompt_tokens") public val promptTokens: Long? = null,
+    @SerialName("prompt_tokens_per_second") public val promptTokensPerSecond: Double? = null,
+    @SerialName("tokens_per_second") public val tokensPerSecond: Double? = null,
+    @SerialName("first_token_ms") public val firstTokenMs: Double? = null,
+    @SerialName("effective_tokens_per_second") public val effectiveTokensPerSecond: Double? = null,
+    @SerialName("gpu_layers") public val gpuLayers: Long? = null,
+    @SerialName("gpu_layers_total") public val gpuLayersTotal: Long? = null,
+    @SerialName("gpu_memory_bytes") public val gpuMemoryBytes: Long? = null,
+    @SerialName("system_memory_bytes") public val systemMemoryBytes: Long? = null,
 )
 
 /** A model configuration's ratings given for one language, for everyone who runs it that way: never split by hardware. */

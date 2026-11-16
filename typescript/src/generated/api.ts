@@ -1701,8 +1701,8 @@ export interface paths {
         get: operations["mcpServerGet"];
         put?: never;
         /**
-         * Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
-         * @description Checked like /v1. A request with an Origin header from another site is refused.
+         * Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
+         * @description Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
          */
         post: operations["mcpServer"];
         /** End an MCP session */
@@ -2061,7 +2061,7 @@ export interface paths {
         };
         /**
          * OpenAI-compatible model list
-         * @description auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+         * @description auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
          */
         get: operations["openaiListModels"];
         put?: never;
@@ -2083,7 +2083,7 @@ export interface paths {
         put?: never;
         /**
          * Anthropic-compatible messages, for coding agents
-         * @description Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+         * @description Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
          */
         post: operations["anthropicMessages"];
         delete?: never;
@@ -2123,7 +2123,7 @@ export interface paths {
         put?: never;
         /**
          * OpenAI Responses, for coding agents
-         * @description OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+         * @description OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
          */
         post: operations["openaiResponses"];
         delete?: never;
@@ -2691,6 +2691,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/models/{id}/always-running": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Keep a model running
+         * @description Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+         */
+        put: operations["setModelAlwaysRunning"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/models/{id}/context": {
         parameters: {
             query?: never;
@@ -2704,6 +2724,26 @@ export interface paths {
          * @description The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
          */
         put: operations["setModelContext"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{id}/slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set how many requests a model answers at once
+         * @description How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+         */
+        put: operations["setModelSlots"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3238,6 +3278,157 @@ export interface paths {
         head?: never;
         /** Edit, turn off, or keep a memory on this computer only */
         patch: operations["updateMemory"];
+        trace?: never;
+    };
+    "/api/v1/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's projects
+         * @description Newest activity first, with how many chats each has (contract 1.87,
+         */
+        get: operations["listProjects"];
+        put?: never;
+        /** Make a project */
+        post: operations["createProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One project */
+        get: operations["getProject"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a project
+         * @description Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+         */
+        delete: operations["deleteProject"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a project
+         * @description Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+         */
+        patch: operations["updateProject"];
+        trace?: never;
+    };
+    "/api/v1/projects/{id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a file to a project
+         * @description The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+         */
+        post: operations["addProjectFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{id}/files/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a file from a project */
+        delete: operations["removeProjectFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/swarms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's swarms
+         * @description Newest first (contract 1.88,
+         */
+        get: operations["listSwarms"];
+        put?: never;
+        /**
+         * Start a swarm
+         * @description Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+         */
+        post: operations["startSwarm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/swarms/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One swarm
+         * @description With its agents, their status, and what they're waiting on.
+         */
+        get: operations["getSwarm"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a swarm
+         * @description Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+         */
+        delete: operations["deleteSwarm"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/swarms/{id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop a swarm
+         * @description Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+         */
+        post: operations["stopSwarm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/knowledge/sources": {
@@ -4542,8 +4733,16 @@ export interface components {
             node_id: string;
             node_name: string;
             status: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description The catalog's estimate of the memory it needs
+             */
             memory_bytes?: number;
+            /**
+             * Format: int64
+             * @description The system memory its process holds, measured a few seconds ago at most (contract 1.90). On Linux, the memory it allocated, without the model file it maps.
+             */
+            resident_bytes?: number;
             endpoint?: string;
             /** @description Generation speed in the model's latest replies */
             speed_tok_per_sec?: number;
@@ -4552,6 +4751,8 @@ export interface components {
             accelerator?: string;
             /** Format: date-time */
             last_used_at?: string;
+            /** @description A model kept loaded on its computer (#966, contract 1.96) */
+            always_running?: boolean;
             /** @description "embedding" or "reranking" for a supporting model serving knowledge search, and empty for a chat model. Known values: `embedding`, `reranking`; others may be added. */
             mode?: string;
             /** @description Where the model runs, from the runtime's own report; absent when that is not known. */
@@ -4698,6 +4899,8 @@ export interface components {
             support_role?: string;
             /** @description Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added. */
             speculation?: string;
+            /** @description A chat model installed on this computer that is kept loaded (#966, contract 1.94). */
+            always_running?: boolean;
             /** @description The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69). */
             context_window?: number;
             /** @description The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69). */
@@ -4708,6 +4911,8 @@ export interface components {
                 fit: string;
                 tokens: number;
             }[];
+            /** @description How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models. */
+            slots?: number;
             /** @description How well the model writes each language it has a level for (§13–14, §31), best first. */
             languages?: {
                 /** @description A BCP 47 tag, such as "de" or "zh-Hans". */
@@ -4751,6 +4956,12 @@ export interface components {
             memory_off: boolean;
             /** @description The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done */
             project?: string;
+            /** @description The project the chat is in, if any: a chat is in one project at most (contract 1.87, #1136). */
+            project_id?: string;
+            /** @description The swarm the chat belongs to: its coordinator's chat, or one of its agents' (contract 1.88, #1135). */
+            swarm_id?: string;
+            /** @description agent:N for an agent's chat; empty for the coordinator's or a chat in no swarm. */
+            swarm_role?: string;
             /** @description `compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342). */
             compact_off: boolean;
             /** Format: date-time */
@@ -4889,6 +5100,146 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** @description Related chats kept together with what they share: instructions, files, a folder on the Toskar computer, a default profile and model, and a memory of their own (contract 1.87, #1136). It belongs to the person who made it. */
+        Project: {
+            id: string;
+            name: string;
+            /** @description The person's own instructions for every chat in the project. They come after a profile's and before the person's style. */
+            instructions: string;
+            /** @description Where the project's chats work on the Toskar computer */
+            folder?: string;
+            profile_id?: string;
+            model_id?: string;
+            /** @description `memory_off` keeps the project's chats from saving or reading the project's own memory. The person's memory follows each chat's Memory control. */
+            memory_off: boolean;
+            /** @description The ids of knowledge sources linked to the project, which its chats search as well as its files. */
+            knowledge: string[];
+            /** @description The files added to the project's knowledge. */
+            files: components["schemas"]["ProjectFile"][];
+            /** @description How many chats are in the project. */
+            chat_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description The project's last activity: a change to it, or to one of its chats.
+             */
+            updated_at: string;
+        };
+        /** @description A project's fields; one left out stays as it is. */
+        ProjectInput: {
+            name?: string;
+            instructions?: string;
+            /** @description The full path of a folder on the Toskar computer for the project's chats to work in, or empty for none. Needs the admin role. */
+            folder?: string;
+            profile_id?: string;
+            model_id?: string;
+            memory_off?: boolean;
+            /** @description Knowledge source ids to link. Needs the member role. */
+            knowledge?: string[];
+        };
+        /** @description One file in a project's knowledge. */
+        ProjectFile: {
+            name: string;
+            /** Format: int64 */
+            size: number;
+        };
+        /** @description Several agents working at once on one request, each in a chat of its own in the coordinator chat's project (contract 1.88, #1135). It belongs to the person who started it. */
+        Swarm: {
+            id: string;
+            project_id: string;
+            /** @description The coordinator's chat, where the merged answer goes. */
+            conversation_id: string;
+            /** @description Known values: `split`, `race`; others may be added. */
+            mode: string;
+            /** @description Known values: `running`, `merging`, `done`, `stopped`, `failed`; others may be added. */
+            status: string;
+            request: string;
+            budget: components["schemas"]["SwarmBudget"];
+            /** @description The swarm's agents, in order. Empty until the coordinator has planned the parts. */
+            agents: components["schemas"]["SwarmAgent"][];
+            /** @description A race's winning agent, 0 when the answers were merged or it's not a race. */
+            winner?: number;
+            /** @description `note` says why the swarm ran differently than asked, such as running as one agent. */
+            note?: string;
+            /** @description Every agent's tokens so far. */
+            tokens: number;
+            seconds: number;
+            /** @description The folder a task swarm worked in. In a Git repository each agent worked on a branch of its own, kept for 7 days or until the swarm is deleted. */
+            folder?: string;
+            /** @description A task swarm's result: the agents' work merged, or a race winner's. Empty for a question, or a folder that isn't in Git. */
+            branch?: string;
+            /** @description How the project's checks went on the result. Absent when none ran. Known values: `passed`, `failed`; others may be added. */
+            checks?: string;
+            /** @description Agents' changes that couldn't be merged, each still on its agent's branch. */
+            conflicts?: components["schemas"]["SwarmConflict"][];
+            /** @description The result is in the person's folder as uncommitted changes, after they allowed it. */
+            applied?: boolean;
+            /** @description Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by. */
+            waiting?: {
+                [key: string]: unknown;
+            }[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            finished_at?: string;
+        };
+        /** @description One agent in a swarm: its part, where it runs, and how it went (contract 1.88, #1135). */
+        SwarmAgent: {
+            /** @description Its number, from 1. */
+            agent: number;
+            /** @description The agent's own chat, which can be opened and continued. */
+            conversation_id: string;
+            /** @description agent:N. */
+            role: string;
+            /** @description What it was asked to do: its part, or in a race the whole request. */
+            part: string;
+            model_id?: string;
+            node_id?: string;
+            /** @description Known values: `queued`, `running`, `done`, `failed`, `stopped`, `out_of_budget`; others may be added. */
+            status: string;
+            /** @description The start of its answer. */
+            summary?: string;
+            tokens: number;
+            seconds: number;
+            /** @description The files or folders a task's part expects to change. */
+            paths?: string[];
+            /** @description A task agent's own branch, with its work committed. */
+            branch?: string;
+            /** @description How the project's checks went on its branch in a race. Absent when none ran. Known values: `passed`, `failed`; others may be added. */
+            checks?: string;
+        };
+        /** @description An agent's change that couldn't be merged with the others', even by a fix-up agent (contract 1.88, #1135). */
+        SwarmConflict: {
+            /** @description The agent whose change wasn't merged. */
+            agent: number;
+            /** @description Has its change. */
+            branch: string;
+            /** @description The files that conflicted. */
+            files: string[];
+        };
+        /** @description What a swarm may use (contract 1.88, #1135). */
+        SwarmBudget: {
+            /** @description The most agents it has. */
+            agents: number;
+            /** @description The most the whole swarm may use. */
+            tokens: number;
+            /** @description The most it may run. */
+            minutes: number;
+        };
+        /** @description Swarm controls (contract 1.88, #1135): a profile's orchestration.swarm, or one swarm's budget. Every field is optional; empty keeps the default. */
+        SwarmPolicy: {
+            /** @description split: a coordinator splits the job into parts that agents do at once. race: agents on different models each do the whole request, and the best answer wins or they're merged. Empty is split. Known values: `split`, `race`; others may be added. */
+            mode?: string;
+            /** @description A race's models, one agent each, in order. A split's agents take them in turn. */
+            models?: string[];
+            /** @description The most agents. Empty is the profile's max_workers */
+            agents?: number;
+            /** @description The most the whole swarm may use. Empty is 400000. */
+            tokens?: number;
+            /** @description The most a swarm may run. Empty is 5 for a question and 30 for a task. */
+            minutes?: number;
+        };
         /** @description One durable fact or preference. */
         Memory: {
             id: string;
@@ -4901,6 +5252,8 @@ export interface components {
             local_only: boolean;
             /** @description The language the memory is written in, as a BCP 47 tag detected on this computer (multilingual spec §18), or "" when it is too short to tell. A memory is found in any language; this says which one its text is in. */
             language?: string;
+            /** @description The project the memory belongs to, learned in one of its chats, or "" for the person's own memory (#1136). */
+            project_id?: string;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -5754,6 +6107,11 @@ export interface components {
             steps?: components["schemas"]["ActivityStep"][];
             /** @description `notice` tells the user something changed that may affect the answer, such as a smaller model answering after the chosen one failed. */
             notice?: string;
+            /** @description With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97) */
+            link_check?: {
+                dead?: string[];
+                unknown?: string[];
+            };
             /** @description Attached to a question or produced with an answer. */
             files?: components["schemas"]["FileRef"][];
             /** @description `run_id` names the run trace behind the answer (§35), at GET /api/v1/runs/{id}. */
@@ -6089,6 +6447,39 @@ export interface components {
                 gpu_memory_bytes?: number;
                 context_window?: number;
                 quantization?: string;
+                /** @description The llama.cpp release it ran on, such as b12361 (contract 1.89) */
+                llama_cpp?: string;
+                /** @description Whether a draft guessed ahead during the runs (contract 1.89) Known values: `on`, `off`; others may be added. */
+                speculation?: string;
+                /** @description The share of the draft's guesses the model kept, 0 to 1, when speculation is on (contract 1.89) */
+                draft_accepted?: number;
+                /** @description The GPUs it ran on, every one when there are several (contract 1.89) */
+                devices?: string[];
+                /**
+                 * Format: int64
+                 * @description The system memory the model's process held after the runs, measured (contract 1.90). Where the graphics share the computer's memory, as on a Mac, it includes what gpu_memory_bytes counts.
+                 */
+                system_memory_bytes?: number;
+                /** @description The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it */
+                contexts?: {
+                    /** @description The window, in tokens */
+                    context: number;
+                    /** @description Known values: `full`, `partial`, `cpu`, `no`; others may be added. */
+                    runs: string;
+                    /** @description Why it's short of full: window, a size past the model's own, or out_of_memory */
+                    why?: string;
+                    prompt_tokens?: number;
+                    prompt_tokens_per_second?: number;
+                    tokens_per_second?: number;
+                    first_token_ms?: number;
+                    effective_tokens_per_second?: number;
+                    gpu_layers?: number;
+                    gpu_layers_total?: number;
+                    /** Format: int64 */
+                    gpu_memory_bytes?: number;
+                    /** Format: int64 */
+                    system_memory_bytes?: number;
+                }[];
             };
         };
         ModelStore: {
@@ -6211,6 +6602,18 @@ export interface components {
             model_id: string;
             /** @description 0 for Auto */
             context_window: number;
+        };
+        /** @description How many requests a model answers at once (#1135). */
+        ModelSlots: {
+            model_id: string;
+            slots: number;
+        };
+        /** @description Whether a model is kept running (#966). */
+        ModelAlwaysRunning: {
+            model_id: string;
+            always_running: boolean;
+            /** @description This computer's memory less what the models kept running need, when it's known (contract 1.95) */
+            memory_left_bytes?: number;
         };
         /** @description A model's guess-ahead choice (#835). */
         ModelSpeculation: {
@@ -9789,7 +10192,12 @@ export interface operations {
     };
     listConversations: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only the chats in this project (contract 1.87, */
+                project_id?: string;
+                /** @description A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out. */
+                swarm_id?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -9820,6 +10228,8 @@ export interface operations {
                     title?: string;
                     profile_id?: string;
                     model_id?: string;
+                    /** @description Start the chat in one of the caller's projects (contract 1.87, */
+                    project_id?: string;
                 };
             };
         };
@@ -9831,6 +10241,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Conversation"];
+                };
+            };
+            /** @description PROJECT_NOT_FOUND for a project that isn't the caller's */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
         };
@@ -9907,6 +10326,8 @@ export interface operations {
                     memory_off?: boolean;
                     /** @description The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85). */
                     project?: string;
+                    /** @description Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87, */
+                    project_id?: string;
                 };
             };
         };
@@ -9918,6 +10339,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Conversation"];
+                };
+            };
+            /** @description PROJECT_NOT_FOUND for a project that isn't the caller's */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
         };
@@ -11049,7 +11479,7 @@ export interface operations {
                     "application/json": components["schemas"]["News"];
                 };
             };
-            /** @description NEWS_UNAVAILABLE, toskar.ai couldn't be reached and no copy is kept */
+            /** @description NEWS_UNAVAILABLE, toskar.ai couldn't be reached and no copy is kept; OFFLINE when this computer isn't connected to the internet (contract 1.92) */
             502: {
                 headers: {
                     [name: string]: unknown;
@@ -11550,7 +11980,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71) */
+                    /** @description auto, profile:<id>, sai:<slug>, a model id, raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:<profile> (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id */
                     model: string;
                     messages: {
                         role?: string;
@@ -11559,6 +11989,14 @@ export interface operations {
                     stream?: boolean;
                     /** @description For the answer; 0 gives the same most likely answer every time. Left out, the model's default. */
                     temperature?: number;
+                    /** @description Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93) */
+                    seed?: number;
+                    /** @description Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93) */
+                    top_p?: number;
+                    /** @description Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93) */
+                    top_k?: number;
+                    /** @description Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93) */
+                    min_p?: number;
                     /** @description The most tokens each answer-writing call may use. Left out, the model's default. */
                     max_tokens?: number;
                     /** @description OpenAI's newer name for max_tokens; wins when both are sent. */
@@ -12627,6 +13065,41 @@ export interface operations {
             };
         };
     };
+    setModelAlwaysRunning: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    always_running: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The choice is kept */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelAlwaysRunning"];
+                };
+            };
+            /** @description MODEL_UPDATE_FAILED, such as for a model that isn't installed here or doesn't chat */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     setModelContext: {
         parameters: {
             query?: never;
@@ -12658,6 +13131,41 @@ export interface operations {
                 };
             };
             /** @description INVALID_JSON, or MODEL_UPDATE_FAILED, such as for a size past the model's own window, or a model that isn't installed here or doesn't chat */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    setModelSlots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    slots: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The choice is kept */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelSlots"];
+                };
+            };
+            /** @description INVALID_JSON; MODEL_SLOTS_INVALID for a number outside 1 to 4; MODEL_SLOTS_CONTEXT when each slot would have less than the 8,192 tokens a task needs (details: slots, context_per_slot, needed); MODEL_SLOTS_MEMORY when the model with every slot's cache doesn't fit this computer; or MODEL_UPDATE_FAILED for a model that isn't installed here or doesn't chat */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -12936,6 +13444,13 @@ export interface operations {
                     model_id?: string;
                     /** @description Known values: `auto`, `fast`, `balanced`, `thorough`; others may be added. */
                     effort?: string;
+                    /** @description For the answer; 0 gives the same most likely answer every time (#839, contract 1.93) */
+                    temperature?: number;
+                    /** @description As on /v1/chat/completions (#839, contract 1.93) */
+                    seed?: number;
+                    top_p?: number;
+                    top_k?: number;
+                    min_p?: number;
                     /** @description off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added. */
                     thinking?: string;
                     /** @description The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown */
@@ -12955,6 +13470,12 @@ export interface operations {
                     stream?: boolean;
                     /** @description With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON. */
                     live?: boolean;
+                    /** @description One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own. */
+                    project_id?: string;
+                    /** @description Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events. Known values: `split`, `race`; others may be added. */
+                    swarm?: string;
+                    /** @description Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id. */
+                    make_room?: boolean;
                 };
             };
         };
@@ -13906,6 +14427,8 @@ export interface operations {
                     category?: string;
                     enabled?: boolean;
                     local_only?: boolean;
+                    /** @description Empty moves a project's memory to the person's own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can't be moved into a project. */
+                    project_id?: string;
                 };
             };
         };
@@ -13929,6 +14452,457 @@ export interface operations {
                 };
             };
             /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Projects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"][];
+                };
+            };
+        };
+    };
+    createProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            /** @description PROJECT_NAME_REQUIRED, NOT_A_FOLDER, KNOWLEDGE_SOURCE_NOT_FOUND, or another invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description ROLE_REQUIRED, for a folder without the admin role, or knowledge without the member role */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            /** @description PROJECT_NOT_FOUND, also for another person's project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteProject: {
+        parameters: {
+            query?: {
+                /** @description delete deletes the project's chats too, with their files. */
+                chats?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PROJECT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectInput"];
+            };
+        };
+        responses: {
+            /** @description Project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            /** @description NOT_A_FOLDER, KNOWLEDGE_SOURCE_NOT_FOUND, or another invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description ROLE_REQUIRED, for a folder without the admin role, or knowledge without the member role */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PROJECT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    addProjectFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Its name; the extension picks the reader, such as .md, .csv, or .pdf */
+                    filename: string;
+                    /** @description A text file's content */
+                    text?: string;
+                    /** @description Another file's bytes, such as a PDF's, in place of text */
+                    content_base64?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The project with its files */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            /** @description An empty, unreadable, or unsupported file */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PROJECT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removeProjectFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PROJECT_NOT_FOUND or PROJECT_FILE_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listSwarms: {
+        parameters: {
+            query?: {
+                /** @description Only this project's swarms. */
+                project_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Swarms */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Swarm"][];
+                };
+            };
+            /** @description PROJECT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    startSwarm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    prompt: string;
+                    /** @description Empty is the profile's, or split. Known values: `split`, `race`; others may be added. */
+                    mode?: string;
+                    /** @description One of the caller's projects for a chat not yet in one. */
+                    project_id?: string;
+                    /** @description The caller's chat to run it in; empty starts one. */
+                    conversation_id?: string;
+                    budget?: components["schemas"]["SwarmPolicy"];
+                };
+            };
+        };
+        responses: {
+            /** @description Started */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Swarm"];
+                };
+            };
+            /** @description An empty prompt, an unknown mode, or a budget out of range */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description ROLE_REQUIRED, for a Visitor; PORTAL_MEMBERS, for a portal's guest */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PROJECT_NOT_FOUND, or NOT_FOUND for another person's chat */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getSwarm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Swarm */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Swarm"];
+                };
+            };
+            /** @description SWARM_NOT_FOUND, also for another person's swarm */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteSwarm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description SWARM_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description SWARM_RUNNING */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    stopSwarm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether anything was running to stop */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatStopped"];
+                };
+            };
+            /** @description SWARM_NOT_FOUND */
             404: {
                 headers: {
                     [name: string]: unknown;

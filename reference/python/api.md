@@ -44,7 +44,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `connect_service(id: str, *, body: dict[str, Any] \| None = None)` | `PUT /api/v1/connectors/{id}` | Check values with the service, then store them and add its tools |
 | `disconnect_service(id: str)` | `DELETE /api/v1/connectors/{id}` | Delete the stored credential and remove the service's tools |
 | `check_connector(id: str)` | `POST /api/v1/connectors/{id}/check` | Check the stored credential again |
-| `list_conversations()` | `GET /api/v1/conversations` | List conversations |
+| `list_conversations(*, project_id: str \| None = None, swarm_id: str \| None = None)` |  | List conversations |
 | `create_conversation(*, body: dict[str, Any] \| None = None)` | `POST /api/v1/conversations` | Create conversation |
 | `delete_conversations(*, body: dict[str, Any])` |  | Delete several conversations |
 | `update_conversation(id: str, *, body: dict[str, Any] \| None = None)` | `PATCH /api/v1/conversations/{id}` | Update conversation |
@@ -142,6 +142,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `warm_model(*, body: dict[str, Any] \| None = None)` | `POST /api/v1/models/warm` | Start loading the model a chat would use |
 | `update_added_model(id: str, *, body: dict[str, Any])` | `PATCH /api/v1/models/{id}` | Rename or retag an added model |
 | `delete_model(id: str, *, body: dict[str, Any] \| None = None, node_id: str \| None = None)` | `DELETE /api/v1/models/{id}` | Delete a model file |
+| `set_model_always_running(id: str, *, body: dict[str, Any])` |  | Keep a model running |
 | `set_model_context(id: str, *, body: dict[str, Any])` | `PUT /api/v1/models/{id}/context` | Set a model's context window |
 | `install_model(id: str, *, body: dict[str, Any] \| None = None, wait: str \| None = None, node_id: str \| None = None)` |  | Download a catalog model, here or on a paired computer |
 | `set_model_projector(id: str, *, body: dict[str, Any])` | `PUT /api/v1/models/{id}/projector` | Give an added model its vision projector |
@@ -149,6 +150,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `put_model_rating(id: str, *, body: dict[str, Any])` | `PUT /api/v1/models/{id}/rating` | Rate a model 1–5 stars, and share the rating with the community or keep it on this computer |
 | `delete_model_rating(id: str)` | `DELETE /api/v1/models/{id}/rating` | Remove this person's rating, withdrawing it first if it was shared |
 | `dismiss_model_rating(id: str)` | `POST /api/v1/models/{id}/rating/dismiss` | Stop asking for a rating of a model |
+| `set_model_slots(id: str, *, body: dict[str, Any])` | `PUT /api/v1/models/{id}/slots` | Set how many requests a model answers at once |
 | `set_model_speculation(id: str, *, body: dict[str, Any])` | `PUT /api/v1/models/{id}/speculation` | Turn guessing ahead Auto or Off for a model |
 | `start_model(id: str, *, body: dict[str, Any] \| None = None)` | `POST /api/v1/models/{id}/start` | Load a model |
 | `stop_model(id: str, *, body: dict[str, Any] \| None = None)` | `POST /api/v1/models/{id}/stop` | Unload a model instance |
@@ -227,6 +229,13 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `get_topic_attempts(id: str, *, days: int \| None = None)` | `GET /api/v1/profiles/{id}/topic-attempts` | A profile's off-topic attempts (#345) |
 | `mark_on_topic(id: str, aid: str)` |  | Mark an off-topic attempt as on topic (#345) |
 | `try_topics(id: str, *, body: dict[str, Any])` | `POST /api/v1/profiles/{id}/try-topics` | Try one message against a profile's topic controls (#345) |
+| `list_projects()` | `GET /api/v1/projects` | The caller's projects |
+| `create_project(*, body: models.ProjectInput \| dict[str, Any])` | `POST /api/v1/projects` | Make a project |
+| `get_project(id: str)` | `GET /api/v1/projects/{id}` | One project |
+| `update_project(id: str, *, body: models.ProjectInput \| dict[str, Any])` | `PATCH /api/v1/projects/{id}` | Change a project |
+| `delete_project(id: str, *, chats: str \| None = None)` | `DELETE /api/v1/projects/{id}` | Delete a project |
+| `add_project_file(id: str, *, body: dict[str, Any])` | `POST /api/v1/projects/{id}/files` | Add a file to a project |
+| `remove_project_file(id: str, name: str)` | `DELETE /api/v1/projects/{id}/files/{name}` | Remove a file from a project |
 | `get_community_ratings()` | `GET /api/v1/ratings/community` | Everyone's ratings of the models here, from hardware like this computer's and overall |
 | `get_remote_access()` | `GET /api/v1/remote-access` | Access from anywhere's setting and its listener (#456) |
 | `check_remote_access()` | `POST /api/v1/remote-access/check` | Check access from anywhere from outside, now (#546) |
@@ -248,6 +257,11 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `reset_app(*, body: dict[str, Any] \| None = None, delete_models: str \| None = None)` |  | Reset application to defaults |
 | `read_aloud(*, body: dict[str, Any])` | `POST /api/v1/speech` | Read text aloud on this computer; the audio is kept as a file in the chat |
 | `transcribe_recording(*, body: dict[str, Any])` | `POST /api/v1/speech/transcribe` | A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155) |
+| `list_swarms(*, project_id: str \| None = None)` |  | The caller's swarms |
+| `start_swarm(*, body: dict[str, Any])` | `POST /api/v1/swarms` | Start a swarm |
+| `get_swarm(id: str)` | `GET /api/v1/swarms/{id}` | One swarm |
+| `delete_swarm(id: str)` | `DELETE /api/v1/swarms/{id}` | Delete a swarm |
+| `stop_swarm(id: str)` | `POST /api/v1/swarms/{id}/stop` | Stop a swarm |
 | `list_tasks()` | `GET /api/v1/tasks` | Recent tasks |
 | `create_task(*, body: dict[str, Any])` | `POST /api/v1/tasks` | Run a prompt as a task |
 | `get_task(id: str)` | `GET /api/v1/tasks/{id}` | One task |
@@ -300,7 +314,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `use_video_build(*, body: dict[str, Any])` | `POST /api/v1/video/setup/build` | Switch stable-diffusion.cpp to its CPU build, or back to its GPU build |
 | `run_hook(token: str)` | `POST /hooks/{token}` | Start the automation a webhook link belongs to |
 | `mcp_server_get()` | `GET /mcp` | Not supported; the server does not open a stream |
-| `mcp_server(*, body: dict[str, Any] \| None = None)` | `POST /mcp` | Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge. |
+| `mcp_server(*, body: dict[str, Any] \| None = None)` | `POST /mcp` | Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm. |
 | `mcp_server_delete()` | `DELETE /mcp` | End an MCP session |
 | `mcp_oauth_callback()` | `GET /mcp/oauth/callback` | Where a tool source's sign-in returns; shows a page that says how it went |
 | `get_source()` | `GET /source` | AGPL corresponding-source offer |

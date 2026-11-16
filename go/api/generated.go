@@ -1005,7 +1005,16 @@ type Conversation struct {
 	ProfileId *string `json:"profile_id,omitempty"`
 
 	// Project The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done
-	Project   *string   `json:"project,omitempty"`
+	Project *string `json:"project,omitempty"`
+
+	// ProjectId The project the chat is in, if any: a chat is in one project at most (contract 1.87, #1136).
+	ProjectId *string `json:"project_id,omitempty"`
+
+	// SwarmId The swarm the chat belongs to: its coordinator's chat, or one of its agents' (contract 1.88, #1135).
+	SwarmId *string `json:"swarm_id,omitempty"`
+
+	// SwarmRole agent:N for an agent's chat; empty for the coordinator's or a chat in no swarm.
+	SwarmRole *string   `json:"swarm_role,omitempty"`
 	Title     string    `json:"title"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -1738,7 +1747,10 @@ type Memory struct {
 	Language *string `json:"language,omitempty"`
 
 	// LocalOnly `local_only` keeps the memory on this computer: work that uses it is never sent to a paired computer (§63).
-	LocalOnly  bool      `json:"local_only"`
+	LocalOnly bool `json:"local_only"`
+
+	// ProjectId The project the memory belongs to, learned in one of its chats, or "" for the person's own memory (#1136).
+	ProjectId  *string   `json:"project_id,omitempty"`
 	SourceRef  *string   `json:"source_ref,omitempty"`
 	SourceType string    `json:"source_type"`
 	UpdatedAt  time.Time `json:"updated_at"`
@@ -1842,6 +1854,12 @@ type MessageMeta struct {
 	// Files Attached to a question or produced with an answer.
 	Files *[]FileRef `json:"files,omitempty"`
 
+	// LinkCheck With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
+	LinkCheck *struct {
+		Dead    *[]string `json:"dead,omitempty"`
+		Unknown *[]string `json:"unknown,omitempty"`
+	} `json:"link_check,omitempty"`
+
 	// Notice `notice` tells the user something changed that may affect the answer, such as a smaller model answering after the chosen one failed.
 	Notice *string `json:"notice,omitempty"`
 
@@ -1865,6 +1883,9 @@ type MessageMeta struct {
 
 // Model A catalog or installed model.
 type Model struct {
+	// AlwaysRunning A chat model installed on this computer that is kept loaded (#966, contract 1.94).
+	AlwaysRunning *bool `json:"always_running,omitempty"`
+
 	// Capabilities Describes model features.
 	Capabilities struct {
 		// AnswersFirst Thinks only when a chat asks it to, such as Qwen 3.5 (#593, contract 1.68): thinking on in POST /chat, or a reasoning_effort other than none.
@@ -1932,6 +1953,9 @@ type Model struct {
 	Runtime          *[]string `json:"runtime,omitempty"`
 	SizeBytes        *int64    `json:"size_bytes,omitempty"`
 
+	// Slots How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models.
+	Slots *int `json:"slots,omitempty"`
+
 	// Source Describes where a model artifact comes from.
 	Source *struct {
 		Format *string `json:"format,omitempty"`
@@ -1952,6 +1976,15 @@ type Model struct {
 	// Tags coding, general, reasoning, vision, fast, large
 	Tags    *[]string `json:"tags,omitempty"`
 	Variant *string   `json:"variant,omitempty"`
+}
+
+// ModelAlwaysRunning Whether a model is kept running (#966).
+type ModelAlwaysRunning struct {
+	AlwaysRunning bool `json:"always_running"`
+
+	// MemoryLeftBytes This computer's memory less what the models kept running need, when it's known (contract 1.95)
+	MemoryLeftBytes *int   `json:"memory_left_bytes,omitempty"`
+	ModelId         string `json:"model_id"`
 }
 
 // ModelContext A model's context window choice (#962).
@@ -2088,6 +2121,12 @@ type ModelRating struct {
 	Stars     *int       `json:"stars,omitempty"`
 	Tags      []string   `json:"tags"`
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+}
+
+// ModelSlots How many requests a model answers at once (#1135).
+type ModelSlots struct {
+	ModelId string `json:"model_id"`
+	Slots   int    `json:"slots"`
 }
 
 // ModelSpeculation A model's guess-ahead choice (#835).
@@ -2803,6 +2842,55 @@ type ProfilePins struct {
 	Roles map[string][]string `json:"roles"`
 }
 
+// Project Related chats kept together with what they share: instructions, files, a folder on the Toskar computer, a default profile and model, and a memory of their own (contract 1.87, #1136). It belongs to the person who made it.
+type Project struct {
+	// ChatCount How many chats are in the project.
+	ChatCount int       `json:"chat_count"`
+	CreatedAt time.Time `json:"created_at"`
+
+	// Files The files added to the project's knowledge.
+	Files []ProjectFile `json:"files"`
+
+	// Folder Where the project's chats work on the Toskar computer
+	Folder *string `json:"folder,omitempty"`
+	Id     string  `json:"id"`
+
+	// Instructions The person's own instructions for every chat in the project. They come after a profile's and before the person's style.
+	Instructions string `json:"instructions"`
+
+	// Knowledge The ids of knowledge sources linked to the project, which its chats search as well as its files.
+	Knowledge []string `json:"knowledge"`
+
+	// MemoryOff `memory_off` keeps the project's chats from saving or reading the project's own memory. The person's memory follows each chat's Memory control.
+	MemoryOff bool    `json:"memory_off"`
+	ModelId   *string `json:"model_id,omitempty"`
+	Name      string  `json:"name"`
+	ProfileId *string `json:"profile_id,omitempty"`
+
+	// UpdatedAt The project's last activity: a change to it, or to one of its chats.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ProjectFile One file in a project's knowledge.
+type ProjectFile struct {
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+}
+
+// ProjectInput A project's fields; one left out stays as it is.
+type ProjectInput struct {
+	// Folder The full path of a folder on the Toskar computer for the project's chats to work in, or empty for none. Needs the admin role.
+	Folder       *string `json:"folder,omitempty"`
+	Instructions *string `json:"instructions,omitempty"`
+
+	// Knowledge Knowledge source ids to link. Needs the member role.
+	Knowledge *[]string `json:"knowledge,omitempty"`
+	MemoryOff *bool     `json:"memory_off,omitempty"`
+	ModelId   *string   `json:"model_id,omitempty"`
+	Name      *string   `json:"name,omitempty"`
+	ProfileId *string   `json:"profile_id,omitempty"`
+}
+
 // PromptCache How much of each chat turn's prompt the models on this computer read from their prompt cache instead of processing again (#838), over chats' later turns.
 type PromptCache struct {
 	Models []PromptCacheModel `json:"models"`
@@ -2852,6 +2940,33 @@ type QualityResult struct {
 		Backend       *string `json:"backend,omitempty"`
 		ContextWindow *int    `json:"context_window,omitempty"`
 
+		// Contexts The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it
+		Contexts *[]struct {
+			// Context The window, in tokens
+			Context                  int      `json:"context"`
+			EffectiveTokensPerSecond *float32 `json:"effective_tokens_per_second,omitempty"`
+			FirstTokenMs             *float32 `json:"first_token_ms,omitempty"`
+			GpuLayers                *int     `json:"gpu_layers,omitempty"`
+			GpuLayersTotal           *int     `json:"gpu_layers_total,omitempty"`
+			GpuMemoryBytes           *int64   `json:"gpu_memory_bytes,omitempty"`
+			PromptTokens             *int     `json:"prompt_tokens,omitempty"`
+			PromptTokensPerSecond    *float32 `json:"prompt_tokens_per_second,omitempty"`
+
+			// Runs Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+			Runs              string   `json:"runs"`
+			SystemMemoryBytes *int64   `json:"system_memory_bytes,omitempty"`
+			TokensPerSecond   *float32 `json:"tokens_per_second,omitempty"`
+
+			// Why Why it's short of full: window, a size past the model's own, or out_of_memory
+			Why *string `json:"why,omitempty"`
+		} `json:"contexts,omitempty"`
+
+		// Devices The GPUs it ran on, every one when there are several (contract 1.89)
+		Devices *[]string `json:"devices,omitempty"`
+
+		// DraftAccepted The share of the draft's guesses the model kept, 0 to 1, when speculation is on (contract 1.89)
+		DraftAccepted *float32 `json:"draft_accepted,omitempty"`
+
 		// EffectiveTokensPerSecond The answer's tokens over the time from sending to the last one
 		EffectiveTokensPerSecond float32 `json:"effective_tokens_per_second"`
 
@@ -2861,12 +2976,21 @@ type QualityResult struct {
 		GpuLayersTotal int     `json:"gpu_layers_total"`
 		GpuMemoryBytes *int64  `json:"gpu_memory_bytes,omitempty"`
 
+		// LlamaCpp The llama.cpp release it ran on, such as b12361 (contract 1.89)
+		LlamaCpp *string `json:"llama_cpp,omitempty"`
+
 		// PromptTokens The prompt it was measured with
 		PromptTokens int `json:"prompt_tokens"`
 
 		// PromptTokensPerSecond How fast it read the prompt
 		PromptTokensPerSecond float32 `json:"prompt_tokens_per_second"`
 		Quantization          *string `json:"quantization,omitempty"`
+
+		// Speculation Whether a draft guessed ahead during the runs (contract 1.89) Known values: `on`, `off`; others may be added.
+		Speculation *string `json:"speculation,omitempty"`
+
+		// SystemMemoryBytes The system memory the model's process held after the runs, measured (contract 1.90). Where the graphics share the computer's memory, as on a Mac, it includes what gpu_memory_bytes counts.
+		SystemMemoryBytes *int64 `json:"system_memory_bytes,omitempty"`
 
 		// TokensPerSecond How fast it wrote the answer
 		TokensPerSecond float32 `json:"tokens_per_second"`
@@ -3063,18 +3187,26 @@ type RunningModelView struct {
 	} `json:"acceleration,omitempty"`
 
 	// Accelerator The devices the model is on, or CPU
-	Accelerator *string    `json:"accelerator,omitempty"`
-	DisplayName string     `json:"display_name"`
-	Endpoint    *string    `json:"endpoint,omitempty"`
-	InstanceId  string     `json:"instance_id"`
-	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
-	MemoryBytes *int64     `json:"memory_bytes,omitempty"`
+	Accelerator *string `json:"accelerator,omitempty"`
+
+	// AlwaysRunning A model kept loaded on its computer (#966, contract 1.96)
+	AlwaysRunning *bool      `json:"always_running,omitempty"`
+	DisplayName   string     `json:"display_name"`
+	Endpoint      *string    `json:"endpoint,omitempty"`
+	InstanceId    string     `json:"instance_id"`
+	LastUsedAt    *time.Time `json:"last_used_at,omitempty"`
+
+	// MemoryBytes The catalog's estimate of the memory it needs
+	MemoryBytes *int64 `json:"memory_bytes,omitempty"`
 
 	// Mode "embedding" or "reranking" for a supporting model serving knowledge search, and empty for a chat model. Known values: `embedding`, `reranking`; others may be added.
 	Mode     *string `json:"mode,omitempty"`
 	ModelId  string  `json:"model_id"`
 	NodeId   string  `json:"node_id"`
 	NodeName string  `json:"node_name"`
+
+	// ResidentBytes The system memory its process holds, measured a few seconds ago at most (contract 1.90). On Linux, the memory it allocated, without the model file it maps.
+	ResidentBytes *int64 `json:"resident_bytes,omitempty"`
 
 	// SpeedTokPerSec Generation speed in the model's latest replies
 	SpeedTokPerSec *float32  `json:"speed_tok_per_sec,omitempty"`
@@ -3305,6 +3437,133 @@ type StoreShelf struct {
 	// Id What it's for. Known values: `picks`, `popular`, `top_rated`, `new`, `everyday`, `code`, `sees`, `small`, `tested`; others may be added.
 	Id     string       `json:"id"`
 	Models []StoreModel `json:"models"`
+}
+
+// Swarm Several agents working at once on one request, each in a chat of its own in the coordinator chat's project (contract 1.88, #1135). It belongs to the person who started it.
+type Swarm struct {
+	// Agents The swarm's agents, in order. Empty until the coordinator has planned the parts.
+	Agents []SwarmAgent `json:"agents"`
+
+	// Applied The result is in the person's folder as uncommitted changes, after they allowed it.
+	Applied *bool `json:"applied,omitempty"`
+
+	// Branch A task swarm's result: the agents' work merged, or a race winner's. Empty for a question, or a folder that isn't in Git.
+	Branch *string `json:"branch,omitempty"`
+
+	// Budget What a swarm may use (contract 1.88, #1135).
+	Budget SwarmBudget `json:"budget"`
+
+	// Checks How the project's checks went on the result. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+	Checks *string `json:"checks,omitempty"`
+
+	// Conflicts Agents' changes that couldn't be merged, each still on its agent's branch.
+	Conflicts *[]SwarmConflict `json:"conflicts,omitempty"`
+
+	// ConversationId The coordinator's chat, where the merged answer goes.
+	ConversationId string     `json:"conversation_id"`
+	CreatedAt      time.Time  `json:"created_at"`
+	FinishedAt     *time.Time `json:"finished_at,omitempty"`
+
+	// Folder The folder a task swarm worked in. In a Git repository each agent worked on a branch of its own, kept for 7 days or until the swarm is deleted.
+	Folder *string `json:"folder,omitempty"`
+	Id     string  `json:"id"`
+
+	// Mode Known values: `split`, `race`; others may be added.
+	Mode string `json:"mode"`
+
+	// Note `note` says why the swarm ran differently than asked, such as running as one agent.
+	Note      *string `json:"note,omitempty"`
+	ProjectId string  `json:"project_id"`
+	Request   string  `json:"request"`
+	Seconds   float32 `json:"seconds"`
+
+	// Status Known values: `running`, `merging`, `done`, `stopped`, `failed`; others may be added.
+	Status string `json:"status"`
+
+	// Tokens Every agent's tokens so far.
+	Tokens int `json:"tokens"`
+
+	// Waiting Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by.
+	Waiting *[]map[string]interface{} `json:"waiting,omitempty"`
+
+	// Winner A race's winning agent, 0 when the answers were merged or it's not a race.
+	Winner *int `json:"winner,omitempty"`
+}
+
+// SwarmAgent One agent in a swarm: its part, where it runs, and how it went (contract 1.88, #1135).
+type SwarmAgent struct {
+	// Agent Its number, from 1.
+	Agent int `json:"agent"`
+
+	// Branch A task agent's own branch, with its work committed.
+	Branch *string `json:"branch,omitempty"`
+
+	// Checks How the project's checks went on its branch in a race. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+	Checks *string `json:"checks,omitempty"`
+
+	// ConversationId The agent's own chat, which can be opened and continued.
+	ConversationId string  `json:"conversation_id"`
+	ModelId        *string `json:"model_id,omitempty"`
+	NodeId         *string `json:"node_id,omitempty"`
+
+	// Part What it was asked to do: its part, or in a race the whole request.
+	Part string `json:"part"`
+
+	// Paths The files or folders a task's part expects to change.
+	Paths *[]string `json:"paths,omitempty"`
+
+	// Role agent:N.
+	Role    string  `json:"role"`
+	Seconds float32 `json:"seconds"`
+
+	// Status Known values: `queued`, `running`, `done`, `failed`, `stopped`, `out_of_budget`; others may be added.
+	Status string `json:"status"`
+
+	// Summary The start of its answer.
+	Summary *string `json:"summary,omitempty"`
+	Tokens  int     `json:"tokens"`
+}
+
+// SwarmBudget What a swarm may use (contract 1.88, #1135).
+type SwarmBudget struct {
+	// Agents The most agents it has.
+	Agents int `json:"agents"`
+
+	// Minutes The most it may run.
+	Minutes int `json:"minutes"`
+
+	// Tokens The most the whole swarm may use.
+	Tokens int `json:"tokens"`
+}
+
+// SwarmConflict An agent's change that couldn't be merged with the others', even by a fix-up agent (contract 1.88, #1135).
+type SwarmConflict struct {
+	// Agent The agent whose change wasn't merged.
+	Agent int `json:"agent"`
+
+	// Branch Has its change.
+	Branch string `json:"branch"`
+
+	// Files The files that conflicted.
+	Files []string `json:"files"`
+}
+
+// SwarmPolicy Swarm controls (contract 1.88, #1135): a profile's orchestration.swarm, or one swarm's budget. Every field is optional; empty keeps the default.
+type SwarmPolicy struct {
+	// Agents The most agents. Empty is the profile's max_workers
+	Agents *int `json:"agents,omitempty"`
+
+	// Minutes The most a swarm may run. Empty is 5 for a question and 30 for a task.
+	Minutes *int `json:"minutes,omitempty"`
+
+	// Mode split: a coordinator splits the job into parts that agents do at once. race: agents on different models each do the whole request, and the best answer wins or they're merged. Empty is split. Known values: `split`, `race`; others may be added.
+	Mode *string `json:"mode,omitempty"`
+
+	// Models A race's models, one agent each, in order. A split's agents take them in turn.
+	Models *[]string `json:"models,omitempty"`
+
+	// Tokens The most the whole swarm may use. Empty is 400000.
+	Tokens *int `json:"tokens,omitempty"`
 }
 
 // TLSInfo How the API speaks HTTPS.
@@ -3870,8 +4129,12 @@ type ChatJSONBody struct {
 	Execution *string `json:"execution,omitempty"`
 
 	// Live With stream, send the answer as it's written, with a replace event when what was shown changes (#1006, contract 1.77). Without it, the answer comes whole when it's ready. Some turns stay whole anyway: topic-enforcing profiles, portals, Deliberate, Team, and answers that must be JSON.
-	Live    *bool  `json:"live,omitempty"`
-	Message string `json:"message"`
+	Live *bool `json:"live,omitempty"`
+
+	// MakeRoom Stop the models kept running on this computer when this answer's model doesn't fit beside them (contract 1.98, #966). They load again once that model is unloaded. Needs the admin role. Offered after a model_health failure that names kept_running_model_id.
+	MakeRoom *bool    `json:"make_room,omitempty"`
+	Message  string   `json:"message"`
+	MinP     *float32 `json:"min_p,omitempty"`
 
 	// ModelId A model id, auto, or sai:<slug>
 	ModelId *string `json:"model_id,omitempty"`
@@ -3880,15 +4143,29 @@ type ChatJSONBody struct {
 	ParentId  *string `json:"parent_id,omitempty"`
 	ProfileId *string `json:"profile_id,omitempty"`
 
+	// ProjectId One of the caller's projects for the turn (contract 1.87, #1136): a chat not yet in a project joins it, and without conversation_id the turn uses it without saving a chat. A chat already in a project stays in its own.
+	ProjectId *string `json:"project_id,omitempty"`
+
 	// RetryOf Ask this answer's question again, as a new version of the answer; message may be empty
 	RetryOf *string `json:"retry_of,omitempty"`
-	Stream  *bool   `json:"stream,omitempty"`
+
+	// Seed As on /v1/chat/completions (#839, contract 1.93)
+	Seed   *int  `json:"seed,omitempty"`
+	Stream *bool `json:"stream,omitempty"`
+
+	// Swarm Run this turn as a swarm (contract 1.88, #1135): agents in chats of their own work at once, and the answer merges what they found. Needs the member role and a conversation_id. A task in a folder runs as one for now. Progress arrives as swarm.* events on /events. Known values: `split`, `race`; others may be added.
+	Swarm *string `json:"swarm,omitempty"`
+
+	// Temperature For the answer; 0 gives the same most likely answer every time (#839, contract 1.93)
+	Temperature *float32 `json:"temperature,omitempty"`
 
 	// Thinking off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
 	Thinking *string `json:"thinking,omitempty"`
 
 	// TimeZone The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
-	TimeZone *string `json:"time_zone,omitempty"`
+	TimeZone *string  `json:"time_zone,omitempty"`
+	TopK     *int     `json:"top_k,omitempty"`
+	TopP     *float32 `json:"top_p,omitempty"`
 }
 
 // ChatParams defines parameters for Chat.
@@ -3907,10 +4184,22 @@ type ConnectServiceJSONBody struct {
 	Values *map[string]string `json:"values,omitempty"`
 }
 
+// ListConversationsParams defines parameters for ListConversations.
+type ListConversationsParams struct {
+	// ProjectId Only the chats in this project (contract 1.87,
+	ProjectId *string `form:"project_id,omitempty" json:"project_id,omitempty"`
+
+	// SwarmId A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out.
+	SwarmId *string `form:"swarm_id,omitempty" json:"swarm_id,omitempty"`
+}
+
 // CreateConversationJSONBody defines parameters for CreateConversation.
 type CreateConversationJSONBody struct {
 	ModelId   *string `json:"model_id,omitempty"`
 	ProfileId *string `json:"profile_id,omitempty"`
+
+	// ProjectId Start the chat in one of the caller's projects (contract 1.87,
+	ProjectId *string `json:"project_id,omitempty"`
 	Title     *string `json:"title,omitempty"`
 }
 
@@ -3928,7 +4217,10 @@ type UpdateConversationJSONBody struct {
 
 	// Project The full path of a folder on the Toskar computer for this chat to work in, or empty for none. Needs the admin role (contract 1.85).
 	Project *string `json:"project,omitempty"`
-	Title   *string `json:"title,omitempty"`
+
+	// ProjectId Move the chat into one of the caller's projects, or empty to take it out of its project (contract 1.87,
+	ProjectId *string `json:"project_id,omitempty"`
+	Title     *string `json:"title,omitempty"`
 }
 
 // EditConversationSummaryJSONBody defines parameters for EditConversationSummary.
@@ -4199,6 +4491,9 @@ type UpdateMemoryJSONBody struct {
 	Content   *string `json:"content,omitempty"`
 	Enabled   *bool   `json:"enabled,omitempty"`
 	LocalOnly *bool   `json:"local_only,omitempty"`
+
+	// ProjectId Empty moves a project's memory to the person's own (contract 1.87, #1136). One the person already has is kept instead, and that one is returned. A memory can't be moved into a project.
+	ProjectId *string `json:"project_id,omitempty"`
 }
 
 // BrowseModelsParams defines parameters for BrowseModels.
@@ -4263,6 +4558,11 @@ type UpdateAddedModelJSONBody struct {
 	Tags        *[]string `json:"tags,omitempty"`
 }
 
+// SetModelAlwaysRunningJSONBody defines parameters for SetModelAlwaysRunning.
+type SetModelAlwaysRunningJSONBody struct {
+	AlwaysRunning bool `json:"always_running"`
+}
+
 // SetModelContextJSONBody defines parameters for SetModelContext.
 type SetModelContextJSONBody struct {
 	// ContextWindow Tokens, up to the model's own window; 0 for Auto.
@@ -4296,6 +4596,11 @@ type PutModelRatingJSONBody struct {
 	Share        *bool        `json:"share,omitempty"`
 	Stars        int          `json:"stars"`
 	Tags         *[]RatingTag `json:"tags,omitempty"`
+}
+
+// SetModelSlotsJSONBody defines parameters for SetModelSlots.
+type SetModelSlotsJSONBody struct {
+	Slots int `json:"slots"`
 }
 
 // SetModelSpeculationJSONBody defines parameters for SetModelSpeculation.
@@ -4486,6 +4791,24 @@ type TryTopicsJSONBody struct {
 	Topics  *map[string]interface{} `json:"topics,omitempty"`
 }
 
+// DeleteProjectParams defines parameters for DeleteProject.
+type DeleteProjectParams struct {
+	// Chats delete deletes the project's chats too, with their files.
+	Chats *string `form:"chats,omitempty" json:"chats,omitempty"`
+}
+
+// AddProjectFileJSONBody defines parameters for AddProjectFile.
+type AddProjectFileJSONBody struct {
+	// ContentBase64 Another file's bytes, such as a PDF's, in place of text
+	ContentBase64 *string `json:"content_base64,omitempty"`
+
+	// Filename Its name; the extension picks the reader, such as .md, .csv, or .pdf
+	Filename string `json:"filename"`
+
+	// Text A text file's content
+	Text *string `json:"text,omitempty"`
+}
+
 // SetRoleCapabilitiesJSONBody defines parameters for SetRoleCapabilities.
 type SetRoleCapabilitiesJSONBody map[string]bool
 
@@ -4532,6 +4855,28 @@ type TranscribeRecordingJSONBody struct {
 
 	// Language A hint such as en or de; empty detects the language
 	Language *string `json:"language,omitempty"`
+}
+
+// ListSwarmsParams defines parameters for ListSwarms.
+type ListSwarmsParams struct {
+	// ProjectId Only this project's swarms.
+	ProjectId *string `form:"project_id,omitempty" json:"project_id,omitempty"`
+}
+
+// StartSwarmJSONBody defines parameters for StartSwarm.
+type StartSwarmJSONBody struct {
+	// Budget Swarm controls (contract 1.88, #1135): a profile's orchestration.swarm, or one swarm's budget. Every field is optional; empty keeps the default.
+	Budget *SwarmPolicy `json:"budget,omitempty"`
+
+	// ConversationId The caller's chat to run it in; empty starts one.
+	ConversationId *string `json:"conversation_id,omitempty"`
+
+	// Mode Empty is the profile's, or split. Known values: `split`, `race`; others may be added.
+	Mode *string `json:"mode,omitempty"`
+
+	// ProjectId One of the caller's projects for a chat not yet in one.
+	ProjectId *string `json:"project_id,omitempty"`
+	Prompt    string  `json:"prompt"`
 }
 
 // CreateTaskJSONBody defines parameters for CreateTask.
@@ -4702,7 +5047,10 @@ type OpenaiChatCompletionsJSONBody struct {
 		Role    *string `json:"role,omitempty"`
 	} `json:"messages"`
 
-	// Model auto, profile:<id>, sai:<slug>, a model id, or raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71)
+	// MinP Drops tokens below this share of the most likely one's chance; 0 or left out, the model's own (#839, contract 1.93)
+	MinP *float32 `json:"min_p,omitempty"`
+
+	// Model auto, profile:<id>, sai:<slug>, a model id, raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:<profile> (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id
 	Model string `json:"model"`
 
 	// ReasoningEffort Effort: minimal and low give Fast, medium Balanced, and high Thorough. none answers at Fast, and a reasoning model answers without thinking first (#840, contract 1.60). Any other value asks a model that answers first by default, such as Qwen 3.5, to think (#593). Known values: `none`, `minimal`, `low`, `medium`, `high`; others may be added.
@@ -4716,6 +5064,9 @@ type OpenaiChatCompletionsJSONBody struct {
 		// Type Known values: `text`, `json_object`, `json_schema`; others may be added.
 		Type *string `json:"type,omitempty"`
 	} `json:"response_format,omitempty"`
+
+	// Seed Repeats an answer from one model with the same settings, as far as llama.cpp can; not promised under load (#839, contract 1.93)
+	Seed   *int  `json:"seed,omitempty"`
 	Stream *bool `json:"stream,omitempty"`
 
 	// StreamOptions include_usage ends a stream with a chunk of no choices and the usage (contract 1.58)
@@ -4725,6 +5076,12 @@ type OpenaiChatCompletionsJSONBody struct {
 
 	// Temperature For the answer; 0 gives the same most likely answer every time. Left out, the model's default.
 	Temperature *float32 `json:"temperature,omitempty"`
+
+	// TopK Picks from the k most likely tokens; 0 or left out, the model's own (#839, contract 1.93)
+	TopK *int `json:"top_k,omitempty"`
+
+	// TopP Nucleus sampling for the answer; 0 or left out, the model's own (#839, contract 1.93)
+	TopP *float32 `json:"top_p,omitempty"`
 
 	// Toskar The assistant's own controls for an OpenAI-compatible request, sent as toskar (or yggdrasil, its name from before the rename)
 	Toskar *AssistantOptions `json:"toskar,omitempty"`
@@ -4924,6 +5281,9 @@ type DeleteModelJSONRequestBody DeleteModelJSONBody
 // UpdateAddedModelJSONRequestBody defines body for UpdateAddedModel for application/json ContentType.
 type UpdateAddedModelJSONRequestBody UpdateAddedModelJSONBody
 
+// SetModelAlwaysRunningJSONRequestBody defines body for SetModelAlwaysRunning for application/json ContentType.
+type SetModelAlwaysRunningJSONRequestBody SetModelAlwaysRunningJSONBody
+
 // SetModelContextJSONRequestBody defines body for SetModelContext for application/json ContentType.
 type SetModelContextJSONRequestBody SetModelContextJSONBody
 
@@ -4935,6 +5295,9 @@ type SetModelProjectorJSONRequestBody SetModelProjectorJSONBody
 
 // PutModelRatingJSONRequestBody defines body for PutModelRating for application/json ContentType.
 type PutModelRatingJSONRequestBody PutModelRatingJSONBody
+
+// SetModelSlotsJSONRequestBody defines body for SetModelSlots for application/json ContentType.
+type SetModelSlotsJSONRequestBody SetModelSlotsJSONBody
 
 // SetModelSpeculationJSONRequestBody defines body for SetModelSpeculation for application/json ContentType.
 type SetModelSpeculationJSONRequestBody SetModelSpeculationJSONBody
@@ -5014,6 +5377,15 @@ type UpdateProfileJSONRequestBody = AIProfile
 // TryTopicsJSONRequestBody defines body for TryTopics for application/json ContentType.
 type TryTopicsJSONRequestBody TryTopicsJSONBody
 
+// CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
+type CreateProjectJSONRequestBody = ProjectInput
+
+// UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
+type UpdateProjectJSONRequestBody = ProjectInput
+
+// AddProjectFileJSONRequestBody defines body for AddProjectFile for application/json ContentType.
+type AddProjectFileJSONRequestBody AddProjectFileJSONBody
+
 // SetRoleCapabilitiesJSONRequestBody defines body for SetRoleCapabilities for application/json ContentType.
 type SetRoleCapabilitiesJSONRequestBody SetRoleCapabilitiesJSONBody
 
@@ -5034,6 +5406,9 @@ type ReadAloudJSONRequestBody ReadAloudJSONBody
 
 // TranscribeRecordingJSONRequestBody defines body for TranscribeRecording for application/json ContentType.
 type TranscribeRecordingJSONRequestBody TranscribeRecordingJSONBody
+
+// StartSwarmJSONRequestBody defines body for StartSwarm for application/json ContentType.
+type StartSwarmJSONRequestBody StartSwarmJSONBody
 
 // CreateTaskJSONRequestBody defines body for CreateTask for application/json ContentType.
 type CreateTaskJSONRequestBody CreateTaskJSONBody
@@ -6077,7 +6452,7 @@ type ClientInterface interface {
 	// ListConversations List conversations
 	//
 	// Corresponds with GET /api/v1/conversations (the `ListConversations` operationId).
-	ListConversations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListConversations(ctx context.Context, params *ListConversationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateConversationWithBody Create conversation
 	//
@@ -6967,6 +7342,24 @@ type ClientInterface interface {
 	// Corresponds with PATCH /api/v1/models/{id} (the `UpdateAddedModel` operationId).
 	UpdateAddedModel(ctx context.Context, id string, body UpdateAddedModelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SetModelAlwaysRunningWithBody Keep a model running
+	//
+	// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /api/v1/models/{id}/always-running (the `SetModelAlwaysRunning` operationId).
+	SetModelAlwaysRunningWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetModelAlwaysRunning Keep a model running
+	//
+	// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /api/v1/models/{id}/always-running (the `SetModelAlwaysRunning` operationId).
+	SetModelAlwaysRunning(ctx context.Context, id string, body SetModelAlwaysRunningJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SetModelContextWithBody Set a model's context window
 	//
 	// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -7049,6 +7442,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/models/{id}/rating/dismiss (the `DismissModelRating` operationId).
 	DismissModelRating(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetModelSlotsWithBody Set how many requests a model answers at once
+	//
+	// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /api/v1/models/{id}/slots (the `SetModelSlots` operationId).
+	SetModelSlotsWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetModelSlots Set how many requests a model answers at once
+	//
+	// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /api/v1/models/{id}/slots (the `SetModelSlots` operationId).
+	SetModelSlots(ctx context.Context, id string, body SetModelSlotsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetModelSpeculationWithBody Turn guessing ahead Auto or Off for a model
 	//
@@ -7746,6 +8157,80 @@ type ClientInterface interface {
 	// Corresponds with POST /api/v1/profiles/{id}/try-topics (the `TryTopics` operationId).
 	TryTopics(ctx context.Context, id string, body TryTopicsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListProjects The caller's projects
+	//
+	// Newest activity first, with how many chats each has (contract 1.87,
+	//
+	// Corresponds with GET /api/v1/projects (the `ListProjects` operationId).
+	ListProjects(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProjectWithBody Make a project
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/projects (the `CreateProject` operationId).
+	CreateProjectWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProject Make a project
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/projects (the `CreateProject` operationId).
+	CreateProject(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteProject Delete a project
+	//
+	// Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+	//
+	// Corresponds with DELETE /api/v1/projects/{id} (the `DeleteProject` operationId).
+	DeleteProject(ctx context.Context, id string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetProject One project
+	//
+	// Corresponds with GET /api/v1/projects/{id} (the `GetProject` operationId).
+	GetProject(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateProjectWithBody Change a project
+	//
+	// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /api/v1/projects/{id} (the `UpdateProject` operationId).
+	UpdateProjectWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateProject Change a project
+	//
+	// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /api/v1/projects/{id} (the `UpdateProject` operationId).
+	UpdateProject(ctx context.Context, id string, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddProjectFileWithBody Add a file to a project
+	//
+	// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/projects/{id}/files (the `AddProjectFile` operationId).
+	AddProjectFileWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddProjectFile Add a file to a project
+	//
+	// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/projects/{id}/files (the `AddProjectFile` operationId).
+	AddProjectFile(ctx context.Context, id string, body AddProjectFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveProjectFile Remove a file from a project
+	//
+	// Corresponds with DELETE /api/v1/projects/{id}/files/{name} (the `RemoveProjectFile` operationId).
+	RemoveProjectFile(ctx context.Context, id string, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCommunityRatings Everyone's ratings of the models here, from hardware like this computer's and overall
 	//
 	// Empty unless `community_ratings` is on. The public summary is downloaded at most once a day; when that fails, the last one is used and `error` says why.
@@ -7945,6 +8430,52 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/speech/transcribe (the `TranscribeRecording` operationId).
 	TranscribeRecording(ctx context.Context, body TranscribeRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListSwarms The caller's swarms
+	//
+	// Newest first (contract 1.88,
+	//
+	// Corresponds with GET /api/v1/swarms (the `ListSwarms` operationId).
+	ListSwarms(ctx context.Context, params *ListSwarmsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartSwarmWithBody Start a swarm
+	//
+	// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/swarms (the `StartSwarm` operationId).
+	StartSwarmWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartSwarm Start a swarm
+	//
+	// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/swarms (the `StartSwarm` operationId).
+	StartSwarm(ctx context.Context, body StartSwarmJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteSwarm Delete a swarm
+	//
+	// Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+	//
+	// Corresponds with DELETE /api/v1/swarms/{id} (the `DeleteSwarm` operationId).
+	DeleteSwarm(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSwarm One swarm
+	//
+	// With its agents, their status, and what they're waiting on.
+	//
+	// Corresponds with GET /api/v1/swarms/{id} (the `GetSwarm` operationId).
+	GetSwarm(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StopSwarm Stop a swarm
+	//
+	// Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+	//
+	// Corresponds with POST /api/v1/swarms/{id}/stop (the `StopSwarm` operationId).
+	StopSwarm(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTasks Recent tasks
 	//
@@ -8356,18 +8887,18 @@ type ClientInterface interface {
 	// Corresponds with GET /mcp (the `McpServerGet` operationId).
 	McpServerGet(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// McpServerWithBody Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+	// McpServerWithBody Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 	//
-	// Checked like /v1. A request with an Origin header from another site is refused.
+	// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /mcp (the `McpServer` operationId).
 	McpServerWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// McpServer Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+	// McpServer Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 	//
-	// Checked like /v1. A request with an Origin header from another site is refused.
+	// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -8404,7 +8935,7 @@ type ClientInterface interface {
 
 	// AnthropicMessagesWithBody Anthropic-compatible messages, for coding agents
 	//
-	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -8413,7 +8944,7 @@ type ClientInterface interface {
 
 	// AnthropicMessages Anthropic-compatible messages, for coding agents
 	//
-	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -8429,14 +8960,14 @@ type ClientInterface interface {
 
 	// OpenaiListModels OpenAI-compatible model list
 	//
-	// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+	// auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
 	//
 	// Corresponds with GET /v1/models (the `OpenaiListModels` operationId).
 	OpenaiListModels(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// OpenaiResponsesWithBody OpenAI Responses, for coding agents
 	//
-	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -8445,7 +8976,7 @@ type ClientInterface interface {
 
 	// OpenaiResponses OpenAI Responses, for coding agents
 	//
-	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -9243,8 +9774,8 @@ func (c *Client) CheckConnector(ctx context.Context, id string, reqEditors ...Re
 // ListConversations List conversations
 //
 // Corresponds with GET /api/v1/conversations (the `ListConversations` operationId).
-func (c *Client) ListConversations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListConversationsRequest(c.Server)
+func (c *Client) ListConversations(ctx context.Context, params *ListConversationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListConversationsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -11463,6 +11994,44 @@ func (c *Client) UpdateAddedModel(ctx context.Context, id string, body UpdateAdd
 	return c.Client.Do(req)
 }
 
+// SetModelAlwaysRunningWithBody Keep a model running
+//
+// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /api/v1/models/{id}/always-running (the `SetModelAlwaysRunning` operationId).
+func (c *Client) SetModelAlwaysRunningWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetModelAlwaysRunningRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetModelAlwaysRunning Keep a model running
+//
+// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /api/v1/models/{id}/always-running (the `SetModelAlwaysRunning` operationId).
+func (c *Client) SetModelAlwaysRunning(ctx context.Context, id string, body SetModelAlwaysRunningJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetModelAlwaysRunningRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SetModelContextWithBody Set a model's context window
 //
 // The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -11646,6 +12215,44 @@ func (c *Client) PutModelRating(ctx context.Context, id string, body PutModelRat
 // Corresponds with POST /api/v1/models/{id}/rating/dismiss (the `DismissModelRating` operationId).
 func (c *Client) DismissModelRating(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDismissModelRatingRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetModelSlotsWithBody Set how many requests a model answers at once
+//
+// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /api/v1/models/{id}/slots (the `SetModelSlots` operationId).
+func (c *Client) SetModelSlotsWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetModelSlotsRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetModelSlots Set how many requests a model answers at once
+//
+// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /api/v1/models/{id}/slots (the `SetModelSlots` operationId).
+func (c *Client) SetModelSlots(ctx context.Context, id string, body SetModelSlotsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetModelSlotsRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -13392,6 +13999,180 @@ func (c *Client) TryTopics(ctx context.Context, id string, body TryTopicsJSONReq
 	return c.Client.Do(req)
 }
 
+// ListProjects The caller's projects
+//
+// Newest activity first, with how many chats each has (contract 1.87,
+//
+// Corresponds with GET /api/v1/projects (the `ListProjects` operationId).
+func (c *Client) ListProjects(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProjectWithBody Make a project
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/projects (the `CreateProject` operationId).
+func (c *Client) CreateProjectWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProject Make a project
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/projects (the `CreateProject` operationId).
+func (c *Client) CreateProject(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteProject Delete a project
+//
+// Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+//
+// Corresponds with DELETE /api/v1/projects/{id} (the `DeleteProject` operationId).
+func (c *Client) DeleteProject(ctx context.Context, id string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteProjectRequest(c.Server, id, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetProject One project
+//
+// Corresponds with GET /api/v1/projects/{id} (the `GetProject` operationId).
+func (c *Client) GetProject(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProjectRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateProjectWithBody Change a project
+//
+// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /api/v1/projects/{id} (the `UpdateProject` operationId).
+func (c *Client) UpdateProjectWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateProjectRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateProject Change a project
+//
+// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /api/v1/projects/{id} (the `UpdateProject` operationId).
+func (c *Client) UpdateProject(ctx context.Context, id string, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateProjectRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddProjectFileWithBody Add a file to a project
+//
+// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/projects/{id}/files (the `AddProjectFile` operationId).
+func (c *Client) AddProjectFileWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddProjectFileRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddProjectFile Add a file to a project
+//
+// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/projects/{id}/files (the `AddProjectFile` operationId).
+func (c *Client) AddProjectFile(ctx context.Context, id string, body AddProjectFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddProjectFileRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveProjectFile Remove a file from a project
+//
+// Corresponds with DELETE /api/v1/projects/{id}/files/{name} (the `RemoveProjectFile` operationId).
+func (c *Client) RemoveProjectFile(ctx context.Context, id string, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveProjectFileRequest(c.Server, id, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetCommunityRatings Everyone's ratings of the models here, from hardware like this computer's and overall
 //
 // Empty unless `community_ratings` is on. The public summary is downloaded at most once a day; when that fails, the last one is used and `error` says why.
@@ -13862,6 +14643,112 @@ func (c *Client) TranscribeRecordingWithBody(ctx context.Context, contentType st
 // Corresponds with POST /api/v1/speech/transcribe (the `TranscribeRecording` operationId).
 func (c *Client) TranscribeRecording(ctx context.Context, body TranscribeRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewTranscribeRecordingRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListSwarms The caller's swarms
+//
+// Newest first (contract 1.88,
+//
+// Corresponds with GET /api/v1/swarms (the `ListSwarms` operationId).
+func (c *Client) ListSwarms(ctx context.Context, params *ListSwarmsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListSwarmsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartSwarmWithBody Start a swarm
+//
+// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/swarms (the `StartSwarm` operationId).
+func (c *Client) StartSwarmWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartSwarmRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartSwarm Start a swarm
+//
+// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/swarms (the `StartSwarm` operationId).
+func (c *Client) StartSwarm(ctx context.Context, body StartSwarmJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartSwarmRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteSwarm Delete a swarm
+//
+// Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+//
+// Corresponds with DELETE /api/v1/swarms/{id} (the `DeleteSwarm` operationId).
+func (c *Client) DeleteSwarm(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteSwarmRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSwarm One swarm
+//
+// With its agents, their status, and what they're waiting on.
+//
+// Corresponds with GET /api/v1/swarms/{id} (the `GetSwarm` operationId).
+func (c *Client) GetSwarm(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSwarmRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StopSwarm Stop a swarm
+//
+// Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+//
+// Corresponds with POST /api/v1/swarms/{id}/stop (the `StopSwarm` operationId).
+func (c *Client) StopSwarm(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStopSwarmRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -14962,9 +15849,9 @@ func (c *Client) McpServerGet(ctx context.Context, reqEditors ...RequestEditorFn
 	return c.Client.Do(req)
 }
 
-// McpServerWithBody Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+// McpServerWithBody Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 //
-// Checked like /v1. A request with an Origin header from another site is refused.
+// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 //
 // Takes any type of body and a specified content type.
 //
@@ -14981,9 +15868,9 @@ func (c *Client) McpServerWithBody(ctx context.Context, contentType string, body
 	return c.Client.Do(req)
 }
 
-// McpServer Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+// McpServer Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 //
-// Checked like /v1. A request with an Origin header from another site is refused.
+// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 //
 // Takes a body of the `application/json` content type.
 //
@@ -15070,7 +15957,7 @@ func (c *Client) OpenaiChatCompletions(ctx context.Context, body OpenaiChatCompl
 
 // AnthropicMessagesWithBody Anthropic-compatible messages, for coding agents
 //
-// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 //
 // Takes any type of body and a specified content type.
 //
@@ -15089,7 +15976,7 @@ func (c *Client) AnthropicMessagesWithBody(ctx context.Context, contentType stri
 
 // AnthropicMessages Anthropic-compatible messages, for coding agents
 //
-// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -15125,7 +16012,7 @@ func (c *Client) AnthropicCountTokens(ctx context.Context, reqEditors ...Request
 
 // OpenaiListModels OpenAI-compatible model list
 //
-// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+// auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
 //
 // Corresponds with GET /v1/models (the `OpenaiListModels` operationId).
 func (c *Client) OpenaiListModels(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -15142,7 +16029,7 @@ func (c *Client) OpenaiListModels(ctx context.Context, reqEditors ...RequestEdit
 
 // OpenaiResponsesWithBody OpenAI Responses, for coding agents
 //
-// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 //
 // Takes any type of body and a specified content type.
 //
@@ -15161,7 +16048,7 @@ func (c *Client) OpenaiResponsesWithBody(ctx context.Context, contentType string
 
 // OpenaiResponses OpenAI Responses, for coding agents
 //
-// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -16617,7 +17504,7 @@ func NewCheckConnectorRequest(server string, id string) (*http.Request, error) {
 }
 
 // NewListConversationsRequest constructs an http.Request for the ListConversations method
-func NewListConversationsRequest(server string) (*http.Request, error) {
+func NewListConversationsRequest(server string, params *ListConversationsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -16633,6 +17520,45 @@ func NewListConversationsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ProjectId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "project_id", *params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.SwarmId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "swarm_id", *params.SwarmId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -20355,6 +21281,53 @@ func NewUpdateAddedModelRequestWithBody(server string, id string, contentType st
 	return req, nil
 }
 
+// NewSetModelAlwaysRunningRequest calls the generic SetModelAlwaysRunning builder with application/json body
+func NewSetModelAlwaysRunningRequest(server string, id string, body SetModelAlwaysRunningJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetModelAlwaysRunningRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewSetModelAlwaysRunningRequestWithBody constructs an http.Request for the SetModelAlwaysRunning method, with any body, and a specified content type
+func NewSetModelAlwaysRunningRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/models/%s/always-running", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSetModelContextRequest calls the generic SetModelContext builder with application/json body
 func NewSetModelContextRequest(server string, id string, body SetModelContextJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -20680,6 +21653,53 @@ func NewDismissModelRatingRequest(server string, id string) (*http.Request, erro
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewSetModelSlotsRequest calls the generic SetModelSlots builder with application/json body
+func NewSetModelSlotsRequest(server string, id string, body SetModelSlotsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetModelSlotsRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewSetModelSlotsRequestWithBody constructs an http.Request for the SetModelSlots method, with any body, and a specified content type
+func NewSetModelSlotsRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/models/%s/slots", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -23778,6 +24798,303 @@ func NewTryTopicsRequestWithBody(server string, id string, contentType string, b
 	return req, nil
 }
 
+// NewListProjectsRequest constructs an http.Request for the ListProjects method
+func NewListProjectsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateProjectRequest calls the generic CreateProject builder with application/json body
+func NewCreateProjectRequest(server string, body CreateProjectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateProjectRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateProjectRequestWithBody constructs an http.Request for the CreateProject method, with any body, and a specified content type
+func NewCreateProjectRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteProjectRequest constructs an http.Request for the DeleteProject method
+func NewDeleteProjectRequest(server string, id string, params *DeleteProjectParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Chats != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "chats", *params.Chats, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetProjectRequest constructs an http.Request for the GetProject method
+func NewGetProjectRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateProjectRequest calls the generic UpdateProject builder with application/json body
+func NewUpdateProjectRequest(server string, id string, body UpdateProjectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateProjectRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewUpdateProjectRequestWithBody constructs an http.Request for the UpdateProject method, with any body, and a specified content type
+func NewUpdateProjectRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAddProjectFileRequest calls the generic AddProjectFile builder with application/json body
+func NewAddProjectFileRequest(server string, id string, body AddProjectFileJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddProjectFileRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAddProjectFileRequestWithBody constructs an http.Request for the AddProjectFile method, with any body, and a specified content type
+func NewAddProjectFileRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s/files", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveProjectFileRequest constructs an http.Request for the RemoveProjectFile method
+func NewRemoveProjectFileRequest(server string, id string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s/files/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetCommunityRatingsRequest constructs an http.Request for the GetCommunityRatings method
 func NewGetCommunityRatingsRequest(server string) (*http.Request, error) {
 	var err error
@@ -24519,6 +25836,202 @@ func NewTranscribeRecordingRequestWithBody(server string, contentType string, bo
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListSwarmsRequest constructs an http.Request for the ListSwarms method
+func NewListSwarmsRequest(server string, params *ListSwarmsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/swarms")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ProjectId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "project_id", *params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStartSwarmRequest calls the generic StartSwarm builder with application/json body
+func NewStartSwarmRequest(server string, body StartSwarmJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStartSwarmRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewStartSwarmRequestWithBody constructs an http.Request for the StartSwarm method, with any body, and a specified content type
+func NewStartSwarmRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/swarms")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteSwarmRequest constructs an http.Request for the DeleteSwarm method
+func NewDeleteSwarmRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/swarms/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSwarmRequest constructs an http.Request for the GetSwarm method
+func NewGetSwarmRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/swarms/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStopSwarmRequest constructs an http.Request for the StopSwarm method
+func NewStopSwarmRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/swarms/%s/stop", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -27183,7 +28696,7 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /api/v1/conversations (the `ListConversations` operationId).
-	ListConversationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConversationsResponse, error)
+	ListConversationsWithResponse(ctx context.Context, params *ListConversationsParams, reqEditors ...RequestEditorFn) (*ListConversationsResponse, error)
 
 	// CreateConversationWithBodyWithResponse Create conversation
 	//
@@ -28201,6 +29714,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /api/v1/models/{id} (the `UpdateAddedModel` operationId).
 	UpdateAddedModelWithResponse(ctx context.Context, id string, body UpdateAddedModelJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAddedModelResponse, error)
 
+	// SetModelAlwaysRunningWithBodyWithResponse Keep a model running
+	//
+	// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/models/{id}/always-running (the `SetModelAlwaysRunning` operationId).
+	SetModelAlwaysRunningWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetModelAlwaysRunningResponse, error)
+
+	// SetModelAlwaysRunningWithResponse Keep a model running
+	//
+	// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/models/{id}/always-running (the `SetModelAlwaysRunning` operationId).
+	SetModelAlwaysRunningWithResponse(ctx context.Context, id string, body SetModelAlwaysRunningJSONRequestBody, reqEditors ...RequestEditorFn) (*SetModelAlwaysRunningResponse, error)
+
 	// SetModelContextWithBodyWithResponse Set a model's context window
 	//
 	// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -28289,6 +29820,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/models/{id}/rating/dismiss (the `DismissModelRating` operationId).
 	DismissModelRatingWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DismissModelRatingResponse, error)
+
+	// SetModelSlotsWithBodyWithResponse Set how many requests a model answers at once
+	//
+	// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/models/{id}/slots (the `SetModelSlots` operationId).
+	SetModelSlotsWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetModelSlotsResponse, error)
+
+	// SetModelSlotsWithResponse Set how many requests a model answers at once
+	//
+	// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/models/{id}/slots (the `SetModelSlots` operationId).
+	SetModelSlotsWithResponse(ctx context.Context, id string, body SetModelSlotsJSONRequestBody, reqEditors ...RequestEditorFn) (*SetModelSlotsResponse, error)
 
 	// SetModelSpeculationWithBodyWithResponse Turn guessing ahead Auto or Off for a model
 	//
@@ -29090,6 +30639,88 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /api/v1/profiles/{id}/try-topics (the `TryTopics` operationId).
 	TryTopicsWithResponse(ctx context.Context, id string, body TryTopicsJSONRequestBody, reqEditors ...RequestEditorFn) (*TryTopicsResponse, error)
 
+	// ListProjectsWithResponse The caller's projects
+	//
+	// Newest activity first, with how many chats each has (contract 1.87,
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/projects (the `ListProjects` operationId).
+	ListProjectsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
+
+	// CreateProjectWithBodyWithResponse Make a project
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/projects (the `CreateProject` operationId).
+	CreateProjectWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
+
+	// CreateProjectWithResponse Make a project
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/projects (the `CreateProject` operationId).
+	CreateProjectWithResponse(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
+
+	// DeleteProjectWithResponse Delete a project
+	//
+	// Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/v1/projects/{id} (the `DeleteProject` operationId).
+	DeleteProjectWithResponse(ctx context.Context, id string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
+
+	// GetProjectWithResponse One project
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/projects/{id} (the `GetProject` operationId).
+	GetProjectWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
+
+	// UpdateProjectWithBodyWithResponse Change a project
+	//
+	// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /api/v1/projects/{id} (the `UpdateProject` operationId).
+	UpdateProjectWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+
+	// UpdateProjectWithResponse Change a project
+	//
+	// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /api/v1/projects/{id} (the `UpdateProject` operationId).
+	UpdateProjectWithResponse(ctx context.Context, id string, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+
+	// AddProjectFileWithBodyWithResponse Add a file to a project
+	//
+	// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/projects/{id}/files (the `AddProjectFile` operationId).
+	AddProjectFileWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddProjectFileResponse, error)
+
+	// AddProjectFileWithResponse Add a file to a project
+	//
+	// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/projects/{id}/files (the `AddProjectFile` operationId).
+	AddProjectFileWithResponse(ctx context.Context, id string, body AddProjectFileJSONRequestBody, reqEditors ...RequestEditorFn) (*AddProjectFileResponse, error)
+
+	// RemoveProjectFileWithResponse Remove a file from a project
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/v1/projects/{id}/files/{name} (the `RemoveProjectFile` operationId).
+	RemoveProjectFileWithResponse(ctx context.Context, id string, name string, reqEditors ...RequestEditorFn) (*RemoveProjectFileResponse, error)
+
 	// GetCommunityRatingsWithResponse Everyone's ratings of the models here, from hardware like this computer's and overall
 	//
 	// Empty unless `community_ratings` is on. The public summary is downloaded at most once a day; when that fails, the last one is used and `error` says why.
@@ -29317,6 +30948,60 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/speech/transcribe (the `TranscribeRecording` operationId).
 	TranscribeRecordingWithResponse(ctx context.Context, body TranscribeRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*TranscribeRecordingResponse, error)
+
+	// ListSwarmsWithResponse The caller's swarms
+	//
+	// Newest first (contract 1.88,
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/swarms (the `ListSwarms` operationId).
+	ListSwarmsWithResponse(ctx context.Context, params *ListSwarmsParams, reqEditors ...RequestEditorFn) (*ListSwarmsResponse, error)
+
+	// StartSwarmWithBodyWithResponse Start a swarm
+	//
+	// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/swarms (the `StartSwarm` operationId).
+	StartSwarmWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartSwarmResponse, error)
+
+	// StartSwarmWithResponse Start a swarm
+	//
+	// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/swarms (the `StartSwarm` operationId).
+	StartSwarmWithResponse(ctx context.Context, body StartSwarmJSONRequestBody, reqEditors ...RequestEditorFn) (*StartSwarmResponse, error)
+
+	// DeleteSwarmWithResponse Delete a swarm
+	//
+	// Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/v1/swarms/{id} (the `DeleteSwarm` operationId).
+	DeleteSwarmWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteSwarmResponse, error)
+
+	// GetSwarmWithResponse One swarm
+	//
+	// With its agents, their status, and what they're waiting on.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/swarms/{id} (the `GetSwarm` operationId).
+	GetSwarmWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetSwarmResponse, error)
+
+	// StopSwarmWithResponse Stop a swarm
+	//
+	// Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/swarms/{id}/stop (the `StopSwarm` operationId).
+	StopSwarmWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*StopSwarmResponse, error)
 
 	// ListTasksWithResponse Recent tasks
 	//
@@ -29802,18 +31487,18 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /mcp (the `McpServerGet` operationId).
 	McpServerGetWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*McpServerGetResponse, error)
 
-	// McpServerWithBodyWithResponse Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+	// McpServerWithBodyWithResponse Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 	//
-	// Checked like /v1. A request with an Origin header from another site is refused.
+	// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /mcp (the `McpServer` operationId).
 	McpServerWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*McpServerResponse, error)
 
-	// McpServerWithResponse Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+	// McpServerWithResponse Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 	//
-	// Checked like /v1. A request with an Origin header from another site is refused.
+	// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -29854,7 +31539,7 @@ type ClientWithResponsesInterface interface {
 
 	// AnthropicMessagesWithBodyWithResponse Anthropic-compatible messages, for coding agents
 	//
-	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -29863,7 +31548,7 @@ type ClientWithResponsesInterface interface {
 
 	// AnthropicMessagesWithResponse Anthropic-compatible messages, for coding agents
 	//
-	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+	// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -29881,7 +31566,7 @@ type ClientWithResponsesInterface interface {
 
 	// OpenaiListModelsWithResponse OpenAI-compatible model list
 	//
-	// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+	// auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -29890,7 +31575,7 @@ type ClientWithResponsesInterface interface {
 
 	// OpenaiResponsesWithBodyWithResponse OpenAI Responses, for coding agents
 	//
-	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -29899,7 +31584,7 @@ type ClientWithResponsesInterface interface {
 
 	// OpenaiResponsesWithResponse OpenAI Responses, for coding agents
 	//
-	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+	// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -31672,11 +33357,18 @@ type CreateConversationResponse struct {
 	HTTPResponse *http.Response
 	// JSON201 the response for an HTTP 201 `application/json` response
 	JSON201 *Conversation
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
 func (r CreateConversationResponse) GetJSON201() *Conversation {
 	return r.JSON201
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateConversationResponse) GetJSON404() *Error {
+	return r.JSON404
 }
 
 // GetBody returns the raw response body bytes
@@ -31788,11 +33480,18 @@ type UpdateConversationResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *Conversation
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateConversationResponse) GetJSON200() *Conversation {
 	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateConversationResponse) GetJSON404() *Error {
+	return r.JSON404
 }
 
 // GetBody returns the raw response body bytes
@@ -35636,6 +37335,47 @@ func (r UpdateAddedModelResponse) ContentType() string {
 	return ""
 }
 
+type SetModelAlwaysRunningResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ModelAlwaysRunning
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetModelAlwaysRunningResponse) GetJSON200() *ModelAlwaysRunning {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r SetModelAlwaysRunningResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetModelAlwaysRunningResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetModelAlwaysRunningResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetModelAlwaysRunningResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SetModelContextResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -35910,6 +37650,47 @@ func (r DismissModelRatingResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DismissModelRatingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetModelSlotsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ModelSlots
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetModelSlotsResponse) GetJSON200() *ModelSlots {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r SetModelSlotsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetModelSlotsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetModelSlotsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetModelSlotsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -39100,6 +40881,349 @@ func (r TryTopicsResponse) ContentType() string {
 	return ""
 }
 
+type ListProjectsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]Project
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListProjectsResponse) GetJSON200() *[]Project {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListProjectsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListProjectsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListProjectsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListProjectsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Project
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *Error
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Error
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateProjectResponse) GetJSON201() *Project {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateProjectResponse) GetJSON400() *Error {
+	return r.JSON400
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateProjectResponse) GetJSON403() *Error {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateProjectResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteProjectResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteProjectResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Project
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetProjectResponse) GetJSON200() *Project {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetProjectResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetProjectResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Project
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *Error
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Error
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateProjectResponse) GetJSON200() *Project {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateProjectResponse) GetJSON400() *Error {
+	return r.JSON400
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateProjectResponse) GetJSON403() *Error {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateProjectResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateProjectResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddProjectFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Project
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *Error
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AddProjectFileResponse) GetJSON201() *Project {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AddProjectFileResponse) GetJSON400() *Error {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r AddProjectFileResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r AddProjectFileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddProjectFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddProjectFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddProjectFileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveProjectFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveProjectFileResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveProjectFileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveProjectFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveProjectFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveProjectFileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCommunityRatingsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -39913,6 +42037,260 @@ func (r TranscribeRecordingResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r TranscribeRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListSwarmsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]Swarm
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListSwarmsResponse) GetJSON200() *[]Swarm {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListSwarmsResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListSwarmsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListSwarmsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListSwarmsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListSwarmsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StartSwarmResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *Swarm
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *Error
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Error
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r StartSwarmResponse) GetJSON202() *Swarm {
+	return r.JSON202
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r StartSwarmResponse) GetJSON400() *Error {
+	return r.JSON400
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r StartSwarmResponse) GetJSON403() *Error {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r StartSwarmResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r StartSwarmResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartSwarmResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartSwarmResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartSwarmResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteSwarmResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Error
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteSwarmResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteSwarmResponse) GetJSON409() *Error {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteSwarmResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteSwarmResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteSwarmResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteSwarmResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSwarmResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Swarm
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSwarmResponse) GetJSON200() *Swarm {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetSwarmResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSwarmResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSwarmResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSwarmResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSwarmResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StopSwarmResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ChatStopped
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StopSwarmResponse) GetJSON200() *ChatStopped {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r StopSwarmResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r StopSwarmResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StopSwarmResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StopSwarmResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StopSwarmResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -43315,8 +45693,8 @@ func (c *ClientWithResponses) CheckConnectorWithResponse(ctx context.Context, id
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /api/v1/conversations (the `ListConversations` operationId).
-func (c *ClientWithResponses) ListConversationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListConversationsResponse, error) {
-	rsp, err := c.ListConversations(ctx, reqEditors...)
+func (c *ClientWithResponses) ListConversationsWithResponse(ctx context.Context, params *ListConversationsParams, reqEditors ...RequestEditorFn) (*ListConversationsResponse, error) {
+	rsp, err := c.ListConversations(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -45131,6 +47509,36 @@ func (c *ClientWithResponses) UpdateAddedModelWithResponse(ctx context.Context, 
 	return ParseUpdateAddedModelResponse(rsp)
 }
 
+// SetModelAlwaysRunningWithBodyWithResponse Keep a model running
+//
+// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/models/{id}/always-running (the `SetModelAlwaysRunning` operationId).
+func (c *ClientWithResponses) SetModelAlwaysRunningWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetModelAlwaysRunningResponse, error) {
+	rsp, err := c.SetModelAlwaysRunningWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetModelAlwaysRunningResponse(rsp)
+}
+
+// SetModelAlwaysRunningWithResponse Keep a model running
+//
+// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/models/{id}/always-running (the `SetModelAlwaysRunning` operationId).
+func (c *ClientWithResponses) SetModelAlwaysRunningWithResponse(ctx context.Context, id string, body SetModelAlwaysRunningJSONRequestBody, reqEditors ...RequestEditorFn) (*SetModelAlwaysRunningResponse, error) {
+	rsp, err := c.SetModelAlwaysRunning(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetModelAlwaysRunningResponse(rsp)
+}
+
 // SetModelContextWithBodyWithResponse Set a model's context window
 //
 // The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -45284,6 +47692,36 @@ func (c *ClientWithResponses) DismissModelRatingWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseDismissModelRatingResponse(rsp)
+}
+
+// SetModelSlotsWithBodyWithResponse Set how many requests a model answers at once
+//
+// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/models/{id}/slots (the `SetModelSlots` operationId).
+func (c *ClientWithResponses) SetModelSlotsWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetModelSlotsResponse, error) {
+	rsp, err := c.SetModelSlotsWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetModelSlotsResponse(rsp)
+}
+
+// SetModelSlotsWithResponse Set how many requests a model answers at once
+//
+// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/models/{id}/slots (the `SetModelSlots` operationId).
+func (c *ClientWithResponses) SetModelSlotsWithResponse(ctx context.Context, id string, body SetModelSlotsJSONRequestBody, reqEditors ...RequestEditorFn) (*SetModelSlotsResponse, error) {
+	rsp, err := c.SetModelSlots(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetModelSlotsResponse(rsp)
 }
 
 // SetModelSpeculationWithBodyWithResponse Turn guessing ahead Auto or Off for a model
@@ -46710,6 +49148,148 @@ func (c *ClientWithResponses) TryTopicsWithResponse(ctx context.Context, id stri
 	return ParseTryTopicsResponse(rsp)
 }
 
+// ListProjectsWithResponse The caller's projects
+//
+// Newest activity first, with how many chats each has (contract 1.87,
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/projects (the `ListProjects` operationId).
+func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error) {
+	rsp, err := c.ListProjects(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListProjectsResponse(rsp)
+}
+
+// CreateProjectWithBodyWithResponse Make a project
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/projects (the `CreateProject` operationId).
+func (c *ClientWithResponses) CreateProjectWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
+	rsp, err := c.CreateProjectWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectResponse(rsp)
+}
+
+// CreateProjectWithResponse Make a project
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/projects (the `CreateProject` operationId).
+func (c *ClientWithResponses) CreateProjectWithResponse(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
+	rsp, err := c.CreateProject(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectResponse(rsp)
+}
+
+// DeleteProjectWithResponse Delete a project
+//
+// Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/v1/projects/{id} (the `DeleteProject` operationId).
+func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, id string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error) {
+	rsp, err := c.DeleteProject(ctx, id, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteProjectResponse(rsp)
+}
+
+// GetProjectWithResponse One project
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/projects/{id} (the `GetProject` operationId).
+func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetProjectResponse, error) {
+	rsp, err := c.GetProject(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProjectResponse(rsp)
+}
+
+// UpdateProjectWithBodyWithResponse Change a project
+//
+// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /api/v1/projects/{id} (the `UpdateProject` operationId).
+func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+	rsp, err := c.UpdateProjectWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateProjectResponse(rsp)
+}
+
+// UpdateProjectWithResponse Change a project
+//
+// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /api/v1/projects/{id} (the `UpdateProject` operationId).
+func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, id string, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+	rsp, err := c.UpdateProject(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateProjectResponse(rsp)
+}
+
+// AddProjectFileWithBodyWithResponse Add a file to a project
+//
+// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/projects/{id}/files (the `AddProjectFile` operationId).
+func (c *ClientWithResponses) AddProjectFileWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddProjectFileResponse, error) {
+	rsp, err := c.AddProjectFileWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddProjectFileResponse(rsp)
+}
+
+// AddProjectFileWithResponse Add a file to a project
+//
+// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/projects/{id}/files (the `AddProjectFile` operationId).
+func (c *ClientWithResponses) AddProjectFileWithResponse(ctx context.Context, id string, body AddProjectFileJSONRequestBody, reqEditors ...RequestEditorFn) (*AddProjectFileResponse, error) {
+	rsp, err := c.AddProjectFile(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddProjectFileResponse(rsp)
+}
+
+// RemoveProjectFileWithResponse Remove a file from a project
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/v1/projects/{id}/files/{name} (the `RemoveProjectFile` operationId).
+func (c *ClientWithResponses) RemoveProjectFileWithResponse(ctx context.Context, id string, name string, reqEditors ...RequestEditorFn) (*RemoveProjectFileResponse, error) {
+	rsp, err := c.RemoveProjectFile(ctx, id, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveProjectFileResponse(rsp)
+}
+
 // GetCommunityRatingsWithResponse Everyone's ratings of the models here, from hardware like this computer's and overall
 //
 // Empty unless `community_ratings` is on. The public summary is downloaded at most once a day; when that fails, the last one is used and `error` says why.
@@ -47104,6 +49684,96 @@ func (c *ClientWithResponses) TranscribeRecordingWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseTranscribeRecordingResponse(rsp)
+}
+
+// ListSwarmsWithResponse The caller's swarms
+//
+// Newest first (contract 1.88,
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/swarms (the `ListSwarms` operationId).
+func (c *ClientWithResponses) ListSwarmsWithResponse(ctx context.Context, params *ListSwarmsParams, reqEditors ...RequestEditorFn) (*ListSwarmsResponse, error) {
+	rsp, err := c.ListSwarms(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListSwarmsResponse(rsp)
+}
+
+// StartSwarmWithBodyWithResponse Start a swarm
+//
+// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/swarms (the `StartSwarm` operationId).
+func (c *ClientWithResponses) StartSwarmWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartSwarmResponse, error) {
+	rsp, err := c.StartSwarmWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartSwarmResponse(rsp)
+}
+
+// StartSwarmWithResponse Start a swarm
+//
+// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/swarms (the `StartSwarm` operationId).
+func (c *ClientWithResponses) StartSwarmWithResponse(ctx context.Context, body StartSwarmJSONRequestBody, reqEditors ...RequestEditorFn) (*StartSwarmResponse, error) {
+	rsp, err := c.StartSwarm(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartSwarmResponse(rsp)
+}
+
+// DeleteSwarmWithResponse Delete a swarm
+//
+// Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/v1/swarms/{id} (the `DeleteSwarm` operationId).
+func (c *ClientWithResponses) DeleteSwarmWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteSwarmResponse, error) {
+	rsp, err := c.DeleteSwarm(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteSwarmResponse(rsp)
+}
+
+// GetSwarmWithResponse One swarm
+//
+// With its agents, their status, and what they're waiting on.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/swarms/{id} (the `GetSwarm` operationId).
+func (c *ClientWithResponses) GetSwarmWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetSwarmResponse, error) {
+	rsp, err := c.GetSwarm(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSwarmResponse(rsp)
+}
+
+// StopSwarmWithResponse Stop a swarm
+//
+// Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/swarms/{id}/stop (the `StopSwarm` operationId).
+func (c *ClientWithResponses) StopSwarmWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*StopSwarmResponse, error) {
+	rsp, err := c.StopSwarm(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStopSwarmResponse(rsp)
 }
 
 // ListTasksWithResponse Recent tasks
@@ -47998,9 +50668,9 @@ func (c *ClientWithResponses) McpServerGetWithResponse(ctx context.Context, reqE
 	return ParseMcpServerGetResponse(rsp)
 }
 
-// McpServerWithBodyWithResponse Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+// McpServerWithBodyWithResponse Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 //
-// Checked like /v1. A request with an Origin header from another site is refused.
+// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -48013,9 +50683,9 @@ func (c *ClientWithResponses) McpServerWithBodyWithResponse(ctx context.Context,
 	return ParseMcpServerResponse(rsp)
 }
 
-// McpServerWithResponse Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+// McpServerWithResponse Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
 //
-// Checked like /v1. A request with an Origin header from another site is refused.
+// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=<id>; it needs the member role (#1135, contract 1.88).
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -48086,7 +50756,7 @@ func (c *ClientWithResponses) OpenaiChatCompletionsWithResponse(ctx context.Cont
 
 // AnthropicMessagesWithBodyWithResponse Anthropic-compatible messages, for coding agents
 //
-// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -48101,7 +50771,7 @@ func (c *ClientWithResponses) AnthropicMessagesWithBodyWithResponse(ctx context.
 
 // AnthropicMessagesWithResponse Anthropic-compatible messages, for coding agents
 //
-// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -48131,7 +50801,7 @@ func (c *ClientWithResponses) AnthropicCountTokensWithResponse(ctx context.Conte
 
 // OpenaiListModelsWithResponse OpenAI-compatible model list
 //
-// auto, each profile as profile:<id>, and each deployed specialized AI as sai:<slug>.
+// auto, each profile as profile:<id>, each profile whose strategy is swarm as swarm:<id> (#1135, contract 1.88), and each deployed specialized AI as sai:<slug>.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -48146,7 +50816,7 @@ func (c *ClientWithResponses) OpenaiListModelsWithResponse(ctx context.Context, 
 
 // OpenaiResponsesWithBodyWithResponse OpenAI Responses, for coding agents
 //
-// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -48161,7 +50831,7 @@ func (c *ClientWithResponses) OpenaiResponsesWithBodyWithResponse(ctx context.Co
 
 // OpenaiResponsesWithResponse OpenAI Responses, for coding agents
 //
-// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does.
+// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -49373,6 +52043,13 @@ func ParseCreateConversationResponse(rsp *http.Response) (*CreateConversationRes
 		}
 		response.JSON201 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	}
 
 	return response, nil
@@ -49443,6 +52120,13 @@ func ParseUpdateConversationResponse(rsp *http.Response) (*UpdateConversationRes
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -51866,6 +54550,35 @@ func ParseUpdateAddedModelResponse(rsp *http.Response) (*UpdateAddedModelRespons
 	return response, nil
 }
 
+// ParseSetModelAlwaysRunningResponse parses an HTTP response from a SetModelAlwaysRunningWithResponse call
+func ParseSetModelAlwaysRunningResponse(rsp *http.Response) (*SetModelAlwaysRunningResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetModelAlwaysRunningResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ModelAlwaysRunning
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
 // ParseSetModelContextResponse parses an HTTP response from a SetModelContextWithResponse call
 func ParseSetModelContextResponse(rsp *http.Response) (*SetModelContextResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -52048,6 +54761,35 @@ func ParseDismissModelRatingResponse(rsp *http.Response) (*DismissModelRatingRes
 	response := &DismissModelRatingResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseSetModelSlotsResponse parses an HTTP response from a SetModelSlotsWithResponse call
+func ParseSetModelSlotsResponse(rsp *http.Response) (*SetModelSlotsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetModelSlotsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ModelSlots
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
 	}
 
 	return response, nil
@@ -54100,6 +56842,250 @@ func ParseTryTopicsResponse(rsp *http.Response) (*TryTopicsResponse, error) {
 	return response, nil
 }
 
+// ParseListProjectsResponse parses an HTTP response from a ListProjectsWithResponse call
+func ParseListProjectsResponse(rsp *http.Response) (*ListProjectsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListProjectsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateProjectResponse parses an HTTP response from a CreateProjectWithResponse call
+func ParseCreateProjectResponse(rsp *http.Response) (*CreateProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteProjectResponse parses an HTTP response from a DeleteProjectWithResponse call
+func ParseDeleteProjectResponse(rsp *http.Response) (*DeleteProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetProjectResponse parses an HTTP response from a GetProjectWithResponse call
+func ParseGetProjectResponse(rsp *http.Response) (*GetProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateProjectResponse parses an HTTP response from a UpdateProjectWithResponse call
+func ParseUpdateProjectResponse(rsp *http.Response) (*UpdateProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddProjectFileResponse parses an HTTP response from a AddProjectFileWithResponse call
+func ParseAddProjectFileResponse(rsp *http.Response) (*AddProjectFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddProjectFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveProjectFileResponse parses an HTTP response from a RemoveProjectFileWithResponse call
+func ParseRemoveProjectFileResponse(rsp *http.Response) (*RemoveProjectFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveProjectFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetCommunityRatingsResponse parses an HTTP response from a GetCommunityRatingsWithResponse call
 func ParseGetCommunityRatingsResponse(rsp *http.Response) (*GetCommunityRatingsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -54592,6 +57578,188 @@ func ParseTranscribeRecordingResponse(rsp *http.Response) (*TranscribeRecordingR
 			return nil, err
 		}
 		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListSwarmsResponse parses an HTTP response from a ListSwarmsWithResponse call
+func ParseListSwarmsResponse(rsp *http.Response) (*ListSwarmsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListSwarmsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Swarm
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStartSwarmResponse parses an HTTP response from a StartSwarmWithResponse call
+func ParseStartSwarmResponse(rsp *http.Response) (*StartSwarmResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartSwarmResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest Swarm
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteSwarmResponse parses an HTTP response from a DeleteSwarmWithResponse call
+func ParseDeleteSwarmResponse(rsp *http.Response) (*DeleteSwarmResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteSwarmResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSwarmResponse parses an HTTP response from a GetSwarmWithResponse call
+func ParseGetSwarmResponse(rsp *http.Response) (*GetSwarmResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSwarmResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Swarm
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStopSwarmResponse parses an HTTP response from a StopSwarmWithResponse call
+func ParseStopSwarmResponse(rsp *http.Response) (*StopSwarmResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StopSwarmResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ChatStopped
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

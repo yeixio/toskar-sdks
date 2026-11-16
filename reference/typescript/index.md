@@ -470,7 +470,7 @@ Milliseconds to wait for an answer to start. Default 60000; 0 waits as long as i
 ### CONTRACT\_VERSION
 
 ```ts
-const CONTRACT_VERSION: "1.86" = '1.86';
+const CONTRACT_VERSION: "1.98" = '1.98';
 ```
 
 The client contract this SDK was built for.
@@ -1456,6 +1456,30 @@ readonly MODEL_NOT_INSTALLED: "MODEL_NOT_INSTALLED" = 'MODEL_NOT_INSTALLED';
 
 {{model_id}} isn't installed.
 
+##### MODEL\_SLOTS\_CONTEXT
+
+```ts
+readonly MODEL_SLOTS_CONTEXT: "MODEL_SLOTS_CONTEXT" = 'MODEL_SLOTS_CONTEXT';
+```
+
+With {{slots}} agents at once, each would get {{context_per_slot}} tokens of context, less than the {{needed}} a task needs. Choose a bigger context window or fewer agents.
+
+##### MODEL\_SLOTS\_INVALID
+
+```ts
+readonly MODEL_SLOTS_INVALID: "MODEL_SLOTS_INVALID" = 'MODEL_SLOTS_INVALID';
+```
+
+Choose 1 to {{max}} agents at once.
+
+##### MODEL\_SLOTS\_MEMORY
+
+```ts
+readonly MODEL_SLOTS_MEMORY: "MODEL_SLOTS_MEMORY" = 'MODEL_SLOTS_MEMORY';
+```
+
+This model doesn't fit this computer's memory with {{slots}} agents at once. Choose fewer.
+
 ##### MODEL\_UNHEALTHY
 
 ```ts
@@ -1615,6 +1639,14 @@ readonly OFFER_FAILED: "OFFER_FAILED" = 'OFFER_FAILED';
 ```
 
 {{detail}}
+
+##### OFFLINE
+
+```ts
+readonly OFFLINE: "OFFLINE" = 'OFFLINE';
+```
+
+This computer isn't connected to the internet. Check the connection, then try again.
 
 ##### ORIGIN\_NOT\_ALLOWED
 
@@ -1967,6 +1999,30 @@ readonly PROFILES_LIST_FAILED: "PROFILES_LIST_FAILED" = 'PROFILES_LIST_FAILED';
 ```
 
 Couldn't list profiles.
+
+##### PROJECT\_FILE\_NOT\_FOUND
+
+```ts
+readonly PROJECT_FILE_NOT_FOUND: "PROJECT_FILE_NOT_FOUND" = 'PROJECT_FILE_NOT_FOUND';
+```
+
+That file isn't in the project.
+
+##### PROJECT\_NAME\_REQUIRED
+
+```ts
+readonly PROJECT_NAME_REQUIRED: "PROJECT_NAME_REQUIRED" = 'PROJECT_NAME_REQUIRED';
+```
+
+Name the project.
+
+##### PROJECT\_NOT\_FOUND
+
+```ts
+readonly PROJECT_NOT_FOUND: "PROJECT_NOT_FOUND" = 'PROJECT_NOT_FOUND';
+```
+
+That project was removed.
 
 ##### PROXY\_REFUSED
 
@@ -2551,6 +2607,22 @@ readonly SUPPORT_MODEL_BUSY: "SUPPORT_MODEL_BUSY" = 'SUPPORT_MODEL_BUSY';
 ```
 
 The supporting model can't run right now.
+
+##### SWARM\_NOT\_FOUND
+
+```ts
+readonly SWARM_NOT_FOUND: "SWARM_NOT_FOUND" = 'SWARM_NOT_FOUND';
+```
+
+That swarm was removed.
+
+##### SWARM\_RUNNING
+
+```ts
+readonly SWARM_RUNNING: "SWARM_RUNNING" = 'SWARM_RUNNING';
+```
+
+This swarm is still running. Stop it first.
 
 ##### TASK\_CREATE\_FAILED
 

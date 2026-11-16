@@ -370,6 +370,13 @@ class RunningModelView(BaseModel):
     node_name: str
     status: str
     memory_bytes: int | None = None
+    """
+    The catalog's estimate of the memory it needs
+    """
+    resident_bytes: int | None = None
+    """
+    The system memory its process holds, measured a few seconds ago at most (contract 1.90). On Linux, the memory it allocated, without the model file it maps.
+    """
     endpoint: str | None = None
     speed_tok_per_sec: float | None = None
     """
@@ -381,6 +388,10 @@ class RunningModelView(BaseModel):
     The devices the model is on, or CPU
     """
     last_used_at: AwareDatetime | None = None
+    always_running: bool | None = None
+    """
+    A model kept loaded on its computer (#966, contract 1.96)
+    """
     mode: str | None = None
     """
     "embedding" or "reranking" for a supporting model serving knowledge search, and empty for a chat model. Known values: `embedding`, `reranking`; others may be added.
@@ -657,6 +668,18 @@ class Conversation(BaseModel):
     """
     The folder on the Toskar computer this chat works in. Work asked for in it goes on until it's done
     """
+    project_id: str | None = None
+    """
+    The project the chat is in, if any: a chat is in one project at most (contract 1.87, #1136).
+    """
+    swarm_id: str | None = None
+    """
+    The swarm the chat belongs to: its coordinator's chat, or one of its agents' (contract 1.88, #1135).
+    """
+    swarm_role: str | None = None
+    """
+    agent:N for an agent's chat; empty for the coordinator's or a chat in no swarm.
+    """
     compact_off: bool
     """
     `compact_off` keeps this conversation verbatim: auto-compact never sends its older messages as a summary (contract 1.35, #342).
@@ -858,6 +881,171 @@ class Artifact(BaseModel):
     """
 
 
+class ProjectInput(BaseModel):
+    """
+    A project's fields; one left out stays as it is.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    name: str | None = None
+    instructions: str | None = None
+    folder: str | None = None
+    """
+    The full path of a folder on the Toskar computer for the project's chats to work in, or empty for none. Needs the admin role.
+    """
+    profile_id: str | None = None
+    model_id: str | None = None
+    memory_off: bool | None = None
+    knowledge: list[str] | None = None
+    """
+    Knowledge source ids to link. Needs the member role.
+    """
+
+
+class ProjectFile(BaseModel):
+    """
+    One file in a project's knowledge.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    name: str
+    size: int
+
+
+class SwarmAgent(BaseModel):
+    """
+    One agent in a swarm: its part, where it runs, and how it went (contract 1.88, #1135).
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    agent: int
+    """
+    Its number, from 1.
+    """
+    conversation_id: str
+    """
+    The agent's own chat, which can be opened and continued.
+    """
+    role: str
+    """
+    agent:N.
+    """
+    part: str
+    """
+    What it was asked to do: its part, or in a race the whole request.
+    """
+    model_id: str | None = None
+    node_id: str | None = None
+    status: str
+    """
+    Known values: `queued`, `running`, `done`, `failed`, `stopped`, `out_of_budget`; others may be added.
+    """
+    summary: str | None = None
+    """
+    The start of its answer.
+    """
+    tokens: int
+    seconds: float
+    paths: list[str] | None = None
+    """
+    The files or folders a task's part expects to change.
+    """
+    branch: str | None = None
+    """
+    A task agent's own branch, with its work committed.
+    """
+    checks: str | None = None
+    """
+    How the project's checks went on its branch in a race. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+    """
+
+
+class SwarmConflict(BaseModel):
+    """
+    An agent's change that couldn't be merged with the others', even by a fix-up agent (contract 1.88, #1135).
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    agent: int
+    """
+    The agent whose change wasn't merged.
+    """
+    branch: str
+    """
+    Has its change.
+    """
+    files: list[str]
+    """
+    The files that conflicted.
+    """
+
+
+class SwarmBudget(BaseModel):
+    """
+    What a swarm may use (contract 1.88, #1135).
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    agents: int
+    """
+    The most agents it has.
+    """
+    tokens: int
+    """
+    The most the whole swarm may use.
+    """
+    minutes: int
+    """
+    The most it may run.
+    """
+
+
+class SwarmPolicy(BaseModel):
+    """
+    Swarm controls (contract 1.88, #1135): a profile's orchestration.swarm, or one swarm's budget. Every field is optional; empty keeps the default.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    mode: str | None = None
+    """
+    split: a coordinator splits the job into parts that agents do at once. race: agents on different models each do the whole request, and the best answer wins or they're merged. Empty is split. Known values: `split`, `race`; others may be added.
+    """
+    models: list[str] | None = None
+    """
+    A race's models, one agent each, in order. A split's agents take them in turn.
+    """
+    agents: Annotated[int | None, Field(ge=2, le=8)] = None
+    """
+    The most agents. Empty is the profile's max_workers
+    """
+    tokens: Annotated[int | None, Field(ge=10000, le=4000000)] = None
+    """
+    The most the whole swarm may use. Empty is 400000.
+    """
+    minutes: Annotated[int | None, Field(ge=1, le=240)] = None
+    """
+    The most a swarm may run. Empty is 5 for a question and 30 for a task.
+    """
+
+
 class Memory(BaseModel):
     """
     One durable fact or preference.
@@ -880,6 +1068,10 @@ class Memory(BaseModel):
     language: str | None = None
     """
     The language the memory is written in, as a BCP 47 tag detected on this computer (multilingual spec §18), or "" when it is too short to tell. A memory is found in any language; this says which one its text is in.
+    """
+    project_id: str | None = None
+    """
+    The project the memory belongs to, learned in one of its chats, or "" for the person's own memory (#1136).
     """
     created_at: AwareDatetime
     updated_at: AwareDatetime
@@ -2318,6 +2510,19 @@ class PromptCacheModel(BaseModel):
     """
 
 
+class MessageMetaLinkCheck(BaseModel):
+    """
+    With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    dead: list[str] | None = None
+    unknown: list[str] | None = None
+
+
 class MessageMetaDeliberationDraft(BaseModel):
     """
     One independent draft.
@@ -2809,6 +3014,34 @@ class QualityResultScores(BaseModel):
     of: int
 
 
+class QualityResultPerformanceContext(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    context: int
+    """
+    The window, in tokens
+    """
+    runs: str
+    """
+    Known values: `full`, `partial`, `cpu`, `no`; others may be added.
+    """
+    why: str | None = None
+    """
+    Why it's short of full: window, a size past the model's own, or out_of_memory
+    """
+    prompt_tokens: int | None = None
+    prompt_tokens_per_second: float | None = None
+    tokens_per_second: float | None = None
+    first_token_ms: float | None = None
+    effective_tokens_per_second: float | None = None
+    gpu_layers: int | None = None
+    gpu_layers_total: int | None = None
+    gpu_memory_bytes: int | None = None
+    system_memory_bytes: int | None = None
+
+
 class QualityResultPerformance(BaseModel):
     """
     How the model ran on that computer, from a long prompt new each run. Never part of a score (contract 1.81)
@@ -2847,6 +3080,30 @@ class QualityResultPerformance(BaseModel):
     gpu_memory_bytes: int | None = None
     context_window: int | None = None
     quantization: str | None = None
+    llama_cpp: str | None = None
+    """
+    The llama.cpp release it ran on, such as b12361 (contract 1.89)
+    """
+    speculation: str | None = None
+    """
+    Whether a draft guessed ahead during the runs (contract 1.89) Known values: `on`, `off`; others may be added.
+    """
+    draft_accepted: float | None = None
+    """
+    The share of the draft's guesses the model kept, 0 to 1, when speculation is on (contract 1.89)
+    """
+    devices: list[str] | None = None
+    """
+    The GPUs it ran on, every one when there are several (contract 1.89)
+    """
+    system_memory_bytes: int | None = None
+    """
+    The system memory the model's process held after the runs, measured (contract 1.90). Where the graphics share the computer's memory, as on a Mac, it includes what gpu_memory_bytes counts.
+    """
+    contexts: list[QualityResultPerformanceContext] | None = None
+    """
+    The same model at longer windows, when the run measured them (contract 1.91): its window set to that size and a prompt filling about three quarters of it
+    """
 
 
 class QualityResult(BaseModel):
@@ -3018,6 +3275,36 @@ class ModelContext(BaseModel):
     context_window: int
     """
     0 for Auto
+    """
+
+
+class ModelSlots(BaseModel):
+    """
+    How many requests a model answers at once (#1135).
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    model_id: str
+    slots: Annotated[int, Field(ge=1, le=4)]
+
+
+class ModelAlwaysRunning(BaseModel):
+    """
+    Whether a model is kept running (#966).
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    model_id: str
+    always_running: bool
+    memory_left_bytes: int | None = None
+    """
+    This computer's memory less what the models kept running need, when it's known (contract 1.95)
     """
 
 
@@ -5689,6 +5976,10 @@ class Model(BaseModel):
     """
     Whether a chat model installed on this computer guesses the next words ahead and checks several at once (#835, contract 1.67). Empty for other models. Known values: `auto`, `off`; others may be added.
     """
+    always_running: bool | None = None
+    """
+    A chat model installed on this computer that is kept loaded (#966, contract 1.94).
+    """
     context_window: int | None = None
     """
     The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
@@ -5700,6 +5991,10 @@ class Model(BaseModel):
     context_options: list[ModelContextOption] | None = None
     """
     The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
+    """
+    slots: Annotated[int | None, Field(ge=1, le=4)] = None
+    """
+    How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models.
     """
     languages: list[ModelLanguage] | None = None
     """
@@ -5717,6 +6012,120 @@ class Error(BaseModel):
         populate_by_name=True,
     )
     error: ErrorBody
+
+
+class Project(BaseModel):
+    """
+    Related chats kept together with what they share: instructions, files, a folder on the Toskar computer, a default profile and model, and a memory of their own (contract 1.87, #1136). It belongs to the person who made it.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    id: str
+    name: str
+    instructions: str
+    """
+    The person's own instructions for every chat in the project. They come after a profile's and before the person's style.
+    """
+    folder: str | None = None
+    """
+    Where the project's chats work on the Toskar computer
+    """
+    profile_id: str | None = None
+    model_id: str | None = None
+    memory_off: bool
+    """
+    `memory_off` keeps the project's chats from saving or reading the project's own memory. The person's memory follows each chat's Memory control.
+    """
+    knowledge: list[str]
+    """
+    The ids of knowledge sources linked to the project, which its chats search as well as its files.
+    """
+    files: list[ProjectFile]
+    """
+    The files added to the project's knowledge.
+    """
+    chat_count: int
+    """
+    How many chats are in the project.
+    """
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+    """
+    The project's last activity: a change to it, or to one of its chats.
+    """
+
+
+class Swarm(BaseModel):
+    """
+    Several agents working at once on one request, each in a chat of its own in the coordinator chat's project (contract 1.88, #1135). It belongs to the person who started it.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    id: str
+    project_id: str
+    conversation_id: str
+    """
+    The coordinator's chat, where the merged answer goes.
+    """
+    mode: str
+    """
+    Known values: `split`, `race`; others may be added.
+    """
+    status: str
+    """
+    Known values: `running`, `merging`, `done`, `stopped`, `failed`; others may be added.
+    """
+    request: str
+    budget: SwarmBudget
+    agents: list[SwarmAgent]
+    """
+    The swarm's agents, in order. Empty until the coordinator has planned the parts.
+    """
+    winner: int | None = None
+    """
+    A race's winning agent, 0 when the answers were merged or it's not a race.
+    """
+    note: str | None = None
+    """
+    `note` says why the swarm ran differently than asked, such as running as one agent.
+    """
+    tokens: int
+    """
+    Every agent's tokens so far.
+    """
+    seconds: float
+    folder: str | None = None
+    """
+    The folder a task swarm worked in. In a Git repository each agent worked on a branch of its own, kept for 7 days or until the swarm is deleted.
+    """
+    branch: str | None = None
+    """
+    A task swarm's result: the agents' work merged, or a race winner's. Empty for a question, or a folder that isn't in Git.
+    """
+    checks: str | None = None
+    """
+    How the project's checks went on the result. Absent when none ran. Known values: `passed`, `failed`; others may be added.
+    """
+    conflicts: list[SwarmConflict] | None = None
+    """
+    Agents' changes that couldn't be merged, each still on its agent's branch.
+    """
+    applied: bool | None = None
+    """
+    The result is in the person's folder as uncommitted changes, after they allowed it.
+    """
+    waiting: list[dict[str, Any]] | None = None
+    """
+    Each tool.requested from its agents still waiting for an answer, each with its agent, for clients to group them by.
+    """
+    created_at: AwareDatetime
+    finished_at: AwareDatetime | None = None
 
 
 class NotificationDestinationInput(BaseModel):
@@ -5979,6 +6388,10 @@ class MessageMeta(BaseModel):
     notice: str | None = None
     """
     `notice` tells the user something changed that may affect the answer, such as a smaller model answering after the chosen one failed.
+    """
+    link_check: MessageMetaLinkCheck | None = None
+    """
+    With check_links on, the answer's links that did not open, or could not be judged, added after the answer is saved; chat.links_checked follows (#209, contract 1.97)
     """
     files: list[FileRef] | None = None
     """

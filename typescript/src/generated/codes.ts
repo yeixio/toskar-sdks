@@ -249,6 +249,12 @@ export const ErrorCodes = {
   MODEL_NOT_FOUND: 'MODEL_NOT_FOUND',
   /** {{model_id}} isn't installed. */
   MODEL_NOT_INSTALLED: 'MODEL_NOT_INSTALLED',
+  /** With {{slots}} agents at once, each would get {{context_per_slot}} tokens of context, less than the {{needed}} a task needs. Choose a bigger context window or fewer agents. */
+  MODEL_SLOTS_CONTEXT: 'MODEL_SLOTS_CONTEXT',
+  /** Choose 1 to {{max}} agents at once. */
+  MODEL_SLOTS_INVALID: 'MODEL_SLOTS_INVALID',
+  /** This model doesn't fit this computer's memory with {{slots}} agents at once. Choose fewer. */
+  MODEL_SLOTS_MEMORY: 'MODEL_SLOTS_MEMORY',
   /** The model stopped working. */
   MODEL_UNHEALTHY: 'MODEL_UNHEALTHY',
   /** {{detail}} */
@@ -287,6 +293,8 @@ export const ErrorCodes = {
   NO_TEXT_FOUND: 'NO_TEXT_FOUND',
   /** {{detail}} */
   OFFER_FAILED: 'OFFER_FAILED',
+  /** This computer isn't connected to the internet. Check the connection, then try again. */
+  OFFLINE: 'OFFLINE',
   /** Websites cannot use Toskar without an API key. */
   ORIGIN_NOT_ALLOWED: 'ORIGIN_NOT_ALLOWED',
   /** The model ran out of memory. */
@@ -375,6 +383,12 @@ export const ErrorCodes = {
   PROFILE_PINNED: 'PROFILE_PINNED',
   /** {{detail}} */
   PROFILE_UPDATE_FAILED: 'PROFILE_UPDATE_FAILED',
+  /** That file isn't in the project. */
+  PROJECT_FILE_NOT_FOUND: 'PROJECT_FILE_NOT_FOUND',
+  /** Name the project. */
+  PROJECT_NAME_REQUIRED: 'PROJECT_NAME_REQUIRED',
+  /** That project was removed. */
+  PROJECT_NOT_FOUND: 'PROJECT_NOT_FOUND',
   /** Your sign-in doesn't give you a role on this Toskar. Ask its Owner to add you to a group that does. */
   PROXY_REFUSED: 'PROXY_REFUSED',
   /** Only a paired phone or tablet can turn on notifications. */
@@ -521,6 +535,10 @@ export const ErrorCodes = {
   SUMMARY_NOT_FOUND: 'SUMMARY_NOT_FOUND',
   /** The supporting model can't run right now. */
   SUPPORT_MODEL_BUSY: 'SUPPORT_MODEL_BUSY',
+  /** That swarm was removed. */
+  SWARM_NOT_FOUND: 'SWARM_NOT_FOUND',
+  /** This swarm is still running. Stop it first. */
+  SWARM_RUNNING: 'SWARM_RUNNING',
   /** {{detail}} */
   TASKS_LIST_FAILED: 'TASKS_LIST_FAILED',
   /** {{detail}} */

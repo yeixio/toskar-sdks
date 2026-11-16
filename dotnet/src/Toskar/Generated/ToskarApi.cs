@@ -329,9 +329,11 @@ public sealed partial class ToskarApi
     /// <summary>
     /// List conversations
     /// </summary>
+    /// <param name="projectId">Only the chats in this project (contract 1.87,</param>
+    /// <param name="swarmId">A swarm's chats: its coordinator's and its agents' (contract 1.88, #1135). Without it, agents' chats are left out.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
-    public System.Threading.Tasks.Task<List<M.Conversation>> ListConversationsAsync(CancellationToken cancellationToken = default) =>
-        client.CallAsync<List<M.Conversation>>("GET", "/api/v1/conversations", NoParams, NoPairs, NoPairs, null, cancellationToken);
+    public System.Threading.Tasks.Task<List<M.Conversation>> ListConversationsAsync(string? projectId = null, string? swarmId = null, CancellationToken cancellationToken = default) =>
+        client.CallAsync<List<M.Conversation>>("GET", "/api/v1/conversations", NoParams, new (string, object?)[] { ("project_id", projectId), ("swarm_id", swarmId) }, NoPairs, null, cancellationToken);
 
     /// <summary>
     /// Create conversation
@@ -1163,6 +1165,17 @@ public sealed partial class ToskarApi
         client.SendAsync("DELETE", "/api/v1/models/{id}", new[] { id }, new (string, object?)[] { ("node_id", nodeId) }, NoPairs, Json(body), cancellationToken);
 
     /// <summary>
+    /// Keep a model running
+    ///
+    /// Keep a chat model installed on this computer loaded, or let the idle sweep unload it again. Turning it on loads it. It loads when Toskar starts and again if it stops, and is not unloaded when idle or to make room for a picture or clip (#966, contract 1.94).
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.ModelAlwaysRunning> SetModelAlwaysRunningAsync(string id, M.SetModelAlwaysRunningRequest body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.ModelAlwaysRunning>("PUT", "/api/v1/models/{id}/always-running", new[] { id }, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
     /// Set a model's context window
     ///
     /// The context window a chat model installed on this computer starts with: 0 for Auto (the largest of 8K, 16K, or 32K at which it is still an excellent fit), or one of its context_options. A loaded model starts again with it on its next request (#962, contract 1.69).
@@ -1229,6 +1242,17 @@ public sealed partial class ToskarApi
     /// <param name="cancellationToken">Cancels the request.</param>
     public Task DismissModelRatingAsync(string id, CancellationToken cancellationToken = default) =>
         client.SendAsync("POST", "/api/v1/models/{id}/rating/dismiss", new[] { id }, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Set how many requests a model answers at once
+    ///
+    /// How many requests a chat model installed on this computer answers at once, 1 to 4, so a swarm can run that many agents on it together. llama-server starts with --parallel set to it, and each slot keeps the whole context window, so the model takes more memory. A loaded model starts again with it on its next request (#1135, contract 1.88).
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.ModelSlots> SetModelSlotsAsync(string id, M.SetModelSlotsRequest body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.ModelSlots>("PUT", "/api/v1/models/{id}/slots", new[] { id }, NoPairs, NoPairs, Json(body), cancellationToken);
 
     /// <summary>
     /// Turn guessing ahead Auto or Off for a model
@@ -1920,6 +1944,73 @@ public sealed partial class ToskarApi
         client.SendAsync("POST", "/api/v1/profiles/{id}/try-topics", new[] { id }, NoPairs, NoPairs, Json(body), cancellationToken);
 
     /// <summary>
+    /// The caller's projects
+    ///
+    /// Newest activity first, with how many chats each has (contract 1.87,
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<List<M.Project>> ListProjectsAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<List<M.Project>>("GET", "/api/v1/projects", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Make a project
+    /// </summary>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.Project> CreateProjectAsync(M.ProjectInput body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.Project>("POST", "/api/v1/projects", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// One project
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.Project> GetProjectAsync(string id, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.Project>("GET", "/api/v1/projects/{id}", new[] { id }, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Change a project
+    ///
+    /// Fields left out stay as they are. folder needs the admin role and must be a folder on the Toskar computer.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.Project> UpdateProjectAsync(string id, M.ProjectInput body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.Project>("PATCH", "/api/v1/projects/{id}", new[] { id }, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// Delete a project
+    ///
+    /// Deletes the project with its files and its memories. Its chats move out of it, keeping their own folder, unless chats is delete.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="chats">delete deletes the project's chats too, with their files.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public Task DeleteProjectAsync(string id, string? chats = null, CancellationToken cancellationToken = default) =>
+        client.SendAsync("DELETE", "/api/v1/projects/{id}", new[] { id }, new (string, object?)[] { ("chats", chats) }, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Add a file to a project
+    ///
+    /// The file joins the project's knowledge, which its chats search. A file with the same name is replaced. One that can't be read is refused.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.Project> AddProjectFileAsync(string id, M.AddProjectFileRequest body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.Project>("POST", "/api/v1/projects/{id}/files", new[] { id }, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// Remove a file from a project
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="name">The name.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public Task RemoveProjectFileAsync(string id, string name, CancellationToken cancellationToken = default) =>
+        client.SendAsync("DELETE", "/api/v1/projects/{id}/files/{name}", new[] { id, name }, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
     /// Everyone's ratings of the models here, from hardware like this computer's and overall
     ///
     /// Empty unless `community_ratings` is on. The public summary is downloaded at most once a day; when that fails, the last one is used and `error` says why.
@@ -2102,6 +2193,56 @@ public sealed partial class ToskarApi
     /// <param name="cancellationToken">Cancels the request.</param>
     public System.Threading.Tasks.Task<M.Transcription> TranscribeRecordingAsync(M.TranscribeRecordingRequest body, CancellationToken cancellationToken = default) =>
         client.CallAsync<M.Transcription>("POST", "/api/v1/speech/transcribe", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// The caller's swarms
+    ///
+    /// Newest first (contract 1.88,
+    /// </summary>
+    /// <param name="projectId">Only this project's swarms.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<List<M.Swarm>> ListSwarmsAsync(string? projectId = null, CancellationToken cancellationToken = default) =>
+        client.CallAsync<List<M.Swarm>>("GET", "/api/v1/swarms", NoParams, new (string, object?)[] { ("project_id", projectId) }, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Start a swarm
+    ///
+    /// Runs prompt as a swarm turn in conversation_id, or a new chat, in the background (contract 1.88, #1135). Returns the swarm at once; its agents fill in when the coordinator has planned them, and swarm.* events on /events follow it. A chat with no project gets one named after the job. Questions only for now: a task in a folder runs as one. Needs the member role.
+    /// </summary>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.Swarm> StartSwarmAsync(M.StartSwarmRequest body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.Swarm>("POST", "/api/v1/swarms", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// One swarm
+    ///
+    /// With its agents, their status, and what they're waiting on.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.Swarm> GetSwarmAsync(string id, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.Swarm>("GET", "/api/v1/swarms/{id}", new[] { id }, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Delete a swarm
+    ///
+    /// Deletes the record, and the branches a task swarm kept in its folder. Its chats stay, as ordinary chats in its project. A running swarm is refused with SWARM_RUNNING; stop it first.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public Task DeleteSwarmAsync(string id, CancellationToken cancellationToken = default) =>
+        client.SendAsync("DELETE", "/api/v1/swarms/{id}", new[] { id }, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Stop a swarm
+    ///
+    /// Stops every agent and the coordinator's turn. What they wrote stays in their chats. To stop one agent, stop its chat with POST /api/v1/chat/stop; the others go on.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.ChatStopped> StopSwarmAsync(string id, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.ChatStopped>("POST", "/api/v1/swarms/{id}/stop", new[] { id }, NoPairs, NoPairs, null, cancellationToken);
 
     /// <summary>
     /// Recent tasks
@@ -2532,9 +2673,9 @@ public sealed partial class ToskarApi
         client.SendAsync("GET", "/mcp", NoParams, NoPairs, NoPairs, null, cancellationToken);
 
     /// <summary>
-    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge.
+    /// Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm.
     ///
-    /// Checked like /v1. A request with an Origin header from another site is refused.
+    /// Checked like /v1. A request with an Origin header from another site is refused. run_swarm ({prompt, mode?, profile?}) runs a question swarm and returns its answer and the coordinator chat's id and link, /chat?c=&lt;id&gt;; it needs the member role (#1135, contract 1.88).
     /// </summary>
     /// <param name="body">The request.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
@@ -2575,7 +2716,7 @@ public sealed partial class ToskarApi
     /// <summary>
     /// Anthropic-compatible messages, for coding agents
     ///
-    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:&lt;model&gt; does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}.
+    /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:&lt;model&gt; does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:&lt;profile&gt; (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
     /// </summary>
     /// <param name="body">The request.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
@@ -2594,7 +2735,7 @@ public sealed partial class ToskarApi
     /// <summary>
     /// OpenAI-compatible model list
     ///
-    /// auto, each profile as profile:&lt;id&gt;, and each deployed specialized AI as sai:&lt;slug&gt;.
+    /// auto, each profile as profile:&lt;id&gt;, each profile whose strategy is swarm as swarm:&lt;id&gt; (#1135, contract 1.88), and each deployed specialized AI as sai:&lt;slug&gt;.
     /// </summary>
     /// <param name="cancellationToken">Cancels the request.</param>
     public System.Threading.Tasks.Task<M.OpenAIModelList> OpenaiListModelsAsync(CancellationToken cancellationToken = default) =>
@@ -2603,7 +2744,7 @@ public sealed partial class ToskarApi
     /// <summary>
     /// OpenAI Responses, for coding agents
     ///
-    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:&lt;model&gt; does.
+    /// OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:&lt;model&gt; does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:&lt;model&gt; does. model swarm:&lt;profile&gt; (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
     /// </summary>
     /// <param name="body">The request.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
