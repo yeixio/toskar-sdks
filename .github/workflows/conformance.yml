@@ -71,10 +71,10 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: yeixio/toskar-core
           ref: ${{ inputs.core_ref || 'main' }}
@@ -82,18 +82,18 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: core/go.mod
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
-      - uses: gradle/actions/setup-gradle@v5
-      - uses: actions/setup-dotnet@v5
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: actions/setup-dotnet@v6
         # Not /usr/share/dotnet, which a home runner's user can't write.
         env:
           DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}/dotnet
@@ -143,10 +143,10 @@ jobs:
     runs-on: ${{ fromJSON(vars.MAC_RUNS_ON || '"macos-latest"') }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: yeixio/toskar-core
           ref: ${{ inputs.core_ref || 'main' }}
