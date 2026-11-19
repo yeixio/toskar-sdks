@@ -4,7 +4,7 @@
 package ai.toskar
 
 /** The client contract this SDK was built for. */
-public const val CONTRACT_VERSION: String = "1.98"
+public const val CONTRACT_VERSION: String = "1.114"
 
 /**
  * The codes Toskar Core answers errors with, for [ToskarException.code]. A
@@ -74,6 +74,15 @@ public object ErrorCodes {
     /** No cache has that name. */
     public const val CACHE_NOT_FOUND: String = "CACHE_NOT_FOUND"
 
+    /** Enter the camera's address, such as 192.168.1.50. */
+    public const val CAMERA_ADDRESS: String = "CAMERA_ADDRESS"
+
+    /** Toskar couldn't reach the camera's speaker, so the visitor wasn't answered. Check that the camera is on and on the same network as this computer. */
+    public const val CAMERA_SPEAKER_UNREACHABLE: String = "CAMERA_SPEAKER_UNREACHABLE"
+
+    /** Toskar couldn't reach a camera at that address. Check the address, and that the camera's HTTP or HTTPS server is on. */
+    public const val CAMERA_UNREACHABLE: String = "CAMERA_UNREACHABLE"
+
     /** This is turned off for your account. Ask {{admin}} or another Admin to turn it on. */
     public const val CAPABILITY_OFF: String = "CAPABILITY_OFF"
 
@@ -83,11 +92,26 @@ public object ErrorCodes {
     /** {{detail}} */
     public const val CHAT_FAILED: String = "CHAT_FAILED"
 
+    /** There's no checkout open to cancel. */
+    public const val CHECKOUT_NONE: String = "CHECKOUT_NONE"
+
     /** {{detail}} */
     public const val CLAIM_FAILED: String = "CLAIM_FAILED"
 
+    /** The ComfyUI address must start with http:// or https://, such as http://127.0.0.1:8188. */
+    public const val COMFYUI_BAD_URL: String = "COMFYUI_BAD_URL"
+
+    /** {{detail}} */
+    public const val COMFYUI_BAD_WORKFLOW: String = "COMFYUI_BAD_WORKFLOW"
+
+    /** {{detail}} */
+    public const val COMFYUI_FAILED: String = "COMFYUI_FAILED"
+
     /** The chat couldn't be compacted: {{detail}} */
     public const val COMPACT_FAILED: String = "COMPACT_FAILED"
+
+    /** A device connected through another can't connect more. Connect it from the phone. */
+    public const val COMPANION_LIMIT: String = "COMPANION_LIMIT"
 
     /** The computer running this model is offline. */
     public const val COMPUTER_OFFLINE: String = "COMPUTER_OFFLINE"
@@ -157,6 +181,9 @@ public object ErrorCodes {
 
     /** Couldn't create a diagnostics bundle. */
     public const val DIAGNOSTICS_FAILED: String = "DIAGNOSTICS_FAILED"
+
+    /** Someone came to the door, and Toskar couldn't answer: {{detail}} */
+    public const val DOOR_NOT_ANSWERED: String = "DOOR_NOT_ANSWERED"
 
     /** {{detail}} */
     public const val EGRESS_FAILED: String = "EGRESS_FAILED"
@@ -244,6 +271,9 @@ public object ErrorCodes {
 
     /** “{{value}}” isn't a valid value for {{setting}}. */
     public const val INVALID_SETTING: String = "INVALID_SETTING"
+
+    /** That voice isn't one {{language}} can be read in here. */
+    public const val INVALID_VOICE: String = "INVALID_VOICE"
 
     /** This link has expired or was already used. Ask for a new one. */
     public const val INVITE_INVALID: String = "INVITE_INVALID"
@@ -391,6 +421,15 @@ public object ErrorCodes {
 
     /** {{detail}} */
     public const val MODEL_UPDATE_FAILED: String = "MODEL_UPDATE_FAILED"
+
+    /** Toskar's relay didn't move the subscription ({{relay_code}}). */
+    public const val MOVE_FAILED: String = "MOVE_FAILED"
+
+    /** To move it, Toskar's relay needs to hear from the computer it's on now: turn that computer on once, or wait until it has been off for 3 days. */
+    public const val MOVE_NEEDS_COMPUTER: String = "MOVE_NEEDS_COMPUTER"
+
+    /** The subscription moved less than a day ago. It can move again tomorrow. */
+    public const val MOVE_TOO_SOON: String = "MOVE_TOO_SOON"
 
     /** A name is 1 to 80 characters. */
     public const val NAME_INVALID: String = "NAME_INVALID"
@@ -635,6 +674,12 @@ public object ErrorCodes {
     /** This computer uses your organization's relay, so it doesn't need a subscription. */
     public const val RELAY_TOKEN_NOT_NEEDED: String = "RELAY_TOKEN_NOT_NEEDED"
 
+    /** This computer already has a relay token that lasts longer, so it keeps that one. */
+    public const val RELAY_TOKEN_SHORTER: String = "RELAY_TOKEN_SHORTER"
+
+    /** Toskar's relay couldn't be reached. Try again in a minute. */
+    public const val RELAY_UNREACHABLE: String = "RELAY_UNREACHABLE"
+
     /** Access from anywhere is off, so there's nothing to check. Turn it on first. */
     public const val REMOTE_ACCESS_OFF: String = "REMOTE_ACCESS_OFF"
 
@@ -779,6 +824,9 @@ public object ErrorCodes {
     /** This computer already has access from anywhere. */
     public const val SUBSCRIPTION_ACTIVE: String = "SUBSCRIPTION_ACTIVE"
 
+    /** Another device's subscription already covers this computer, so there's nothing to buy here. */
+    public const val SUBSCRIPTION_COVERED: String = "SUBSCRIPTION_COVERED"
+
     /** Couldn't start the subscription. */
     public const val SUBSCRIPTION_FAILED: String = "SUBSCRIPTION_FAILED"
 
@@ -866,6 +914,12 @@ public object ErrorCodes {
     /** That username is taken. */
     public const val USERNAME_TAKEN: String = "USERNAME_TAKEN"
 
+    /** Live voice isn't available on this computer. */
+    public const val VOICE_UNAVAILABLE: String = "VOICE_UNAVAILABLE"
+
     /** {{detail}} */
     public const val WARM_FAILED: String = "WARM_FAILED"
+
+    /** Live voice needs a WebSocket connection. */
+    public const val WEBSOCKET_REQUIRED: String = "WEBSOCKET_REQUIRED"
 }

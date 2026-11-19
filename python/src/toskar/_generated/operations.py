@@ -299,6 +299,67 @@ class Api:
             "POST", f"/api/v1/chat/stop", query={}, body=body, answer=models.ChatStopped, read="json"
         )
 
+    def get_comfy_ui(self) -> models.ComfyUIStatus:
+        """The connected ComfyUI and what a check finds on it (Admin)
+
+        The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out."""
+        return self._client._request(
+            "GET", f"/api/v1/comfyui", query={}, body=None, answer=models.ComfyUIStatus, read="json"
+        )
+
+    def set_comfy_ui(self, *, body: dict[str, Any]) -> models.ComfyUIStatus:
+        """Connect a ComfyUI, change its token, or disconnect it (Admin)
+
+        The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+
+        Body fields:
+            base_url
+            token
+            clear_token"""
+        return self._client._request(
+            "PUT", f"/api/v1/comfyui", query={}, body=body, answer=models.ComfyUIStatus, read="json"
+        )
+
+    def list_comfy_workflows(self) -> models.ComfyWorkflows:
+        """Saved ComfyUI workflows, without their graphs (Admin)"""
+        return self._client._request(
+            "GET", f"/api/v1/comfyui/workflows", query={}, body=None, answer=models.ComfyWorkflows, read="json"
+        )
+
+    def save_comfy_workflow(self, *, body: dict[str, Any]) -> models.ComfyWorkflow:
+        """Save a ComfyUI workflow, or replace the one with its name (Admin)
+
+        graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+
+        Body fields:
+            name (required)
+            description
+            graph (required)
+            inputs"""
+        return self._client._request(
+            "POST", f"/api/v1/comfyui/workflows", query={}, body=body, answer=models.ComfyWorkflow, read="json"
+        )
+
+    def detect_comfy_workflow(self, *, body: dict[str, Any]) -> models.ComfyWorkflowInputs:
+        """Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+
+        Body fields:
+            graph (required)"""
+        return self._client._request(
+            "POST",
+            f"/api/v1/comfyui/workflows/detect",
+            query={},
+            body=body,
+            answer=models.ComfyWorkflowInputs,
+            read="json",
+        )
+
+    def delete_comfy_workflow(self, name: str) -> None:
+        """Remove a saved ComfyUI workflow (Admin)"""
+        return self._client._request(
+            "DELETE", f"/api/v1/comfyui/workflows/{name}", query={}, body=None, answer=None, read="none"
+        )
+
     def list_connectors(self) -> list[models.ConnectorStatus]:
         """List connected services and their status. Secret values are never returned."""
         return self._client._request(
@@ -1142,6 +1203,20 @@ class Api:
             read="json",
         )
 
+    def list_model_license_acceptances(self) -> list[models.LicenseAcceptance]:
+        """Who accepted which model's license terms, and when
+
+        Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+        """
+        return self._client._request(
+            "GET",
+            f"/api/v1/models/license-acceptances",
+            query={},
+            body=None,
+            answer=list[models.LicenseAcceptance],
+            read="json",
+        )
+
     def recommend_models(self, *, purpose: str | None = None) -> models.Recommendation:
         """Recommended models for this computer"""
         return self._client._request(
@@ -1244,7 +1319,9 @@ class Api:
 
         Body fields:
             node_id
-            wait"""
+            wait
+            accept_license: The person accepts the model's license terms, for a license with terms to accept; Toskar keeps a record of who and when (#593, contract 1.103). An install without it isn't refused.
+        """
         return self._client._request(
             "POST",
             f"/api/v1/models/{id}/install",
@@ -2043,7 +2120,7 @@ class Api:
     def get_remote_access(self) -> None:
         """Access from anywhere's setting and its listener (#456)
 
-        enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+        enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
         """
         return self._client._request("GET", f"/api/v1/remote-access", query={}, body=None, answer=None, read="none")
 
@@ -2056,10 +2133,19 @@ class Api:
             "POST", f"/api/v1/remote-access/check", query={}, body=None, answer=None, read="none"
         )
 
+    def get_device_token(self) -> models.DeviceToken:
+        """This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+
+        Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+        """
+        return self._client._request(
+            "GET", f"/api/v1/remote-access/device-token", query={}, body=None, answer=models.DeviceToken, read="json"
+        )
+
     def put_relay_token(self) -> None:
         """Hand over a subscription's relay token (#456)
 
-        Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+        Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
         """
         return self._client._request(
             "PUT", f"/api/v1/remote-access/relay-token", query={}, body=None, answer=None, read="none"
@@ -2083,6 +2169,15 @@ class Api:
             "POST", f"/api/v1/remote-access/subscription/checkout", query={}, body=None, answer=None, read="none"
         )
 
+    def cancel_subscription_checkout(self) -> None:
+        """Close the checkout opened here before it's paid (#1257)
+
+        Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+        """
+        return self._client._request(
+            "DELETE", f"/api/v1/remote-access/subscription/checkout", query={}, body=None, answer=None, read="none"
+        )
+
     def manage_subscription(self) -> None:
         """The billing page for the subscription bought here (#639)
 
@@ -2090,6 +2185,15 @@ class Api:
         """
         return self._client._request(
             "POST", f"/api/v1/remote-access/subscription/manage", query={}, body=None, answer=None, read="none"
+        )
+
+    def move_subscription(self) -> None:
+        """Move the subscription bought here onto this computer (#1257)
+
+        When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+        """
+        return self._client._request(
+            "POST", f"/api/v1/remote-access/subscription/move", query={}, body=None, answer=None, read="none"
         )
 
     def role_capabilities(self) -> models.RoleCapabilities:
@@ -2197,6 +2301,35 @@ class Api:
             "POST", f"/api/v1/speech", query={}, body=body, answer=models.SpokenText, read="json"
         )
 
+    def install_kitten(self) -> models.VoiceSettings:
+        """Install Kitten TTS 2 mini (#1304)
+
+        Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+        """
+        return self._client._request(
+            "POST", f"/api/v1/speech/kitten", query={}, body=None, answer=models.VoiceSettings, read="json"
+        )
+
+    def remove_kitten(self) -> models.VoiceSettings:
+        """Remove Kitten TTS 2 mini (#1304)
+
+        Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+        """
+        return self._client._request(
+            "DELETE", f"/api/v1/speech/kitten", query={}, body=None, answer=models.VoiceSettings, read="json"
+        )
+
+    def speech_say(self, *, body: dict[str, Any]) -> bytes:
+        """Read a little text aloud in the computer's voice (#795)
+
+        Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+
+        Body fields:
+            text (required)
+            voice
+            language"""
+        return self._client._request("POST", f"/api/v1/speech/say", query={}, body=body, answer=None, read="bytes")
+
     def transcribe_recording(self, *, body: dict[str, Any]) -> models.Transcription:
         """A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155)
 
@@ -2207,6 +2340,26 @@ class Api:
             language: A hint such as en or de; empty detects the language"""
         return self._client._request(
             "POST", f"/api/v1/speech/transcribe", query={}, body=body, answer=models.Transcription, read="json"
+        )
+
+    def speech_voices(self) -> models.VoiceSettings:
+        """The Voice settings (#1304)
+
+        Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+        """
+        return self._client._request(
+            "GET", f"/api/v1/speech/voices", query={}, body=None, answer=models.VoiceSettings, read="json"
+        )
+
+    def set_speech_voice(self, language: str, *, body: dict[str, Any]) -> models.VoiceSettings:
+        """Choose the voice a language is read aloud in (#1304)
+
+        Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+
+        Body fields:
+            voice: One of the language's voices from GET /api/v1/speech/voices, or empty for automatic"""
+        return self._client._request(
+            "PUT", f"/api/v1/speech/voices/{language}", query={}, body=body, answer=models.VoiceSettings, read="json"
         )
 
     def list_swarms(self, *, project_id: str | None = None) -> list[models.Swarm]:
@@ -2281,6 +2434,15 @@ class Api:
     def get_api_tls(self) -> models.TLSInfo:
         """How the API speaks HTTPS on the local network (#213)"""
         return self._client._request("GET", f"/api/v1/tls", query={}, body=None, answer=models.TLSInfo, read="json")
+
+    def get_next_api_tls(self) -> models.NextTLSInfo:
+        """The certificate that replaces one naming the computer (#1263)
+
+        Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+        """
+        return self._client._request(
+            "GET", f"/api/v1/tls/next", query={}, body=None, answer=models.NextTLSInfo, read="json"
+        )
 
     def list_tools(self) -> list[models.ToolDescriptor]:
         """Every tool's descriptor, with whether it is on, its health, and the profiles that allow it"""
@@ -2689,6 +2851,13 @@ class Api:
             "POST", f"/api/v1/video/setup/build", query={}, body=body, answer=models.ImageSetup, read="json"
         )
 
+    def voice_realtime(self) -> None:
+        """Live voice mode, over a WebSocket (#795)
+
+        Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+        """
+        return self._client._request("GET", f"/api/v1/voice/realtime", query={}, body=None, answer=None, read="none")
+
     def run_hook(self, token: str) -> models.HookRun:
         """Start the automation a webhook link belongs to
 
@@ -3092,6 +3261,67 @@ class AsyncApi:
             conversation_id (required)"""
         return await self._client._request(
             "POST", f"/api/v1/chat/stop", query={}, body=body, answer=models.ChatStopped, read="json"
+        )
+
+    async def get_comfy_ui(self) -> models.ComfyUIStatus:
+        """The connected ComfyUI and what a check finds on it (Admin)
+
+        The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out."""
+        return await self._client._request(
+            "GET", f"/api/v1/comfyui", query={}, body=None, answer=models.ComfyUIStatus, read="json"
+        )
+
+    async def set_comfy_ui(self, *, body: dict[str, Any]) -> models.ComfyUIStatus:
+        """Connect a ComfyUI, change its token, or disconnect it (Admin)
+
+        The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+
+        Body fields:
+            base_url
+            token
+            clear_token"""
+        return await self._client._request(
+            "PUT", f"/api/v1/comfyui", query={}, body=body, answer=models.ComfyUIStatus, read="json"
+        )
+
+    async def list_comfy_workflows(self) -> models.ComfyWorkflows:
+        """Saved ComfyUI workflows, without their graphs (Admin)"""
+        return await self._client._request(
+            "GET", f"/api/v1/comfyui/workflows", query={}, body=None, answer=models.ComfyWorkflows, read="json"
+        )
+
+    async def save_comfy_workflow(self, *, body: dict[str, Any]) -> models.ComfyWorkflow:
+        """Save a ComfyUI workflow, or replace the one with its name (Admin)
+
+        graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+
+        Body fields:
+            name (required)
+            description
+            graph (required)
+            inputs"""
+        return await self._client._request(
+            "POST", f"/api/v1/comfyui/workflows", query={}, body=body, answer=models.ComfyWorkflow, read="json"
+        )
+
+    async def detect_comfy_workflow(self, *, body: dict[str, Any]) -> models.ComfyWorkflowInputs:
+        """Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+
+        Body fields:
+            graph (required)"""
+        return await self._client._request(
+            "POST",
+            f"/api/v1/comfyui/workflows/detect",
+            query={},
+            body=body,
+            answer=models.ComfyWorkflowInputs,
+            read="json",
+        )
+
+    async def delete_comfy_workflow(self, name: str) -> None:
+        """Remove a saved ComfyUI workflow (Admin)"""
+        return await self._client._request(
+            "DELETE", f"/api/v1/comfyui/workflows/{name}", query={}, body=None, answer=None, read="none"
         )
 
     async def list_connectors(self) -> list[models.ConnectorStatus]:
@@ -3957,6 +4187,20 @@ class AsyncApi:
             read="json",
         )
 
+    async def list_model_license_acceptances(self) -> list[models.LicenseAcceptance]:
+        """Who accepted which model's license terms, and when
+
+        Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+        """
+        return await self._client._request(
+            "GET",
+            f"/api/v1/models/license-acceptances",
+            query={},
+            body=None,
+            answer=list[models.LicenseAcceptance],
+            read="json",
+        )
+
     async def recommend_models(self, *, purpose: str | None = None) -> models.Recommendation:
         """Recommended models for this computer"""
         return await self._client._request(
@@ -4059,7 +4303,9 @@ class AsyncApi:
 
         Body fields:
             node_id
-            wait"""
+            wait
+            accept_license: The person accepts the model's license terms, for a license with terms to accept; Toskar keeps a record of who and when (#593, contract 1.103). An install without it isn't refused.
+        """
         return await self._client._request(
             "POST",
             f"/api/v1/models/{id}/install",
@@ -4870,7 +5116,7 @@ class AsyncApi:
     async def get_remote_access(self) -> None:
         """Access from anywhere's setting and its listener (#456)
 
-        enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+        enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
         """
         return await self._client._request(
             "GET", f"/api/v1/remote-access", query={}, body=None, answer=None, read="none"
@@ -4885,10 +5131,19 @@ class AsyncApi:
             "POST", f"/api/v1/remote-access/check", query={}, body=None, answer=None, read="none"
         )
 
+    async def get_device_token(self) -> models.DeviceToken:
+        """This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+
+        Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/remote-access/device-token", query={}, body=None, answer=models.DeviceToken, read="json"
+        )
+
     async def put_relay_token(self) -> None:
         """Hand over a subscription's relay token (#456)
 
-        Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+        Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
         """
         return await self._client._request(
             "PUT", f"/api/v1/remote-access/relay-token", query={}, body=None, answer=None, read="none"
@@ -4912,6 +5167,15 @@ class AsyncApi:
             "POST", f"/api/v1/remote-access/subscription/checkout", query={}, body=None, answer=None, read="none"
         )
 
+    async def cancel_subscription_checkout(self) -> None:
+        """Close the checkout opened here before it's paid (#1257)
+
+        Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+        """
+        return await self._client._request(
+            "DELETE", f"/api/v1/remote-access/subscription/checkout", query={}, body=None, answer=None, read="none"
+        )
+
     async def manage_subscription(self) -> None:
         """The billing page for the subscription bought here (#639)
 
@@ -4919,6 +5183,15 @@ class AsyncApi:
         """
         return await self._client._request(
             "POST", f"/api/v1/remote-access/subscription/manage", query={}, body=None, answer=None, read="none"
+        )
+
+    async def move_subscription(self) -> None:
+        """Move the subscription bought here onto this computer (#1257)
+
+        When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+        """
+        return await self._client._request(
+            "POST", f"/api/v1/remote-access/subscription/move", query={}, body=None, answer=None, read="none"
         )
 
     async def role_capabilities(self) -> models.RoleCapabilities:
@@ -5028,6 +5301,37 @@ class AsyncApi:
             "POST", f"/api/v1/speech", query={}, body=body, answer=models.SpokenText, read="json"
         )
 
+    async def install_kitten(self) -> models.VoiceSettings:
+        """Install Kitten TTS 2 mini (#1304)
+
+        Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+        """
+        return await self._client._request(
+            "POST", f"/api/v1/speech/kitten", query={}, body=None, answer=models.VoiceSettings, read="json"
+        )
+
+    async def remove_kitten(self) -> models.VoiceSettings:
+        """Remove Kitten TTS 2 mini (#1304)
+
+        Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+        """
+        return await self._client._request(
+            "DELETE", f"/api/v1/speech/kitten", query={}, body=None, answer=models.VoiceSettings, read="json"
+        )
+
+    async def speech_say(self, *, body: dict[str, Any]) -> bytes:
+        """Read a little text aloud in the computer's voice (#795)
+
+        Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+
+        Body fields:
+            text (required)
+            voice
+            language"""
+        return await self._client._request(
+            "POST", f"/api/v1/speech/say", query={}, body=body, answer=None, read="bytes"
+        )
+
     async def transcribe_recording(self, *, body: dict[str, Any]) -> models.Transcription:
         """A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155)
 
@@ -5038,6 +5342,26 @@ class AsyncApi:
             language: A hint such as en or de; empty detects the language"""
         return await self._client._request(
             "POST", f"/api/v1/speech/transcribe", query={}, body=body, answer=models.Transcription, read="json"
+        )
+
+    async def speech_voices(self) -> models.VoiceSettings:
+        """The Voice settings (#1304)
+
+        Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/speech/voices", query={}, body=None, answer=models.VoiceSettings, read="json"
+        )
+
+    async def set_speech_voice(self, language: str, *, body: dict[str, Any]) -> models.VoiceSettings:
+        """Choose the voice a language is read aloud in (#1304)
+
+        Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+
+        Body fields:
+            voice: One of the language's voices from GET /api/v1/speech/voices, or empty for automatic"""
+        return await self._client._request(
+            "PUT", f"/api/v1/speech/voices/{language}", query={}, body=body, answer=models.VoiceSettings, read="json"
         )
 
     async def list_swarms(self, *, project_id: str | None = None) -> list[models.Swarm]:
@@ -5121,6 +5445,15 @@ class AsyncApi:
         """How the API speaks HTTPS on the local network (#213)"""
         return await self._client._request(
             "GET", f"/api/v1/tls", query={}, body=None, answer=models.TLSInfo, read="json"
+        )
+
+    async def get_next_api_tls(self) -> models.NextTLSInfo:
+        """The certificate that replaces one naming the computer (#1263)
+
+        Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/tls/next", query={}, body=None, answer=models.NextTLSInfo, read="json"
         )
 
     async def list_tools(self) -> list[models.ToolDescriptor]:
@@ -5528,6 +5861,15 @@ class AsyncApi:
             build (required): Known values: `gpu`, `cpu`; others may be added."""
         return await self._client._request(
             "POST", f"/api/v1/video/setup/build", query={}, body=body, answer=models.ImageSetup, read="json"
+        )
+
+    async def voice_realtime(self) -> None:
+        """Live voice mode, over a WebSocket (#795)
+
+        Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/voice/realtime", query={}, body=None, answer=None, read="none"
         )
 
     async def run_hook(self, token: str) -> models.HookRun:

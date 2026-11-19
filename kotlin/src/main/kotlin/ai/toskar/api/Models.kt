@@ -11,6 +11,15 @@ import kotlinx.serialization.UseSerializers
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
+/** The Voice settings (#1304, contract 1.112) */
+@Serializable
+public data class VoiceSettings @JvmOverloads constructor(
+    @SerialName("kitten") public val kitten: VoiceSettingsKitten,
+    @SerialName("languages") public val languages: List<VoiceSettingsLanguages>,
+    /** The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113) */
+    @SerialName("needs") public val needs: List<VoiceSettingsNeeds>? = null,
+)
+
 @Serializable
 public data class License @JvmOverloads constructor(
     /** Known values: ``, `available`, `trial`, `unlocked`, `ended`; others may be added. */
@@ -76,6 +85,56 @@ public data class PersonalStyle @JvmOverloads constructor(
     @SerialName("units") public val units: String? = null,
     @SerialName("about_me") public val aboutMe: String? = null,
     @SerialName("instructions") public val instructions: String? = null,
+    /** Where the person is, such as a town. Used only for questions about nearby places, weather, and directions, and as the start of the places tools when no place is named. */
+    @SerialName("location") public val location: String? = null,
+)
+
+@Serializable
+public data class ComfyUIStatus @JvmOverloads constructor(
+    @SerialName("base_url") public val baseUrl: String,
+    @SerialName("has_token") public val hasToken: Boolean,
+    @SerialName("info") public val info: ComfyUIInfo? = null,
+    /** Why the check failed */
+    @SerialName("error") public val error: String? = null,
+)
+
+@Serializable
+public data class ComfyUIInfo @JvmOverloads constructor(
+    @SerialName("devices") public val devices: List<ComfyUIInfoDevices>,
+    /** Model files by kind (checkpoints, diffusion, loras, vae, upscalers) */
+    @SerialName("models") public val models: Map<String, List<String>>,
+    /** How many node types ComfyUI offers */
+    @SerialName("node_types") public val nodeTypes: Long,
+    @SerialName("version") public val version: String? = null,
+)
+
+@Serializable
+public data class ComfyWorkflowInput @JvmOverloads constructor(
+    @SerialName("node") public val node: String,
+    @SerialName("field") public val field: String,
+)
+
+@Serializable
+public data class ComfyWorkflowInputs @JvmOverloads constructor(
+    @SerialName("prompt") public val prompt: ComfyWorkflowInput? = null,
+    @SerialName("negative") public val negative: ComfyWorkflowInput? = null,
+    @SerialName("seed") public val seed: ComfyWorkflowInput? = null,
+    @SerialName("image") public val image: ComfyWorkflowInput? = null,
+    @SerialName("width") public val width: ComfyWorkflowInput? = null,
+    @SerialName("height") public val height: ComfyWorkflowInput? = null,
+)
+
+@Serializable
+public data class ComfyWorkflows @JvmOverloads constructor(
+    @SerialName("workflows") public val workflows: List<ComfyWorkflow>,
+)
+
+@Serializable
+public data class ComfyWorkflow @JvmOverloads constructor(
+    @SerialName("name") public val name: String,
+    @SerialName("inputs") public val inputs: ComfyWorkflowInputs,
+    @SerialName("nodes") public val nodes: Long,
+    @SerialName("description") public val description: String? = null,
 )
 
 @Serializable
@@ -324,6 +383,20 @@ public data class Model @JvmOverloads constructor(
     @SerialName("context_options") public val contextOptions: List<ModelContextOptions>? = null,
     /** How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models. */
     @SerialName("slots") public val slots: Long? = null,
+    /** The catalog model that replaces an installed one, size for size, such as Qwen 3.5 4B for Qwen 2.5 3B, when it is not installed too (#593, contract 1.107). */
+    @SerialName("newer") public val newer: String? = null,
+    /** What the model does first, for browsing the store, from the categories in manifests/models/categories.json, such as chat_coding, retrieval, or creative; uncategorized for a model nobody has checked (#593, contract 1.104). It never says Toskar can run the model; runtime does. */
+    @SerialName("primary_category") public val primaryCategory: String? = null,
+    /** Every category the model belongs to */
+    @SerialName("categories") public val categories: List<String>? = null,
+    /** What the model does in its categories, such as code_generation or text_embedding */
+    @SerialName("tasks") public val tasks: List<String>? = null,
+    /** What the model takes, such as text, code, or image */
+    @SerialName("input_modalities") public val inputModalities: List<String>? = null,
+    /** What the model gives, such as text, image, or embedding */
+    @SerialName("output_modalities") public val outputModalities: List<String>? = null,
+    /** A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link. */
+    @SerialName("license") public val license: ModelLicense? = null,
     /** How well the model writes each language it has a level for (§13–14, §31), best first. */
     @SerialName("languages") public val languages: List<ModelLanguages>? = null,
 )
@@ -738,6 +811,10 @@ public data class AutomationInput @JvmOverloads constructor(
     @SerialName("trigger") public val trigger: AutomationInputTrigger? = null,
     /** Cameras to look at as each run starts (#667). Their pictures, taken through the connected service, are shown to a model that can see. On update, an empty list stops looking. */
     @SerialName("cameras") public val cameras: List<AutomationInputCameras>? = null,
+    /** Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking. */
+    @SerialName("say") public val say: AutomationInputSay? = null,
+    /** Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them. */
+    @SerialName("actions") public val actions: List<AutomationInputActions>? = null,
 )
 
 /** A scheduled prompt owned by the daemon. */
@@ -769,6 +846,10 @@ public data class Automation @JvmOverloads constructor(
     @SerialName("trigger") public val trigger: AutomationTrigger? = null,
     /** The cameras looked at as each run starts (#667) */
     @SerialName("cameras") public val cameras: List<AutomationCameras>? = null,
+    /** Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking. */
+    @SerialName("say") public val say: AutomationSay? = null,
+    /** Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them. */
+    @SerialName("actions") public val actions: List<AutomationActions>? = null,
     /** When the trigger last checked and found nothing new */
     @SerialName("last_checked_at") public val lastCheckedAt: Instant? = null,
     /** A webhook trigger has a link; POST /api/v1/automations/{id}/hook makes a new one */
@@ -918,7 +999,10 @@ public data class QuietHours @JvmOverloads constructor(
 public data class ToolDescriptor @JvmOverloads constructor(
     @SerialName("id") public val id: String? = null,
     @SerialName("name") public val name: String? = null,
+    /** Written for the model */
     @SerialName("description") public val description: String? = null,
+    /** A short description for people (#1254); empty is description */
+    @SerialName("summary") public val summary: String? = null,
     @SerialName("capability") public val capability: String? = null,
     @SerialName("source") public val source: String? = null,
     /** Known values: `read`, `create`, `write`; others may be added. */
@@ -1116,6 +1200,12 @@ public data class PairedDevice @JvmOverloads constructor(
     @SerialName("relay") public val relay: String? = null,
     /** This computer's token for the relay, for every paired device on the home network */
     @SerialName("token") public val token: String? = null,
+)
+
+@Serializable
+public data class DeviceToken @JvmOverloads constructor(
+    /** This computer's device token for Toskar's relay, or "" when it has none. */
+    @SerialName("token") public val token: String,
 )
 
 /** How a paired device finds this computer away from home (#456). */
@@ -1317,6 +1407,10 @@ public data class MessageMeta @JvmOverloads constructor(
     /** `backend` and Device ran the answer, such as vulkan and "AMD Radeon RX 7900 XTX", or cpu and "" (#317, contract 1.8), so a client such as the iPhone app can say whether it came from the GPU. Empty when not known, such as when a step ran on a paired computer. */
     @SerialName("backend") public val backend: String? = null,
     @SerialName("device") public val device: String? = null,
+    /** The model that wrote the answer, as shown to the user, such as "Llama 3.2 1B" (toskar-apps#447, contract 1.109). */
+    @SerialName("model") public val model: String? = null,
+    /** The computer the answer ran on, such as "Studio". Empty when the turn's steps ran on more than one computer. */
+    @SerialName("computer") public val computer: String? = null,
     @SerialName("automation") public val automation: AutomationDraft? = null,
     @SerialName("automation_run") public val automationRun: AutomationRun? = null,
     /** How the answer was reached when its profile deliberates: the drafts compared and the outcome (#459, contract 1.23). */
@@ -1613,6 +1707,18 @@ public data class StoreShelf @JvmOverloads constructor(
     @SerialName("models") public val models: List<StoreModel>,
 )
 
+/** Someone accepting a model's license terms in Toskar (#593, contract 1.103). */
+@Serializable
+public data class LicenseAcceptance @JvmOverloads constructor(
+    @SerialName("model_id") public val modelId: String,
+    @SerialName("license_id") public val licenseId: String,
+    @SerialName("license_name") public val licenseName: String,
+    @SerialName("license_url") public val licenseUrl: String,
+    @SerialName("person_id") public val personId: String,
+    @SerialName("accepted_at") public val acceptedAt: Instant,
+    @SerialName("person_name") public val personName: String? = null,
+)
+
 @Serializable
 public data class StoreModel @JvmOverloads constructor(
     @SerialName("id") public val id: String,
@@ -1628,8 +1734,12 @@ public data class StoreModel @JvmOverloads constructor(
     @SerialName("tags") public val tags: List<String>? = null,
     @SerialName("likes") public val likes: Long? = null,
     @SerialName("created_at") public val createdAt: Instant? = null,
-    /** The license Hugging Face lists, such as apache-2.0 */
+    /** The license Hugging Face lists, such as apache-2.0, or the catalog's license name for a tested model */
     @SerialName("license") public val license: String? = null,
+    /** Whether a business may use it, from the catalog's checked license or a license Hugging Face lists that says. Absent when unknown (#593, contract 1.102). Known values: `yes`, `limited`, `no`; others may be added. */
+    @SerialName("commercial") public val commercial: String? = null,
+    /** Free, or free with conditions. Absent when the license is unknown. Known values: `free`, `conditions`; others may be added. */
+    @SerialName("license_kind") public val licenseKind: String? = null,
     /** The model's page */
     @SerialName("details_url") public val detailsUrl: String? = null,
     @SerialName("fit") public val fit: ModelFit? = null,
@@ -1850,6 +1960,10 @@ public data class AutomationDetail @JvmOverloads constructor(
     @SerialName("trigger") public val trigger: AutomationDetailTrigger? = null,
     /** Looked at as each run starts (#667). */
     @SerialName("cameras") public val cameras: List<AutomationDetailCameras>? = null,
+    /** Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking. */
+    @SerialName("say") public val say: AutomationDetailSay? = null,
+    /** Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them. */
+    @SerialName("actions") public val actions: List<AutomationDetailActions>? = null,
     @SerialName("last_checked_at") public val lastCheckedAt: Instant? = null,
     @SerialName("hook_set") public val hookSet: Boolean? = null,
     /** The occurrence the daemon should execute next. A missed restart keeps only the latest missed occurrence here. */
@@ -2238,6 +2352,12 @@ public data class RuntimeHistory @JvmOverloads constructor(
     @SerialName("samples") public val samples: List<RuntimeHistorySamples>,
     /** How often a sample is kept, in seconds. */
     @SerialName("interval_seconds") public val intervalSeconds: Long,
+)
+
+@Serializable
+public data class NextTLSInfo @JvmOverloads constructor(
+    /** SHA-256 of the next certificate, as "sha256:<hex>" */
+    @SerialName("fingerprint") public val fingerprint: String? = null,
 )
 
 /** How the API speaks HTTPS. */
@@ -2743,6 +2863,26 @@ public data class StopChatRequest @JvmOverloads constructor(
 )
 
 @Serializable
+public data class SetComfyUIRequest @JvmOverloads constructor(
+    @SerialName("base_url") public val baseUrl: String? = null,
+    @SerialName("token") public val token: String? = null,
+    @SerialName("clear_token") public val clearToken: Boolean? = null,
+)
+
+@Serializable
+public data class SaveComfyWorkflowRequest @JvmOverloads constructor(
+    @SerialName("name") public val name: String,
+    @SerialName("graph") public val graph: JsonObject,
+    @SerialName("description") public val description: String? = null,
+    @SerialName("inputs") public val inputs: ComfyWorkflowInputs? = null,
+)
+
+@Serializable
+public data class DetectComfyWorkflowRequest @JvmOverloads constructor(
+    @SerialName("graph") public val graph: JsonObject,
+)
+
+@Serializable
 public data class ConnectServiceRequest @JvmOverloads constructor(
     @SerialName("values") public val values: Map<String, String>? = null,
 )
@@ -2988,6 +3128,8 @@ public data class SetModelContextRequest @JvmOverloads constructor(
 public data class InstallModelRequest @JvmOverloads constructor(
     @SerialName("node_id") public val nodeId: String? = null,
     @SerialName("wait") public val wait: Boolean? = null,
+    /** The person accepts the model's license terms, for a license with terms to accept; Toskar keeps a record of who and when (#593, contract 1.103). An install without it isn't refused. */
+    @SerialName("accept_license") public val acceptLicense: Boolean? = null,
 )
 
 @Serializable
@@ -3150,10 +3292,23 @@ public data class ReadAloudRequest @JvmOverloads constructor(
 )
 
 @Serializable
+public data class SpeechSayRequest @JvmOverloads constructor(
+    @SerialName("text") public val text: String,
+    @SerialName("voice") public val voice: String? = null,
+    @SerialName("language") public val language: String? = null,
+)
+
+@Serializable
 public data class TranscribeRecordingRequest @JvmOverloads constructor(
     @SerialName("artifact_id") public val artifactId: String,
     /** A hint such as en or de; empty detects the language */
     @SerialName("language") public val language: String? = null,
+)
+
+@Serializable
+public data class SetSpeechVoiceRequest @JvmOverloads constructor(
+    /** One of the language's voices from GET /api/v1/speech/voices, or empty for automatic */
+    @SerialName("voice") public val voice: String? = null,
 )
 
 @Serializable
@@ -3338,6 +3493,50 @@ public data class OpenaiResponsesRequest @JvmOverloads constructor(
     @SerialName("stream") public val stream: Boolean? = null,
 )
 
+@Serializable
+public data class VoiceSettingsKitten @JvmOverloads constructor(
+    /** Known values: `not_installed`, `installing`, `installed`, `failed`; others may be added. */
+    @SerialName("state") public val state: String,
+    /** Shown wherever a Kitten voice is used: Powered by KittenML */
+    @SerialName("credit") public val credit: String,
+    @SerialName("url") public val url: String,
+    @SerialName("license") public val license: String,
+    @SerialName("languages") public val languages: List<String>,
+    /** While installing: program, voices, warming, or listening (contract 1.113) */
+    @SerialName("stage") public val stage: String? = null,
+    @SerialName("error") public val error: String? = null,
+    /** Why it can't be installed on this computer */
+    @SerialName("unavailable") public val unavailable: String? = null,
+)
+
+@Serializable
+public data class VoiceSettingsLanguages @JvmOverloads constructor(
+    @SerialName("language") public val language: String,
+    /** The chosen voice; empty is automatic */
+    @SerialName("voice") public val voice: String,
+    /** The voice used when none is chosen */
+    @SerialName("automatic") public val automatic: String,
+    @SerialName("voices") public val voices: List<VoiceSettingsLanguagesVoices>,
+)
+
+@Serializable
+public data class VoiceSettingsNeeds @JvmOverloads constructor(
+    /** chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added. */
+    @SerialName("ability") public val ability: String,
+    /** The catalog model to install; absent when none fits this computer */
+    @SerialName("model") public val model: String? = null,
+    @SerialName("name") public val name: String? = null,
+    @SerialName("size_bytes") public val sizeBytes: Long? = null,
+)
+
+@Serializable
+public data class ComfyUIInfoDevices @JvmOverloads constructor(
+    @SerialName("name") public val name: String,
+    @SerialName("type") public val type: String,
+    @SerialName("vram_total") public val vramTotal: Long,
+    @SerialName("vram_free") public val vramFree: Long,
+)
+
 /** What sharing sends besides the stars, tags, a random rating ID, and the app version */
 @Serializable
 public data class ModelRatingShares @JvmOverloads constructor(
@@ -3412,6 +3611,26 @@ public data class ModelContextOptions @JvmOverloads constructor(
     @SerialName("tokens") public val tokens: Long,
 )
 
+/** A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link. */
+@Serializable
+public data class ModelLicense @JvmOverloads constructor(
+    /** The SPDX identifier where there is one, such as apache-2.0, or the license's short name, such as llama3.2 */
+    @SerialName("id") public val id: String,
+    @SerialName("name") public val name: String,
+    @SerialName("url") public val url: String,
+    /** Whether a business may use the model: yes, limited (such as Llama's above 700 million monthly users), or no Known values: `yes`, `limited`, `no`; others may be added. */
+    @SerialName("commercial") public val commercial: String,
+    /** Apps or published work built with the model credit it */
+    @SerialName("attribution") public val attribution: Boolean? = null,
+    /** The person agrees to the license's terms before using the model */
+    @SerialName("accept") public val accept: Boolean? = null,
+    @SerialName("notes") public val notes: String? = null,
+    /** free: any use, nothing to accept or credit. conditions: free, with terms. Known values: `free`, `conditions`; others may be added. */
+    @SerialName("kind") public val kind: String? = null,
+    /** When the person asking accepted its terms in Toskar, for a license with terms to accept (contract 1.103) */
+    @SerialName("accepted_at") public val acceptedAt: Instant? = null,
+)
+
 /** How well a model writes a language (multilingual spec §13–14, §31). Levels are coarse on purpose: they don't imply precision the sources don't have. A language a model has no level for is unknown, and is left out. */
 @Serializable
 public data class ModelLanguages @JvmOverloads constructor(
@@ -3448,6 +3667,8 @@ public data class ImageSetupModels @JvmOverloads constructor(
     @SerialName("name") public val name: String? = null,
     @SerialName("description") public val description: String? = null,
     @SerialName("license") public val license: String? = null,
+    /** Whether a business may use it under its license (#593, contract 1.102) Known values: `yes`, `limited`, `no`; others may be added. */
+    @SerialName("commercial") public val commercial: String? = null,
     @SerialName("memory_bytes") public val memoryBytes: Long? = null,
     @SerialName("size_bytes") public val sizeBytes: Long? = null,
     /** Edits images, or for a video model, animates them */
@@ -3538,10 +3759,34 @@ public data class AutomationInputTrigger @JvmOverloads constructor(
 /** One an automation looks at as each run starts (#667): a connected service's camera, whose picture is then shown to a model that can see, like a photo attached in chat. Device is the camera as that service names it; Home Assistant's are the first, such as camera.driveway. */
 @Serializable
 public data class AutomationInputCameras @JvmOverloads constructor(
-    /** Known values: `homeassistant`; others may be added. */
+    /** Known values: `homeassistant`, `reolink`; others may be added. */
     @SerialName("connector") public val connector: String,
     /** The camera as that service names it, such as Home Assistant's camera.driveway */
     @SerialName("device") public val device: String,
+)
+
+/** Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking. */
+@Serializable
+public data class AutomationInputSay @JvmOverloads constructor(
+    /** Known values: `reolink`; others may be added. */
+    @SerialName("connector") public val connector: String,
+    /** Always camera: one Reolink connection is one camera */
+    @SerialName("device") public val device: String,
+    /** With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies. */
+    @SerialName("quiet_from") public val quietFrom: String? = null,
+    @SerialName("quiet_to") public val quietTo: String? = null,
+    /** The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that. */
+    @SerialName("voice") public val voice: String? = null,
+    /** Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114) */
+    @SerialName("listen") public val listen: Boolean? = null,
+)
+
+@Serializable
+public data class AutomationInputActions @JvmOverloads constructor(
+    /** A tool ID */
+    @SerialName("tool") public val tool: String,
+    /** The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"} */
+    @SerialName("args") public val args: Map<String, String>? = null,
 )
 
 /** Run only when a page, feed, or folder changed, checked on the schedule. */
@@ -3572,6 +3817,30 @@ public data class AutomationTrigger @JvmOverloads constructor(
 public data class AutomationCameras @JvmOverloads constructor(
     @SerialName("connector") public val connector: String,
     @SerialName("device") public val device: String,
+)
+
+/** Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking. */
+@Serializable
+public data class AutomationSay @JvmOverloads constructor(
+    /** Known values: `reolink`; others may be added. */
+    @SerialName("connector") public val connector: String,
+    /** Always camera: one Reolink connection is one camera */
+    @SerialName("device") public val device: String,
+    /** With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies. */
+    @SerialName("quiet_from") public val quietFrom: String? = null,
+    @SerialName("quiet_to") public val quietTo: String? = null,
+    /** The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that. */
+    @SerialName("voice") public val voice: String? = null,
+    /** Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114) */
+    @SerialName("listen") public val listen: Boolean? = null,
+)
+
+@Serializable
+public data class AutomationActions @JvmOverloads constructor(
+    /** A tool ID */
+    @SerialName("tool") public val tool: String,
+    /** The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"} */
+    @SerialName("args") public val args: Map<String, String>? = null,
 )
 
 /** What the key may ask of the assistant */
@@ -3855,6 +4124,30 @@ public data class AutomationDetailCameras @JvmOverloads constructor(
     @SerialName("device") public val device: String,
 )
 
+/** Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking. */
+@Serializable
+public data class AutomationDetailSay @JvmOverloads constructor(
+    /** Known values: `reolink`; others may be added. */
+    @SerialName("connector") public val connector: String,
+    /** Always camera: one Reolink connection is one camera */
+    @SerialName("device") public val device: String,
+    /** With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies. */
+    @SerialName("quiet_from") public val quietFrom: String? = null,
+    @SerialName("quiet_to") public val quietTo: String? = null,
+    /** The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that. */
+    @SerialName("voice") public val voice: String? = null,
+    /** Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114) */
+    @SerialName("listen") public val listen: Boolean? = null,
+)
+
+@Serializable
+public data class AutomationDetailActions @JvmOverloads constructor(
+    /** A tool ID */
+    @SerialName("tool") public val tool: String,
+    /** The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"} */
+    @SerialName("args") public val args: Map<String, String>? = null,
+)
+
 /** One value a service needs to connect, such as a token. */
 @Serializable
 public data class ConnectorStatusFields @JvmOverloads constructor(
@@ -3865,6 +4158,8 @@ public data class ConnectorStatusFields @JvmOverloads constructor(
     @SerialName("help") public val help: String? = null,
     @SerialName("optional") public val optional: Boolean? = null,
     @SerialName("placeholder") public val placeholder: String? = null,
+    /** Folded under Advanced in the form; most people leave it. */
+    @SerialName("advanced") public val advanced: Boolean? = null,
 )
 
 /** One registered tool: built in, from a connected service, or from an MCP tool source. */
@@ -3879,6 +4174,8 @@ public data class ConnectorStatusTools @JvmOverloads constructor(
     @SerialName("default_policy") public val defaultPolicy: String,
     /** read | create | write */
     @SerialName("risk") public val risk: String,
+    /** Summary is a short description for people, where Description is written for the model (#1254). Empty is Description. */
+    @SerialName("summary") public val summary: String? = null,
     /** `prefetch` marks a connected service's read tool that Yggdrasil calls, with no arguments, before the model answers a message about that service, as it looks up the web first for current questions. */
     @SerialName("prefetch") public val prefetch: Boolean? = null,
     /** Words that show a message is about this tool's service, such as a connected home's device names. */
@@ -4433,6 +4730,15 @@ public data class OpenaiResponsesRequestTools @JvmOverloads constructor(
     @SerialName("name") public val name: String? = null,
     @SerialName("description") public val description: String? = null,
     @SerialName("parameters") public val parameters: JsonObject? = null,
+)
+
+@Serializable
+public data class VoiceSettingsLanguagesVoices @JvmOverloads constructor(
+    @SerialName("id") public val id: String,
+    @SerialName("name") public val name: String,
+    /** Known values: `kitten`, `kokoro`, `piper`; others may be added. */
+    @SerialName("engine") public val engine: String,
+    @SerialName("description") public val description: String? = null,
 )
 
 /** Which model a rating is about. Ratings of different formats, quantizations, runtimes, or backends are never combined. */

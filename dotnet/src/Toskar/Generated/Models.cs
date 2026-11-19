@@ -8,6 +8,24 @@ using System.Text.Json.Serialization;
 
 namespace Toskar.Models;
 
+/// <summary>
+/// The Voice settings (#1304, contract 1.112)
+/// </summary>
+public sealed record VoiceSettings
+{
+    [JsonPropertyName("kitten")]
+    public required VoiceSettingsKitten Kitten { get; init; }
+
+    [JsonPropertyName("languages")]
+    public required List<VoiceSettingsLanguages> Languages { get; init; }
+
+    /// <summary>
+    /// The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113)
+    /// </summary>
+    [JsonPropertyName("needs")]
+    public List<VoiceSettingsNeeds>? Needs { get; init; }
+}
+
 public sealed record License
 {
     /// <summary>
@@ -162,6 +180,102 @@ public sealed record PersonalStyle
 
     [JsonPropertyName("instructions")]
     public string? Instructions { get; init; }
+
+    /// <summary>
+    /// Where the person is, such as a town. Used only for questions about nearby places, weather, and directions, and as the start of the places tools when no place is named.
+    /// </summary>
+    [JsonPropertyName("location")]
+    public string? Location { get; init; }
+}
+
+public sealed record ComfyUIStatus
+{
+    [JsonPropertyName("base_url")]
+    public required string BaseUrl { get; init; }
+
+    [JsonPropertyName("has_token")]
+    public required bool HasToken { get; init; }
+
+    [JsonPropertyName("info")]
+    public ComfyUIInfo? Info { get; init; }
+
+    /// <summary>
+    /// Why the check failed
+    /// </summary>
+    [JsonPropertyName("error")]
+    public string? Error { get; init; }
+}
+
+public sealed record ComfyUIInfo
+{
+    [JsonPropertyName("version")]
+    public string? Version { get; init; }
+
+    [JsonPropertyName("devices")]
+    public required List<ComfyUIInfoDevices> Devices { get; init; }
+
+    /// <summary>
+    /// Model files by kind (checkpoints, diffusion, loras, vae, upscalers)
+    /// </summary>
+    [JsonPropertyName("models")]
+    public required Dictionary<string, List<string>> Models { get; init; }
+
+    /// <summary>
+    /// How many node types ComfyUI offers
+    /// </summary>
+    [JsonPropertyName("node_types")]
+    public required long NodeTypes { get; init; }
+}
+
+public sealed record ComfyWorkflowInput
+{
+    [JsonPropertyName("node")]
+    public required string Node { get; init; }
+
+    [JsonPropertyName("field")]
+    public required string Field { get; init; }
+}
+
+public sealed record ComfyWorkflowInputs
+{
+    [JsonPropertyName("prompt")]
+    public ComfyWorkflowInput? Prompt { get; init; }
+
+    [JsonPropertyName("negative")]
+    public ComfyWorkflowInput? Negative { get; init; }
+
+    [JsonPropertyName("seed")]
+    public ComfyWorkflowInput? Seed { get; init; }
+
+    [JsonPropertyName("image")]
+    public ComfyWorkflowInput? Image { get; init; }
+
+    [JsonPropertyName("width")]
+    public ComfyWorkflowInput? Width { get; init; }
+
+    [JsonPropertyName("height")]
+    public ComfyWorkflowInput? Height { get; init; }
+}
+
+public sealed record ComfyWorkflows
+{
+    [JsonPropertyName("workflows")]
+    public required List<ComfyWorkflow> Workflows { get; init; }
+}
+
+public sealed record ComfyWorkflow
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("inputs")]
+    public required ComfyWorkflowInputs Inputs { get; init; }
+
+    [JsonPropertyName("nodes")]
+    public required long Nodes { get; init; }
 }
 
 public sealed record ExternalServer
@@ -762,6 +876,48 @@ public sealed record Model
     /// </summary>
     [JsonPropertyName("slots")]
     public long? Slots { get; init; }
+
+    /// <summary>
+    /// The catalog model that replaces an installed one, size for size, such as Qwen 3.5 4B for Qwen 2.5 3B, when it is not installed too (#593, contract 1.107).
+    /// </summary>
+    [JsonPropertyName("newer")]
+    public string? Newer { get; init; }
+
+    /// <summary>
+    /// What the model does first, for browsing the store, from the categories in manifests/models/categories.json, such as chat_coding, retrieval, or creative; uncategorized for a model nobody has checked (#593, contract 1.104). It never says Toskar can run the model; runtime does.
+    /// </summary>
+    [JsonPropertyName("primary_category")]
+    public string? PrimaryCategory { get; init; }
+
+    /// <summary>
+    /// Every category the model belongs to
+    /// </summary>
+    [JsonPropertyName("categories")]
+    public List<string>? Categories { get; init; }
+
+    /// <summary>
+    /// What the model does in its categories, such as code_generation or text_embedding
+    /// </summary>
+    [JsonPropertyName("tasks")]
+    public List<string>? Tasks { get; init; }
+
+    /// <summary>
+    /// What the model takes, such as text, code, or image
+    /// </summary>
+    [JsonPropertyName("input_modalities")]
+    public List<string>? InputModalities { get; init; }
+
+    /// <summary>
+    /// What the model gives, such as text, image, or embedding
+    /// </summary>
+    [JsonPropertyName("output_modalities")]
+    public List<string>? OutputModalities { get; init; }
+
+    /// <summary>
+    /// A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link.
+    /// </summary>
+    [JsonPropertyName("license")]
+    public ModelLicense? License { get; init; }
 
     /// <summary>
     /// How well the model writes each language it has a level for (§13–14, §31), best first.
@@ -1797,6 +1953,18 @@ public sealed record AutomationInput
     /// </summary>
     [JsonPropertyName("cameras")]
     public List<AutomationInputCameras>? Cameras { get; init; }
+
+    /// <summary>
+    /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+    /// </summary>
+    [JsonPropertyName("say")]
+    public AutomationInputSay? Say { get; init; }
+
+    /// <summary>
+    /// Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+    /// </summary>
+    [JsonPropertyName("actions")]
+    public List<AutomationInputActions>? Actions { get; init; }
 }
 
 /// <summary>
@@ -1869,6 +2037,18 @@ public sealed record Automation
     /// </summary>
     [JsonPropertyName("cameras")]
     public List<AutomationCameras>? Cameras { get; init; }
+
+    /// <summary>
+    /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+    /// </summary>
+    [JsonPropertyName("say")]
+    public AutomationSay? Say { get; init; }
+
+    /// <summary>
+    /// Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+    /// </summary>
+    [JsonPropertyName("actions")]
+    public List<AutomationActions>? Actions { get; init; }
 
     /// <summary>
     /// When the trigger last checked and found nothing new
@@ -2257,8 +2437,17 @@ public sealed record ToolDescriptor
     [JsonPropertyName("name")]
     public string? Name { get; init; }
 
+    /// <summary>
+    /// Written for the model
+    /// </summary>
     [JsonPropertyName("description")]
     public string? Description { get; init; }
+
+    /// <summary>
+    /// A short description for people (#1254); empty is description
+    /// </summary>
+    [JsonPropertyName("summary")]
+    public string? Summary { get; init; }
 
     [JsonPropertyName("capability")]
     public string? Capability { get; init; }
@@ -2724,6 +2913,15 @@ public sealed record PairedDevice
     /// </summary>
     [JsonPropertyName("token")]
     public string? Token { get; init; }
+}
+
+public sealed record DeviceToken
+{
+    /// <summary>
+    /// This computer's device token for Toskar's relay, or "" when it has none.
+    /// </summary>
+    [JsonPropertyName("token")]
+    public required string Token { get; init; }
 }
 
 /// <summary>
@@ -3219,6 +3417,18 @@ public sealed record MessageMeta
 
     [JsonPropertyName("device")]
     public string? Device { get; init; }
+
+    /// <summary>
+    /// The model that wrote the answer, as shown to the user, such as "Llama 3.2 1B" (toskar-apps#447, contract 1.109).
+    /// </summary>
+    [JsonPropertyName("model")]
+    public string? Model { get; init; }
+
+    /// <summary>
+    /// The computer the answer ran on, such as "Studio". Empty when the turn's steps ran on more than one computer.
+    /// </summary>
+    [JsonPropertyName("computer")]
+    public string? Computer { get; init; }
 
     [JsonPropertyName("automation")]
     public AutomationDraft? Automation { get; init; }
@@ -3878,6 +4088,33 @@ public sealed record StoreShelf
     public required List<StoreModel> Models { get; init; }
 }
 
+/// <summary>
+/// Someone accepting a model's license terms in Toskar (#593, contract 1.103).
+/// </summary>
+public sealed record LicenseAcceptance
+{
+    [JsonPropertyName("model_id")]
+    public required string ModelId { get; init; }
+
+    [JsonPropertyName("license_id")]
+    public required string LicenseId { get; init; }
+
+    [JsonPropertyName("license_name")]
+    public required string LicenseName { get; init; }
+
+    [JsonPropertyName("license_url")]
+    public required string LicenseUrl { get; init; }
+
+    [JsonPropertyName("person_id")]
+    public required string PersonId { get; init; }
+
+    [JsonPropertyName("person_name")]
+    public string? PersonName { get; init; }
+
+    [JsonPropertyName("accepted_at")]
+    public required DateTimeOffset AcceptedAt { get; init; }
+}
+
 public sealed record StoreModel
 {
     [JsonPropertyName("id")]
@@ -3920,10 +4157,22 @@ public sealed record StoreModel
     public DateTimeOffset? CreatedAt { get; init; }
 
     /// <summary>
-    /// The license Hugging Face lists, such as apache-2.0
+    /// The license Hugging Face lists, such as apache-2.0, or the catalog's license name for a tested model
     /// </summary>
     [JsonPropertyName("license")]
     public string? License { get; init; }
+
+    /// <summary>
+    /// Whether a business may use it, from the catalog's checked license or a license Hugging Face lists that says. Absent when unknown (#593, contract 1.102). Known values: `yes`, `limited`, `no`; others may be added.
+    /// </summary>
+    [JsonPropertyName("commercial")]
+    public string? Commercial { get; init; }
+
+    /// <summary>
+    /// Free, or free with conditions. Absent when the license is unknown. Known values: `free`, `conditions`; others may be added.
+    /// </summary>
+    [JsonPropertyName("license_kind")]
+    public string? LicenseKind { get; init; }
 
     /// <summary>
     /// The model's page
@@ -4392,6 +4641,18 @@ public sealed record AutomationDetail
     /// </summary>
     [JsonPropertyName("cameras")]
     public List<AutomationDetailCameras>? Cameras { get; init; }
+
+    /// <summary>
+    /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+    /// </summary>
+    [JsonPropertyName("say")]
+    public AutomationDetailSay? Say { get; init; }
+
+    /// <summary>
+    /// Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+    /// </summary>
+    [JsonPropertyName("actions")]
+    public List<AutomationDetailActions>? Actions { get; init; }
 
     [JsonPropertyName("last_checked_at")]
     public DateTimeOffset? LastCheckedAt { get; init; }
@@ -5361,6 +5622,15 @@ public sealed record RuntimeHistory
     /// </summary>
     [JsonPropertyName("interval_seconds")]
     public required long IntervalSeconds { get; init; }
+}
+
+public sealed record NextTLSInfo
+{
+    /// <summary>
+    /// SHA-256 of the next certificate, as "sha256:&lt;hex&gt;"
+    /// </summary>
+    [JsonPropertyName("fingerprint")]
+    public string? Fingerprint { get; init; }
 }
 
 /// <summary>
@@ -6455,6 +6725,39 @@ public sealed record StopChatRequest
     public required string ConversationId { get; init; }
 }
 
+public sealed record SetComfyUIRequest
+{
+    [JsonPropertyName("base_url")]
+    public string? BaseUrl { get; init; }
+
+    [JsonPropertyName("token")]
+    public string? Token { get; init; }
+
+    [JsonPropertyName("clear_token")]
+    public bool? ClearToken { get; init; }
+}
+
+public sealed record SaveComfyWorkflowRequest
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("graph")]
+    public required JsonObject Graph { get; init; }
+
+    [JsonPropertyName("inputs")]
+    public ComfyWorkflowInputs? Inputs { get; init; }
+}
+
+public sealed record DetectComfyWorkflowRequest
+{
+    [JsonPropertyName("graph")]
+    public required JsonObject Graph { get; init; }
+}
+
 public sealed record ConnectServiceRequest
 {
     [JsonPropertyName("values")]
@@ -6882,6 +7185,12 @@ public sealed record InstallModelRequest
 
     [JsonPropertyName("wait")]
     public bool? Wait { get; init; }
+
+    /// <summary>
+    /// The person accepts the model's license terms, for a license with terms to accept; Toskar keeps a record of who and when (#593, contract 1.103). An install without it isn't refused.
+    /// </summary>
+    [JsonPropertyName("accept_license")]
+    public bool? AcceptLicense { get; init; }
 }
 
 public sealed record SetModelProjectorRequest
@@ -7154,6 +7463,18 @@ public sealed record ReadAloudRequest
     public string? ConversationId { get; init; }
 }
 
+public sealed record SpeechSayRequest
+{
+    [JsonPropertyName("text")]
+    public required string Text { get; init; }
+
+    [JsonPropertyName("voice")]
+    public string? Voice { get; init; }
+
+    [JsonPropertyName("language")]
+    public string? Language { get; init; }
+}
+
 public sealed record TranscribeRecordingRequest
 {
     [JsonPropertyName("artifact_id")]
@@ -7164,6 +7485,15 @@ public sealed record TranscribeRecordingRequest
     /// </summary>
     [JsonPropertyName("language")]
     public string? Language { get; init; }
+}
+
+public sealed record SetSpeechVoiceRequest
+{
+    /// <summary>
+    /// One of the language's voices from GET /api/v1/speech/voices, or empty for automatic
+    /// </summary>
+    [JsonPropertyName("voice")]
+    public string? Voice { get; init; }
 }
 
 public sealed record StartSwarmRequest
@@ -7541,6 +7871,102 @@ public sealed record OpenaiResponsesRequest
     public bool? Stream { get; init; }
 }
 
+public sealed record VoiceSettingsKitten
+{
+    /// <summary>
+    /// Known values: `not_installed`, `installing`, `installed`, `failed`; others may be added.
+    /// </summary>
+    [JsonPropertyName("state")]
+    public required string State { get; init; }
+
+    /// <summary>
+    /// While installing: program, voices, warming, or listening (contract 1.113)
+    /// </summary>
+    [JsonPropertyName("stage")]
+    public string? Stage { get; init; }
+
+    [JsonPropertyName("error")]
+    public string? Error { get; init; }
+
+    /// <summary>
+    /// Why it can't be installed on this computer
+    /// </summary>
+    [JsonPropertyName("unavailable")]
+    public string? Unavailable { get; init; }
+
+    /// <summary>
+    /// Shown wherever a Kitten voice is used: Powered by KittenML
+    /// </summary>
+    [JsonPropertyName("credit")]
+    public required string Credit { get; init; }
+
+    [JsonPropertyName("url")]
+    public required string Url { get; init; }
+
+    [JsonPropertyName("license")]
+    public required string License { get; init; }
+
+    [JsonPropertyName("languages")]
+    public required List<string> Languages { get; init; }
+}
+
+public sealed record VoiceSettingsLanguages
+{
+    [JsonPropertyName("language")]
+    public required string Language { get; init; }
+
+    /// <summary>
+    /// The chosen voice; empty is automatic
+    /// </summary>
+    [JsonPropertyName("voice")]
+    public required string Voice { get; init; }
+
+    /// <summary>
+    /// The voice used when none is chosen
+    /// </summary>
+    [JsonPropertyName("automatic")]
+    public required string Automatic { get; init; }
+
+    [JsonPropertyName("voices")]
+    public required List<VoiceSettingsLanguagesVoices> Voices { get; init; }
+}
+
+public sealed record VoiceSettingsNeeds
+{
+    /// <summary>
+    /// chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+    /// </summary>
+    [JsonPropertyName("ability")]
+    public required string Ability { get; init; }
+
+    /// <summary>
+    /// The catalog model to install; absent when none fits this computer
+    /// </summary>
+    [JsonPropertyName("model")]
+    public string? Model { get; init; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("size_bytes")]
+    public long? SizeBytes { get; init; }
+}
+
+public sealed record ComfyUIInfoDevices
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("type")]
+    public required string Type { get; init; }
+
+    [JsonPropertyName("vram_total")]
+    public required long VramTotal { get; init; }
+
+    [JsonPropertyName("vram_free")]
+    public required long VramFree { get; init; }
+}
+
 /// <summary>
 /// What sharing sends besides the stars, tags, a random rating ID, and the app version
 /// </summary>
@@ -7701,6 +8127,57 @@ public sealed record ModelContextOptions
 }
 
 /// <summary>
+/// A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link.
+/// </summary>
+public sealed record ModelLicense
+{
+    /// <summary>
+    /// The SPDX identifier where there is one, such as apache-2.0, or the license's short name, such as llama3.2
+    /// </summary>
+    [JsonPropertyName("id")]
+    public required string Id { get; init; }
+
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("url")]
+    public required string Url { get; init; }
+
+    /// <summary>
+    /// Whether a business may use the model: yes, limited (such as Llama's above 700 million monthly users), or no Known values: `yes`, `limited`, `no`; others may be added.
+    /// </summary>
+    [JsonPropertyName("commercial")]
+    public required string Commercial { get; init; }
+
+    /// <summary>
+    /// Apps or published work built with the model credit it
+    /// </summary>
+    [JsonPropertyName("attribution")]
+    public bool? Attribution { get; init; }
+
+    /// <summary>
+    /// The person agrees to the license's terms before using the model
+    /// </summary>
+    [JsonPropertyName("accept")]
+    public bool? Accept { get; init; }
+
+    [JsonPropertyName("notes")]
+    public string? Notes { get; init; }
+
+    /// <summary>
+    /// free: any use, nothing to accept or credit. conditions: free, with terms. Known values: `free`, `conditions`; others may be added.
+    /// </summary>
+    [JsonPropertyName("kind")]
+    public string? Kind { get; init; }
+
+    /// <summary>
+    /// When the person asking accepted its terms in Toskar, for a license with terms to accept (contract 1.103)
+    /// </summary>
+    [JsonPropertyName("accepted_at")]
+    public DateTimeOffset? AcceptedAt { get; init; }
+}
+
+/// <summary>
 /// How well a model writes a language (multilingual spec §13–14, §31). Levels are coarse on purpose: they don't imply precision the sources don't have. A language a model has no level for is unknown, and is left out.
 /// </summary>
 public sealed record ModelLanguages
@@ -7776,6 +8253,12 @@ public sealed record ImageSetupModels
 
     [JsonPropertyName("license")]
     public string? License { get; init; }
+
+    /// <summary>
+    /// Whether a business may use it under its license (#593, contract 1.102) Known values: `yes`, `limited`, `no`; others may be added.
+    /// </summary>
+    [JsonPropertyName("commercial")]
+    public string? Commercial { get; init; }
 
     [JsonPropertyName("memory_bytes")]
     public long? MemoryBytes { get; init; }
@@ -7985,7 +8468,7 @@ public sealed record AutomationInputTrigger
 public sealed record AutomationInputCameras
 {
     /// <summary>
-    /// Known values: `homeassistant`; others may be added.
+    /// Known values: `homeassistant`, `reolink`; others may be added.
     /// </summary>
     [JsonPropertyName("connector")]
     public required string Connector { get; init; }
@@ -7995,6 +8478,60 @@ public sealed record AutomationInputCameras
     /// </summary>
     [JsonPropertyName("device")]
     public required string Device { get; init; }
+}
+
+/// <summary>
+/// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+/// </summary>
+public sealed record AutomationInputSay
+{
+    /// <summary>
+    /// Known values: `reolink`; others may be added.
+    /// </summary>
+    [JsonPropertyName("connector")]
+    public required string Connector { get; init; }
+
+    /// <summary>
+    /// Always camera: one Reolink connection is one camera
+    /// </summary>
+    [JsonPropertyName("device")]
+    public required string Device { get; init; }
+
+    /// <summary>
+    /// With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+    /// </summary>
+    [JsonPropertyName("quiet_from")]
+    public string? QuietFrom { get; init; }
+
+    [JsonPropertyName("quiet_to")]
+    public string? QuietTo { get; init; }
+
+    /// <summary>
+    /// The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+    /// </summary>
+    [JsonPropertyName("voice")]
+    public string? Voice { get; init; }
+
+    /// <summary>
+    /// Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+    /// </summary>
+    [JsonPropertyName("listen")]
+    public bool? Listen { get; init; }
+}
+
+public sealed record AutomationInputActions
+{
+    /// <summary>
+    /// A tool ID
+    /// </summary>
+    [JsonPropertyName("tool")]
+    public required string Tool { get; init; }
+
+    /// <summary>
+    /// The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+    /// </summary>
+    [JsonPropertyName("args")]
+    public Dictionary<string, string>? Args { get; init; }
 }
 
 /// <summary>
@@ -8067,6 +8604,60 @@ public sealed record AutomationCameras
 
     [JsonPropertyName("device")]
     public required string Device { get; init; }
+}
+
+/// <summary>
+/// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+/// </summary>
+public sealed record AutomationSay
+{
+    /// <summary>
+    /// Known values: `reolink`; others may be added.
+    /// </summary>
+    [JsonPropertyName("connector")]
+    public required string Connector { get; init; }
+
+    /// <summary>
+    /// Always camera: one Reolink connection is one camera
+    /// </summary>
+    [JsonPropertyName("device")]
+    public required string Device { get; init; }
+
+    /// <summary>
+    /// With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+    /// </summary>
+    [JsonPropertyName("quiet_from")]
+    public string? QuietFrom { get; init; }
+
+    [JsonPropertyName("quiet_to")]
+    public string? QuietTo { get; init; }
+
+    /// <summary>
+    /// The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+    /// </summary>
+    [JsonPropertyName("voice")]
+    public string? Voice { get; init; }
+
+    /// <summary>
+    /// Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+    /// </summary>
+    [JsonPropertyName("listen")]
+    public bool? Listen { get; init; }
+}
+
+public sealed record AutomationActions
+{
+    /// <summary>
+    /// A tool ID
+    /// </summary>
+    [JsonPropertyName("tool")]
+    public required string Tool { get; init; }
+
+    /// <summary>
+    /// The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+    /// </summary>
+    [JsonPropertyName("args")]
+    public Dictionary<string, string>? Args { get; init; }
 }
 
 /// <summary>
@@ -8688,6 +9279,60 @@ public sealed record AutomationDetailCameras
 }
 
 /// <summary>
+/// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+/// </summary>
+public sealed record AutomationDetailSay
+{
+    /// <summary>
+    /// Known values: `reolink`; others may be added.
+    /// </summary>
+    [JsonPropertyName("connector")]
+    public required string Connector { get; init; }
+
+    /// <summary>
+    /// Always camera: one Reolink connection is one camera
+    /// </summary>
+    [JsonPropertyName("device")]
+    public required string Device { get; init; }
+
+    /// <summary>
+    /// With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+    /// </summary>
+    [JsonPropertyName("quiet_from")]
+    public string? QuietFrom { get; init; }
+
+    [JsonPropertyName("quiet_to")]
+    public string? QuietTo { get; init; }
+
+    /// <summary>
+    /// The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+    /// </summary>
+    [JsonPropertyName("voice")]
+    public string? Voice { get; init; }
+
+    /// <summary>
+    /// Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+    /// </summary>
+    [JsonPropertyName("listen")]
+    public bool? Listen { get; init; }
+}
+
+public sealed record AutomationDetailActions
+{
+    /// <summary>
+    /// A tool ID
+    /// </summary>
+    [JsonPropertyName("tool")]
+    public required string Tool { get; init; }
+
+    /// <summary>
+    /// The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+    /// </summary>
+    [JsonPropertyName("args")]
+    public Dictionary<string, string>? Args { get; init; }
+}
+
+/// <summary>
 /// One value a service needs to connect, such as a token.
 /// </summary>
 public sealed record ConnectorStatusFields
@@ -8712,6 +9357,12 @@ public sealed record ConnectorStatusFields
 
     [JsonPropertyName("placeholder")]
     public string? Placeholder { get; init; }
+
+    /// <summary>
+    /// Folded under Advanced in the form; most people leave it.
+    /// </summary>
+    [JsonPropertyName("advanced")]
+    public bool? Advanced { get; init; }
 }
 
 /// <summary>
@@ -8727,6 +9378,12 @@ public sealed record ConnectorStatusTools
 
     [JsonPropertyName("description")]
     public required string Description { get; init; }
+
+    /// <summary>
+    /// Summary is a short description for people, where Description is written for the model (#1254). Empty is Description.
+    /// </summary>
+    [JsonPropertyName("summary")]
+    public string? Summary { get; init; }
 
     [JsonPropertyName("capability")]
     public required string Capability { get; init; }
@@ -9993,6 +10650,24 @@ public sealed record OpenaiResponsesRequestTools
 
     [JsonPropertyName("parameters")]
     public JsonObject? Parameters { get; init; }
+}
+
+public sealed record VoiceSettingsLanguagesVoices
+{
+    [JsonPropertyName("id")]
+    public required string Id { get; init; }
+
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    /// <summary>
+    /// Known values: `kitten`, `kokoro`, `piper`; others may be added.
+    /// </summary>
+    [JsonPropertyName("engine")]
+    public required string Engine { get; init; }
 }
 
 /// <summary>

@@ -470,7 +470,7 @@ Milliseconds to wait for an answer to start. Default 60000; 0 waits as long as i
 ### CONTRACT\_VERSION
 
 ```ts
-const CONTRACT_VERSION: "1.98" = '1.98';
+const CONTRACT_VERSION: "1.114" = '1.114';
 ```
 
 The client contract this SDK was built for.
@@ -656,6 +656,30 @@ readonly CACHE_NOT_FOUND: "CACHE_NOT_FOUND" = 'CACHE_NOT_FOUND';
 
 No cache has that name.
 
+##### CAMERA\_ADDRESS
+
+```ts
+readonly CAMERA_ADDRESS: "CAMERA_ADDRESS" = 'CAMERA_ADDRESS';
+```
+
+Enter the camera's address, such as 192.168.1.50.
+
+##### CAMERA\_SPEAKER\_UNREACHABLE
+
+```ts
+readonly CAMERA_SPEAKER_UNREACHABLE: "CAMERA_SPEAKER_UNREACHABLE" = 'CAMERA_SPEAKER_UNREACHABLE';
+```
+
+Toskar couldn't reach the camera's speaker, so the visitor wasn't answered. Check that the camera is on and on the same network as this computer.
+
+##### CAMERA\_UNREACHABLE
+
+```ts
+readonly CAMERA_UNREACHABLE: "CAMERA_UNREACHABLE" = 'CAMERA_UNREACHABLE';
+```
+
+Toskar couldn't reach a camera at that address. Check the address, and that the camera's HTTP or HTTPS server is on.
+
 ##### CAPABILITY\_OFF
 
 ```ts
@@ -680,10 +704,42 @@ readonly CHAT_FAILED: "CHAT_FAILED" = 'CHAT_FAILED';
 
 {{detail}}
 
+##### CHECKOUT\_NONE
+
+```ts
+readonly CHECKOUT_NONE: "CHECKOUT_NONE" = 'CHECKOUT_NONE';
+```
+
+There's no checkout open to cancel.
+
 ##### CLAIM\_FAILED
 
 ```ts
 readonly CLAIM_FAILED: "CLAIM_FAILED" = 'CLAIM_FAILED';
+```
+
+{{detail}}
+
+##### COMFYUI\_BAD\_URL
+
+```ts
+readonly COMFYUI_BAD_URL: "COMFYUI_BAD_URL" = 'COMFYUI_BAD_URL';
+```
+
+The ComfyUI address must start with http:// or https://, such as http://127.0.0.1:8188.
+
+##### COMFYUI\_BAD\_WORKFLOW
+
+```ts
+readonly COMFYUI_BAD_WORKFLOW: "COMFYUI_BAD_WORKFLOW" = 'COMFYUI_BAD_WORKFLOW';
+```
+
+{{detail}}
+
+##### COMFYUI\_FAILED
+
+```ts
+readonly COMFYUI_FAILED: "COMFYUI_FAILED" = 'COMFYUI_FAILED';
 ```
 
 {{detail}}
@@ -695,6 +751,14 @@ readonly COMPACT_FAILED: "COMPACT_FAILED" = 'COMPACT_FAILED';
 ```
 
 The chat couldn't be compacted: {{detail}}
+
+##### COMPANION\_LIMIT
+
+```ts
+readonly COMPANION_LIMIT: "COMPANION_LIMIT" = 'COMPANION_LIMIT';
+```
+
+A device connected through another can't connect more. Connect it from the phone.
 
 ##### COMPUTER\_OFFLINE
 
@@ -879,6 +943,14 @@ readonly DIAGNOSTICS_FAILED: "DIAGNOSTICS_FAILED" = 'DIAGNOSTICS_FAILED';
 ```
 
 Couldn't create a diagnostics bundle.
+
+##### DOOR\_NOT\_ANSWERED
+
+```ts
+readonly DOOR_NOT_ANSWERED: "DOOR_NOT_ANSWERED" = 'DOOR_NOT_ANSWERED';
+```
+
+Someone came to the door, and Toskar couldn't answer: {{detail}}
 
 ##### EGRESS\_FAILED
 
@@ -1111,6 +1183,14 @@ readonly INVALID_SETTING: "INVALID_SETTING" = 'INVALID_SETTING';
 ```
 
 “{{value}}” isn't a valid value for {{setting}}.
+
+##### INVALID\_VOICE
+
+```ts
+readonly INVALID_VOICE: "INVALID_VOICE" = 'INVALID_VOICE';
+```
+
+That voice isn't one {{language}} can be read in here.
 
 ##### INVITE\_INVALID
 
@@ -1503,6 +1583,30 @@ readonly MODELS_LIST_FAILED: "MODELS_LIST_FAILED" = 'MODELS_LIST_FAILED';
 ```
 
 Couldn't list models.
+
+##### MOVE\_FAILED
+
+```ts
+readonly MOVE_FAILED: "MOVE_FAILED" = 'MOVE_FAILED';
+```
+
+Toskar's relay didn't move the subscription ({{relay_code}}).
+
+##### MOVE\_NEEDS\_COMPUTER
+
+```ts
+readonly MOVE_NEEDS_COMPUTER: "MOVE_NEEDS_COMPUTER" = 'MOVE_NEEDS_COMPUTER';
+```
+
+To move it, Toskar's relay needs to hear from the computer it's on now: turn that computer on once, or wait until it has been off for 3 days.
+
+##### MOVE\_TOO\_SOON
+
+```ts
+readonly MOVE_TOO_SOON: "MOVE_TOO_SOON" = 'MOVE_TOO_SOON';
+```
+
+The subscription moved less than a day ago. It can move again tomorrow.
 
 ##### NAME\_INVALID
 
@@ -2152,6 +2256,22 @@ readonly RELAY_TOKEN_NOT_NEEDED: "RELAY_TOKEN_NOT_NEEDED" = 'RELAY_TOKEN_NOT_NEE
 
 This computer uses your organization's relay, so it doesn't need a subscription.
 
+##### RELAY\_TOKEN\_SHORTER
+
+```ts
+readonly RELAY_TOKEN_SHORTER: "RELAY_TOKEN_SHORTER" = 'RELAY_TOKEN_SHORTER';
+```
+
+This computer already has a relay token that lasts longer, so it keeps that one.
+
+##### RELAY\_UNREACHABLE
+
+```ts
+readonly RELAY_UNREACHABLE: "RELAY_UNREACHABLE" = 'RELAY_UNREACHABLE';
+```
+
+Toskar's relay couldn't be reached. Try again in a minute.
+
 ##### REMOTE\_ACCESS\_OFF
 
 ```ts
@@ -2536,6 +2656,14 @@ readonly SUBSCRIPTION_ACTIVE: "SUBSCRIPTION_ACTIVE" = 'SUBSCRIPTION_ACTIVE';
 
 This computer already has access from anywhere.
 
+##### SUBSCRIPTION\_COVERED
+
+```ts
+readonly SUBSCRIPTION_COVERED: "SUBSCRIPTION_COVERED" = 'SUBSCRIPTION_COVERED';
+```
+
+Another device's subscription already covers this computer, so there's nothing to buy here.
+
 ##### SUBSCRIPTION\_FAILED
 
 ```ts
@@ -2768,6 +2896,14 @@ readonly USERNAME_TAKEN: "USERNAME_TAKEN" = 'USERNAME_TAKEN';
 
 That username is taken.
 
+##### VOICE\_UNAVAILABLE
+
+```ts
+readonly VOICE_UNAVAILABLE: "VOICE_UNAVAILABLE" = 'VOICE_UNAVAILABLE';
+```
+
+Live voice isn't available on this computer.
+
 ##### WARM\_FAILED
 
 ```ts
@@ -2775,6 +2911,14 @@ readonly WARM_FAILED: "WARM_FAILED" = 'WARM_FAILED';
 ```
 
 {{detail}}
+
+##### WEBSOCKET\_REQUIRED
+
+```ts
+readonly WEBSOCKET_REQUIRED: "WEBSOCKET_REQUIRED" = 'WEBSOCKET_REQUIRED';
+```
+
+Live voice needs a WebSocket connection.
 
 ## Functions
 

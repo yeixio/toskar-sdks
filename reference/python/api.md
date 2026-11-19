@@ -40,6 +40,12 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `get_model_placement(id: str)` | `GET /api/v1/capabilities/models/{id}` | Which computers can run an installed model |
 | `chat(*, body: dict[str, Any])` | `POST /api/v1/chat` | Send a chat message |
 | `stop_chat(*, body: dict[str, Any])` | `POST /api/v1/chat/stop` | Stop a conversation's running turn |
+| `get_comfy_ui()` | `GET /api/v1/comfyui` | The connected ComfyUI and what a check finds on it (Admin) |
+| `set_comfy_ui(*, body: dict[str, Any])` | `PUT /api/v1/comfyui` | Connect a ComfyUI, change its token, or disconnect it (Admin) |
+| `list_comfy_workflows()` | `GET /api/v1/comfyui/workflows` | Saved ComfyUI workflows, without their graphs (Admin) |
+| `save_comfy_workflow(*, body: dict[str, Any])` | `POST /api/v1/comfyui/workflows` | Save a ComfyUI workflow, or replace the one with its name (Admin) |
+| `detect_comfy_workflow(*, body: dict[str, Any])` |  | Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin) |
+| `delete_comfy_workflow(name: str)` | `DELETE /api/v1/comfyui/workflows/{name}` | Remove a saved ComfyUI workflow (Admin) |
 | `list_connectors()` | `GET /api/v1/connectors` | List connected services and their status. Secret values are never returned. |
 | `connect_service(id: str, *, body: dict[str, Any] \| None = None)` | `PUT /api/v1/connectors/{id}` | Check values with the service, then store them and add its tools |
 | `disconnect_service(id: str)` | `DELETE /api/v1/connectors/{id}` | Delete the stored credential and remove the service's tools |
@@ -135,6 +141,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `find_models_in_other_apps()` | `GET /api/v1/models/import/found` | Models other local AI apps keep on this computer |
 | `install_model_from_url(*, body: models.InstallFromURLRequest \| dict[str, Any], wait: str \| None = None)` |  | Download a GGUF from a URL |
 | `preview_model_from_url(*, body: models.InstallFromURLRequest \| dict[str, Any])` |  | What a download from a URL would bring, without downloading it |
+| `list_model_license_acceptances()` |  | Who accepted which model's license terms, and when |
 | `recommend_models(*, purpose: str \| None = None)` |  | Recommended models for this computer |
 | `quality_results()` | `GET /api/v1/models/results` | Toskar's public quality results |
 | `list_running_models()` | `GET /api/v1/models/running` | Loaded model instances on this and paired computers |
@@ -239,10 +246,13 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `get_community_ratings()` | `GET /api/v1/ratings/community` | Everyone's ratings of the models here, from hardware like this computer's and overall |
 | `get_remote_access()` | `GET /api/v1/remote-access` | Access from anywhere's setting and its listener (#456) |
 | `check_remote_access()` | `POST /api/v1/remote-access/check` | Check access from anywhere from outside, now (#546) |
+| `get_device_token()` | `GET /api/v1/remote-access/device-token` | This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451) |
 | `put_relay_token()` | `PUT /api/v1/remote-access/relay-token` | Hand over a subscription's relay token (#456) |
 | `get_route_secret()` | `GET /api/v1/remote-access/route` | The route secret, for a paired device on the home network (#456) |
 | `start_subscription_checkout()` | `POST /api/v1/remote-access/subscription/checkout` | Subscribe to access from anywhere here, with Stripe (#639) |
+| `cancel_subscription_checkout()` | `DELETE /api/v1/remote-access/subscription/checkout` | Close the checkout opened here before it's paid (#1257) |
 | `manage_subscription()` | `POST /api/v1/remote-access/subscription/manage` | The billing page for the subscription bought here (#639) |
+| `move_subscription()` | `POST /api/v1/remote-access/subscription/move` | Move the subscription bought here onto this computer (#1257) |
 | `role_capabilities()` | `GET /api/v1/roles/capabilities` | What each role may use (#589) |
 | `set_role_capabilities(role: str, *, body: dict[str, bool])` | `PUT /api/v1/roles/{role}/capabilities` | Change what a role may use (#589) |
 | `list_runs(*, conversation_id: str \| None = None, limit: int \| None = None)` |  | Recent run traces, newest first |
@@ -256,7 +266,12 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `update_settings(*, body: dict[str, Any])` | `PATCH /api/v1/settings` | Update settings |
 | `reset_app(*, body: dict[str, Any] \| None = None, delete_models: str \| None = None)` |  | Reset application to defaults |
 | `read_aloud(*, body: dict[str, Any])` | `POST /api/v1/speech` | Read text aloud on this computer; the audio is kept as a file in the chat |
+| `install_kitten()` | `POST /api/v1/speech/kitten` | Install Kitten TTS 2 mini (#1304) |
+| `remove_kitten()` | `DELETE /api/v1/speech/kitten` | Remove Kitten TTS 2 mini (#1304) |
+| `speech_say(*, body: dict[str, Any])` | `POST /api/v1/speech/say` | Read a little text aloud in the computer's voice (#795) |
 | `transcribe_recording(*, body: dict[str, Any])` | `POST /api/v1/speech/transcribe` | A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155) |
+| `speech_voices()` | `GET /api/v1/speech/voices` | The Voice settings (#1304) |
+| `set_speech_voice(language: str, *, body: dict[str, Any])` | `PUT /api/v1/speech/voices/{language}` | Choose the voice a language is read aloud in (#1304) |
 | `list_swarms(*, project_id: str \| None = None)` |  | The caller's swarms |
 | `start_swarm(*, body: dict[str, Any])` | `POST /api/v1/swarms` | Start a swarm |
 | `get_swarm(id: str)` | `GET /api/v1/swarms/{id}` | One swarm |
@@ -266,6 +281,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `create_task(*, body: dict[str, Any])` | `POST /api/v1/tasks` | Run a prompt as a task |
 | `get_task(id: str)` | `GET /api/v1/tasks/{id}` | One task |
 | `get_api_tls()` | `GET /api/v1/tls` | How the API speaks HTTPS on the local network (#213) |
+| `get_next_api_tls()` | `GET /api/v1/tls/next` | The certificate that replaces one naming the computer (#1263) |
 | `list_tools()` | `GET /api/v1/tools` | Every tool's descriptor, with whether it is on, its health, and the profiles that allow it |
 | `tool_activity()` | `GET /api/v1/tools/activity` | Recent tool calls and pending approvals |
 | `decide_tool(*, body: dict[str, Any])` | `POST /api/v1/tools/decide` | Answer a tool approval request |
@@ -312,6 +328,7 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `start_video_setup(*, body: dict[str, Any])` | `POST /api/v1/video/setup` | Install stable-diffusion.cpp and a video model in the background |
 | `cancel_video_setup()` | `DELETE /api/v1/video/setup` | Stop the setup in progress; what was downloaded is kept and resumed next time |
 | `use_video_build(*, body: dict[str, Any])` | `POST /api/v1/video/setup/build` | Switch stable-diffusion.cpp to its CPU build, or back to its GPU build |
+| `voice_realtime()` | `GET /api/v1/voice/realtime` | Live voice mode, over a WebSocket (#795) |
 | `run_hook(token: str)` | `POST /hooks/{token}` | Start the automation a webhook link belongs to |
 | `mcp_server_get()` | `GET /mcp` | Not supported; the server does not open a stream |
 | `mcp_server(*, body: dict[str, Any] \| None = None)` | `POST /mcp` | Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm. |

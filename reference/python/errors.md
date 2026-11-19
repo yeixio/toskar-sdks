@@ -33,11 +33,19 @@ except ToskarError as err:
 | `BILLING_UNAVAILABLE` | Billing couldn't be reached. Try again in a minute. |
 | `BROWSE_FAILED` |  |
 | `CACHE_NOT_FOUND` | No cache has that name. |
+| `CAMERA_ADDRESS` | Enter the camera's address, such as 192.168.1.50. |
+| `CAMERA_SPEAKER_UNREACHABLE` | Toskar couldn't reach the camera's speaker, so the visitor wasn't answered. Check that the camera is on and on the same network as this computer. |
+| `CAMERA_UNREACHABLE` | Toskar couldn't reach a camera at that address. Check the address, and that the camera's HTTP or HTTPS server is on. |
 | `CAPABILITY_OFF` | This is turned off for your account. Ask {{admin}} or another Admin to turn it on. |
 | `CAPABILITY_UNKNOWN` | Toskar doesn't know that capability. |
 | `CHAT_FAILED` |  |
+| `CHECKOUT_NONE` | There's no checkout open to cancel. |
 | `CLAIM_FAILED` |  |
+| `COMFYUI_BAD_URL` | The ComfyUI address must start with http:// or https://, such as http://127.0.0.1:8188. |
+| `COMFYUI_BAD_WORKFLOW` |  |
+| `COMFYUI_FAILED` |  |
 | `COMPACT_FAILED` | The chat couldn't be compacted: {{detail}} |
+| `COMPANION_LIMIT` | A device connected through another can't connect more. Connect it from the phone. |
 | `COMPUTER_OFFLINE` | The computer running this model is offline. |
 | `CONFIRM_NAME` | To remove {{name}}, type their name to confirm. |
 | `CONFLICT` |  |
@@ -61,6 +69,7 @@ except ToskarError as err:
 | `DEVICE_NOT_ALLOWED` | A device's key can't do this. Use a key from API Access. |
 | `DEVICE_NOT_FOUND` | No device of yours has that id. |
 | `DIAGNOSTICS_FAILED` | Couldn't create a diagnostics bundle. |
+| `DOOR_NOT_ANSWERED` | Someone came to the door, and Toskar couldn't answer: {{detail}} |
 | `EGRESS_FAILED` |  |
 | `EMAIL_INVALID` | That isn't an email address. |
 | `EMAIL_TAKEN` | Someone else has that email address. |
@@ -90,6 +99,7 @@ except ToskarError as err:
 | `INVALID_RATING` | A rating is 1 to 5 stars, with reasons from the list. |
 | `INVALID_RETENTION` |  |
 | `INVALID_SETTING` | “{{value}}” isn't a valid value for {{setting}}. |
+| `INVALID_VOICE` | That voice isn't one {{language}} can be read in here. |
 | `INVITE_INVALID` | This link has expired or was already used. Ask for a new one. |
 | `JOIN_BAD_REQUEST` |  |
 | `JOIN_FAILED` |  |
@@ -139,6 +149,9 @@ except ToskarError as err:
 | `MODEL_SLOTS_MEMORY` | This model doesn't fit this computer's memory with {{slots}} agents at once. Choose fewer. |
 | `MODEL_UNHEALTHY` | The model stopped working. |
 | `MODEL_UPDATE_FAILED` |  |
+| `MOVE_FAILED` | Toskar's relay didn't move the subscription ({{relay_code}}). |
+| `MOVE_NEEDS_COMPUTER` | To move it, Toskar's relay needs to hear from the computer it's on now: turn that computer on once, or wait until it has been off for 3 days. |
+| `MOVE_TOO_SOON` | The subscription moved less than a day ago. It can move again tomorrow. |
 | `NAME_INVALID` | A name is 1 to 80 characters. |
 | `NEEDS_APPROVAL` | This needs your approval before the automation can go on. |
 | `NEWS_UNAVAILABLE` | The AI news couldn't be read from toskar.ai. Check the internet connection and try again. |
@@ -220,6 +233,8 @@ except ToskarError as err:
 | `RELAY_TOKEN_FAILED` | Couldn't save the relay token on this computer. |
 | `RELAY_TOKEN_INVALID` | That relay token isn't for this computer, or it has run out. Subscribe again from this device. |
 | `RELAY_TOKEN_NOT_NEEDED` | This computer uses your organization's relay, so it doesn't need a subscription. |
+| `RELAY_TOKEN_SHORTER` | This computer already has a relay token that lasts longer, so it keeps that one. |
+| `RELAY_UNREACHABLE` | Toskar's relay couldn't be reached. Try again in a minute. |
 | `REMOTE_ACCESS_OFF` | Access from anywhere is off, so there's nothing to check. Turn it on first. |
 | `REMOTE_ADDRESS_INVALID` | Enter a host name or IP, with a port when it differs, such as home.example.com or 203.0.113.7:7333. |
 | `REMOTE_DEVICES_ONLY` | From outside the home network, only paired devices can connect. |
@@ -268,6 +283,7 @@ except ToskarError as err:
 | `START_FAILED` |  |
 | `STOP_FAILED` |  |
 | `SUBSCRIPTION_ACTIVE` | This computer already has access from anywhere. |
+| `SUBSCRIPTION_COVERED` | Another device's subscription already covers this computer, so there's nothing to buy here. |
 | `SUBSCRIPTION_FAILED` | Couldn't start the subscription. |
 | `SUBSCRIPTION_IN_APP_ONLY` | This copy of Toskar is from the App Store, so access from anywhere is sold in the Toskar app on your phone or tablet. |
 | `SUBSCRIPTION_NONE` | This computer has no subscription bought in its settings. One bought in the Toskar app is managed in your phone's or tablet's store. |
@@ -297,4 +313,6 @@ except ToskarError as err:
 | `UNSUPPORTED_FILE` | Toskar can't read {{name}} yet. Attach a document, spreadsheet, PDF, code file, audio, video, or a PNG or JPEG image. |
 | `USERNAME_INVALID` | A username is 3 to 32 letters, digits, dots, dashes, or underscores. |
 | `USERNAME_TAKEN` | That username is taken. |
+| `VOICE_UNAVAILABLE` | Live voice isn't available on this computer. |
 | `WARM_FAILED` |  |
+| `WEBSOCKET_REQUIRED` | Live voice needs a WebSocket connection. |

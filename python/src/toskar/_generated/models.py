@@ -8,6 +8,98 @@ from typing import Annotated, Any
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
 
 
+class VoiceSettingsKitten(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    state: str
+    """
+    Known values: `not_installed`, `installing`, `installed`, `failed`; others may be added.
+    """
+    stage: str | None = None
+    """
+    While installing: program, voices, warming, or listening (contract 1.113)
+    """
+    error: str | None = None
+    unavailable: str | None = None
+    """
+    Why it can't be installed on this computer
+    """
+    credit: str
+    """
+    Shown wherever a Kitten voice is used: Powered by KittenML
+    """
+    url: str
+    license: str
+    languages: list[str]
+
+
+class VoiceSettingsLanguageVoice(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    id: str
+    name: str
+    description: str | None = None
+    engine: str
+    """
+    Known values: `kitten`, `kokoro`, `piper`; others may be added.
+    """
+
+
+class VoiceSettingsLanguage(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    language: str
+    voice: str
+    """
+    The chosen voice; empty is automatic
+    """
+    automatic: str
+    """
+    The voice used when none is chosen
+    """
+    voices: list[VoiceSettingsLanguageVoice]
+
+
+class VoiceSettingsNeed(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    ability: str
+    """
+    chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+    """
+    model: str | None = None
+    """
+    The catalog model to install; absent when none fits this computer
+    """
+    name: str | None = None
+    size_bytes: int | None = None
+
+
+class VoiceSettings(BaseModel):
+    """
+    The Voice settings (#1304, contract 1.112)
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    kitten: VoiceSettingsKitten
+    languages: list[VoiceSettingsLanguage]
+    needs: list[VoiceSettingsNeed] | None = None
+    """
+    The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113)
+    """
+
+
 class License(BaseModel):
     model_config = ConfigDict(
         extra='allow',
@@ -127,6 +219,71 @@ class PersonalStyle(BaseModel):
     """
     about_me: Annotated[str | None, Field(max_length=1500)] = None
     instructions: Annotated[str | None, Field(max_length=1500)] = None
+    location: Annotated[str | None, Field(max_length=120)] = None
+    """
+    Where the person is, such as a town. Used only for questions about nearby places, weather, and directions, and as the start of the places tools when no place is named.
+    """
+
+
+class ComfyUIInfoDevice(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    name: str
+    type: str
+    vram_total: int
+    vram_free: int
+
+
+class ComfyUIInfo(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    version: str | None = None
+    devices: list[ComfyUIInfoDevice]
+    models: dict[str, list[str]]
+    """
+    Model files by kind (checkpoints, diffusion, loras, vae, upscalers)
+    """
+    node_types: int
+    """
+    How many node types ComfyUI offers
+    """
+
+
+class ComfyWorkflowInput(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    node: str
+    field: str
+
+
+class ComfyWorkflowInputs(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    prompt: ComfyWorkflowInput | None = None
+    negative: ComfyWorkflowInput | None = None
+    seed: ComfyWorkflowInput | None = None
+    image: ComfyWorkflowInput | None = None
+    width: ComfyWorkflowInput | None = None
+    height: ComfyWorkflowInput | None = None
+
+
+class ComfyWorkflow(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    name: str
+    description: str | None = None
+    inputs: ComfyWorkflowInputs
+    nodes: int
 
 
 class ExternalServer(BaseModel):
@@ -571,6 +728,44 @@ class ModelContextOption(BaseModel):
     tokens: int
 
 
+class ModelLicense(BaseModel):
+    """
+    A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    id: str
+    """
+    The SPDX identifier where there is one, such as apache-2.0, or the license's short name, such as llama3.2
+    """
+    name: str
+    url: str
+    commercial: str
+    """
+    Whether a business may use the model: yes, limited (such as Llama's above 700 million monthly users), or no Known values: `yes`, `limited`, `no`; others may be added.
+    """
+    attribution: bool | None = None
+    """
+    Apps or published work built with the model credit it
+    """
+    accept: bool | None = None
+    """
+    The person agrees to the license's terms before using the model
+    """
+    notes: str | None = None
+    kind: str | None = None
+    """
+    free: any use, nothing to accept or credit. conditions: free, with terms. Known values: `free`, `conditions`; others may be added.
+    """
+    accepted_at: AwareDatetime | None = None
+    """
+    When the person asking accepted its terms in Toskar, for a license with terms to accept (contract 1.103)
+    """
+
+
 class ModelLanguage(BaseModel):
     """
     How well a model writes a language (multilingual spec §13–14, §31). Levels are coarse on purpose: they don't imply precision the sources don't have. A language a model has no level for is unknown, and is left out.
@@ -780,6 +975,10 @@ class ImageSetupModel(BaseModel):
     name: str | None = None
     description: str | None = None
     license: str | None = None
+    commercial: str | None = None
+    """
+    Whether a business may use it under its license (#593, contract 1.102) Known values: `yes`, `limited`, `no`; others may be added.
+    """
     memory_bytes: int | None = None
     size_bytes: int | None = None
     edits: bool | None = None
@@ -1394,11 +1593,58 @@ class AutomationInputCamera(BaseModel):
     )
     connector: str
     """
-    Known values: `homeassistant`; others may be added.
+    Known values: `homeassistant`, `reolink`; others may be added.
     """
     device: str
     """
     The camera as that service names it, such as Home Assistant's camera.driveway
+    """
+
+
+class AutomationInputSay(BaseModel):
+    """
+    Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    connector: str
+    """
+    Known values: `reolink`; others may be added.
+    """
+    device: str
+    """
+    Always camera: one Reolink connection is one camera
+    """
+    quiet_from: str | None = None
+    """
+    With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+    """
+    quiet_to: str | None = None
+    voice: str | None = None
+    """
+    The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+    """
+    listen: bool | None = None
+    """
+    Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+    """
+
+
+class AutomationInputAction(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    tool: str
+    """
+    A tool ID
+    """
+    args: dict[str, str] | None = None
+    """
+    The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
     """
 
 
@@ -1448,6 +1694,14 @@ class AutomationInput(BaseModel):
     cameras: list[AutomationInputCamera] | None = None
     """
     Cameras to look at as each run starts (#667). Their pictures, taken through the connected service, are shown to a model that can see. On update, an empty list stops looking.
+    """
+    say: AutomationInputSay | None = None
+    """
+    Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+    """
+    actions: list[AutomationInputAction] | None = None
+    """
+    Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
     """
 
 
@@ -1511,6 +1765,53 @@ class AutomationCamera(BaseModel):
     device: str
 
 
+class AutomationSay(BaseModel):
+    """
+    Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    connector: str
+    """
+    Known values: `reolink`; others may be added.
+    """
+    device: str
+    """
+    Always camera: one Reolink connection is one camera
+    """
+    quiet_from: str | None = None
+    """
+    With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+    """
+    quiet_to: str | None = None
+    voice: str | None = None
+    """
+    The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+    """
+    listen: bool | None = None
+    """
+    Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+    """
+
+
+class AutomationAction(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    tool: str
+    """
+    A tool ID
+    """
+    args: dict[str, str] | None = None
+    """
+    The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+    """
+
+
 class Automation(BaseModel):
     """
     A scheduled prompt owned by the daemon.
@@ -1555,6 +1856,14 @@ class Automation(BaseModel):
     cameras: list[AutomationCamera] | None = None
     """
     The cameras looked at as each run starts (#667)
+    """
+    say: AutomationSay | None = None
+    """
+    Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+    """
+    actions: list[AutomationAction] | None = None
+    """
+    Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
     """
     last_checked_at: AwareDatetime | None = None
     """
@@ -2007,6 +2316,13 @@ class ToolDescriptor(BaseModel):
     id: str | None = None
     name: str | None = None
     description: str | None = None
+    """
+    Written for the model
+    """
+    summary: str | None = None
+    """
+    A short description for people (#1254); empty is description
+    """
     capability: str | None = None
     source: str | None = None
     risk: str | None = None
@@ -2316,6 +2632,17 @@ class PairedDevice(BaseModel):
     token: str | None = None
     """
     This computer's token for the relay, for every paired device on the home network
+    """
+
+
+class DeviceToken(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    token: str
+    """
+    This computer's device token for Toskar's relay, or "" when it has none.
     """
 
 
@@ -3144,6 +3471,24 @@ class QualityResult(BaseModel):
     """
 
 
+class LicenseAcceptance(BaseModel):
+    """
+    Someone accepting a model's license terms in Toskar (#593, contract 1.103).
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    model_id: str
+    license_id: str
+    license_name: str
+    license_url: str
+    person_id: str
+    person_name: str | None = None
+    accepted_at: AwareDatetime
+
+
 class BrowseModel(BaseModel):
     """
     A Hugging Face browse-all hit (GGUF filtered).
@@ -3532,6 +3877,53 @@ class AutomationDetailCamera(BaseModel):
     device: str
 
 
+class AutomationDetailSay(BaseModel):
+    """
+    Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    connector: str
+    """
+    Known values: `reolink`; others may be added.
+    """
+    device: str
+    """
+    Always camera: one Reolink connection is one camera
+    """
+    quiet_from: str | None = None
+    """
+    With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+    """
+    quiet_to: str | None = None
+    voice: str | None = None
+    """
+    The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+    """
+    listen: bool | None = None
+    """
+    Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+    """
+
+
+class AutomationDetailAction(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    tool: str
+    """
+    A tool ID
+    """
+    args: dict[str, str] | None = None
+    """
+    The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+    """
+
+
 class AutomationPreview(BaseModel):
     """
     One unsaved run of a draft automation.
@@ -3696,6 +4088,10 @@ class ConnectorStatusField(BaseModel):
     """
     optional: bool | None = None
     placeholder: str | None = None
+    advanced: bool | None = None
+    """
+    Folded under Advanced in the form; most people leave it.
+    """
 
 
 class ConnectorStatusTool(BaseModel):
@@ -3710,6 +4106,10 @@ class ConnectorStatusTool(BaseModel):
     id: str
     name: str
     description: str
+    summary: str | None = None
+    """
+    Summary is a short description for people, where Description is written for the model (#1254). Empty is Description.
+    """
     capability: str
     source: str
     schema_: Annotated[str, Field(alias='schema')]
@@ -4387,6 +4787,17 @@ class RuntimeHistory(BaseModel):
     interval_seconds: int
     """
     How often a sample is kept, in seconds.
+    """
+
+
+class NextTLSInfo(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    fingerprint: str | None = None
+    """
+    SHA-256 of the next certificate, as "sha256:<hex>"
     """
 
 
@@ -5845,6 +6256,28 @@ class CategoryWinner(BaseModel):
     """
 
 
+class ComfyUIStatus(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    base_url: str
+    has_token: bool
+    info: ComfyUIInfo | None = None
+    error: str | None = None
+    """
+    Why the check failed
+    """
+
+
+class ComfyWorkflows(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    workflows: list[ComfyWorkflow]
+
+
 class ModelRating(BaseModel):
     """
     A person's rating of one model and what sharing it would send.
@@ -5995,6 +6428,34 @@ class Model(BaseModel):
     slots: Annotated[int | None, Field(ge=1, le=4)] = None
     """
     How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models.
+    """
+    newer: str | None = None
+    """
+    The catalog model that replaces an installed one, size for size, such as Qwen 3.5 4B for Qwen 2.5 3B, when it is not installed too (#593, contract 1.107).
+    """
+    primary_category: str | None = None
+    """
+    What the model does first, for browsing the store, from the categories in manifests/models/categories.json, such as chat_coding, retrieval, or creative; uncategorized for a model nobody has checked (#593, contract 1.104). It never says Toskar can run the model; runtime does.
+    """
+    categories: list[str] | None = None
+    """
+    Every category the model belongs to
+    """
+    tasks: list[str] | None = None
+    """
+    What the model does in its categories, such as code_generation or text_embedding
+    """
+    input_modalities: list[str] | None = None
+    """
+    What the model takes, such as text, code, or image
+    """
+    output_modalities: list[str] | None = None
+    """
+    What the model gives, such as text, image, or embedding
+    """
+    license: ModelLicense | None = None
+    """
+    A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link.
     """
     languages: list[ModelLanguage] | None = None
     """
@@ -6412,6 +6873,14 @@ class MessageMeta(BaseModel):
     `backend` and Device ran the answer, such as vulkan and "AMD Radeon RX 7900 XTX", or cpu and "" (#317, contract 1.8), so a client such as the iPhone app can say whether it came from the GPU. Empty when not known, such as when a step ran on a paired computer.
     """
     device: str | None = None
+    model: str | None = None
+    """
+    The model that wrote the answer, as shown to the user, such as "Llama 3.2 1B" (toskar-apps#447, contract 1.109).
+    """
+    computer: str | None = None
+    """
+    The computer the answer ran on, such as "Studio". Empty when the turn's steps ran on more than one computer.
+    """
     automation: AutomationDraft | None = None
     automation_run: AutomationRun | None = None
     deliberation: MessageMetaDeliberation | None = None
@@ -6523,7 +6992,15 @@ class StoreModel(BrowseModel):
     created_at: AwareDatetime | None = None
     license: str | None = None
     """
-    The license Hugging Face lists, such as apache-2.0
+    The license Hugging Face lists, such as apache-2.0, or the catalog's license name for a tested model
+    """
+    commercial: str | None = None
+    """
+    Whether a business may use it, from the catalog's checked license or a license Hugging Face lists that says. Absent when unknown (#593, contract 1.102). Known values: `yes`, `limited`, `no`; others may be added.
+    """
+    license_kind: str | None = None
+    """
+    Free, or free with conditions. Absent when the license is unknown. Known values: `free`, `conditions`; others may be added.
     """
     details_url: str | None = None
     """
@@ -6627,6 +7104,14 @@ class AutomationDetail(BaseModel):
     cameras: list[AutomationDetailCamera] | None = None
     """
     Looked at as each run starts (#667).
+    """
+    say: AutomationDetailSay | None = None
+    """
+    Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+    """
+    actions: list[AutomationDetailAction] | None = None
+    """
+    Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
     """
     last_checked_at: AwareDatetime | None = None
     hook_set: bool | None = None

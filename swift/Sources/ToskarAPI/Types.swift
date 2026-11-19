@@ -347,7 +347,7 @@ public protocol APIProtocol: Sendable {
     func setMyPreferences(_ input: Operations.SetMyPreferences.Input) async throws -> Operations.SetMyPreferences.Output
     /// Access from anywhere's setting and its listener (#456)
     ///
-    /// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+    /// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
     ///
     /// - Remark: HTTP `GET /api/v1/remote-access`.
     /// - Remark: Generated from `#/paths//api/v1/remote-access/get(getRemoteAccess)`.
@@ -366,9 +366,16 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /api/v1/remote-access/route`.
     /// - Remark: Generated from `#/paths//api/v1/remote-access/route/get(getRouteSecret)`.
     func getRouteSecret(_ input: Operations.GetRouteSecret.Input) async throws -> Operations.GetRouteSecret.Output
+    /// This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+    ///
+    /// Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+    ///
+    /// - Remark: HTTP `GET /api/v1/remote-access/device-token`.
+    /// - Remark: Generated from `#/paths//api/v1/remote-access/device-token/get(getDeviceToken)`.
+    func getDeviceToken(_ input: Operations.GetDeviceToken.Input) async throws -> Operations.GetDeviceToken.Output
     /// Hand over a subscription's relay token (#456)
     ///
-    /// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+    /// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
     ///
     /// - Remark: HTTP `PUT /api/v1/remote-access/relay-token`.
     /// - Remark: Generated from `#/paths//api/v1/remote-access/relay-token/put(putRelayToken)`.
@@ -380,6 +387,20 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /api/v1/remote-access/subscription/checkout`.
     /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/checkout/post(startSubscriptionCheckout)`.
     func startSubscriptionCheckout(_ input: Operations.StartSubscriptionCheckout.Input) async throws -> Operations.StartSubscriptionCheckout.Output
+    /// Close the checkout opened here before it's paid (#1257)
+    ///
+    /// Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/remote-access/subscription/checkout`.
+    /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/checkout/delete(cancelSubscriptionCheckout)`.
+    func cancelSubscriptionCheckout(_ input: Operations.CancelSubscriptionCheckout.Input) async throws -> Operations.CancelSubscriptionCheckout.Output
+    /// Move the subscription bought here onto this computer (#1257)
+    ///
+    /// When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+    ///
+    /// - Remark: HTTP `POST /api/v1/remote-access/subscription/move`.
+    /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)`.
+    func moveSubscription(_ input: Operations.MoveSubscription.Input) async throws -> Operations.MoveSubscription.Output
     /// The billing page for the subscription bought here (#639)
     ///
     /// Answers {url}, Stripe's billing page for the subscription bought in Settings: change the card, download receipts, cancel. Admins only. 409 SUBSCRIPTION_IN_APP_ONLY in the Mac App Store's copy; 404 SUBSCRIPTION_NONE when none was bought here (one bought in the Toskar app is managed in the device's store); 502 BILLING_UNAVAILABLE.
@@ -392,6 +413,13 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /api/v1/tls`.
     /// - Remark: Generated from `#/paths//api/v1/tls/get(getApiTLS)`.
     func getApiTLS(_ input: Operations.GetApiTLS.Input) async throws -> Operations.GetApiTLS.Output
+    /// The certificate that replaces one naming the computer (#1263)
+    ///
+    /// Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+    ///
+    /// - Remark: HTTP `GET /api/v1/tls/next`.
+    /// - Remark: Generated from `#/paths//api/v1/tls/next/get(getNextApiTLS)`.
+    func getNextApiTLS(_ input: Operations.GetNextApiTLS.Input) async throws -> Operations.GetNextApiTLS.Output
     /// AGPL corresponding-source offer
     ///
     /// - Remark: HTTP `GET /about`.
@@ -933,6 +961,13 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /api/v1/models/import/found`.
     /// - Remark: Generated from `#/paths//api/v1/models/import/found/get(findModelsInOtherApps)`.
     func findModelsInOtherApps(_ input: Operations.FindModelsInOtherApps.Input) async throws -> Operations.FindModelsInOtherApps.Output
+    /// Who accepted which model's license terms, and when
+    ///
+    /// Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+    ///
+    /// - Remark: HTTP `GET /api/v1/models/license-acceptances`.
+    /// - Remark: Generated from `#/paths//api/v1/models/license-acceptances/get(listModelLicenseAcceptances)`.
+    func listModelLicenseAcceptances(_ input: Operations.ListModelLicenseAcceptances.Input) async throws -> Operations.ListModelLicenseAcceptances.Output
     /// What a download from a URL would bring, without downloading it
     ///
     /// The file and its size (and its vision projector's) from the repository, the free space where models are kept, whether it's already a model here, and copies of the same file other apps have (by name, Ollama's SHA-256 blob, or a large file's exact size), which can be added where they are instead (#611).
@@ -950,6 +985,42 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /api/v1/models/{id}/install`.
     /// - Remark: Generated from `#/paths//api/v1/models/{id}/install/post(installModel)`.
     func installModel(_ input: Operations.InstallModel.Input) async throws -> Operations.InstallModel.Output
+    /// The connected ComfyUI and what a check finds on it (Admin)
+    ///
+    /// The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out.
+    ///
+    /// - Remark: HTTP `GET /api/v1/comfyui`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/get(getComfyUI)`.
+    func getComfyUI(_ input: Operations.GetComfyUI.Input) async throws -> Operations.GetComfyUI.Output
+    /// Connect a ComfyUI, change its token, or disconnect it (Admin)
+    ///
+    /// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+    ///
+    /// - Remark: HTTP `PUT /api/v1/comfyui`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/put(setComfyUI)`.
+    func setComfyUI(_ input: Operations.SetComfyUI.Input) async throws -> Operations.SetComfyUI.Output
+    /// Saved ComfyUI workflows, without their graphs (Admin)
+    ///
+    /// - Remark: HTTP `GET /api/v1/comfyui/workflows`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/get(listComfyWorkflows)`.
+    func listComfyWorkflows(_ input: Operations.ListComfyWorkflows.Input) async throws -> Operations.ListComfyWorkflows.Output
+    /// Save a ComfyUI workflow, or replace the one with its name (Admin)
+    ///
+    /// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+    ///
+    /// - Remark: HTTP `POST /api/v1/comfyui/workflows`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/post(saveComfyWorkflow)`.
+    func saveComfyWorkflow(_ input: Operations.SaveComfyWorkflow.Input) async throws -> Operations.SaveComfyWorkflow.Output
+    /// Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+    ///
+    /// - Remark: HTTP `POST /api/v1/comfyui/workflows/detect`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/detect/post(detectComfyWorkflow)`.
+    func detectComfyWorkflow(_ input: Operations.DetectComfyWorkflow.Input) async throws -> Operations.DetectComfyWorkflow.Output
+    /// Remove a saved ComfyUI workflow (Admin)
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/comfyui/workflows/{name}`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/{name}/delete(deleteComfyWorkflow)`.
+    func deleteComfyWorkflow(_ input: Operations.DeleteComfyWorkflow.Input) async throws -> Operations.DeleteComfyWorkflow.Output
     /// The OpenAI-compatible server whose models can be chosen for a chat, and the models it offers
     ///
     /// - Remark: HTTP `GET /api/v1/external-server`.
@@ -1184,6 +1255,48 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /api/v1/speech`.
     /// - Remark: Generated from `#/paths//api/v1/speech/post(readAloud)`.
     func readAloud(_ input: Operations.ReadAloud.Input) async throws -> Operations.ReadAloud.Output
+    /// Live voice mode, over a WebSocket (#795)
+    ///
+    /// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+    ///
+    /// - Remark: HTTP `GET /api/v1/voice/realtime`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/realtime/get(voiceRealtime)`.
+    func voiceRealtime(_ input: Operations.VoiceRealtime.Input) async throws -> Operations.VoiceRealtime.Output
+    /// Read a little text aloud in the computer's voice (#795)
+    ///
+    /// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+    ///
+    /// - Remark: HTTP `POST /api/v1/speech/say`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/say/post(speechSay)`.
+    func speechSay(_ input: Operations.SpeechSay.Input) async throws -> Operations.SpeechSay.Output
+    /// The Voice settings (#1304)
+    ///
+    /// Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `GET /api/v1/speech/voices`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/voices/get(speechVoices)`.
+    func speechVoices(_ input: Operations.SpeechVoices.Input) async throws -> Operations.SpeechVoices.Output
+    /// Choose the voice a language is read aloud in (#1304)
+    ///
+    /// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/speech/voices/{language}`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/voices/{language}/put(setSpeechVoice)`.
+    func setSpeechVoice(_ input: Operations.SetSpeechVoice.Input) async throws -> Operations.SetSpeechVoice.Output
+    /// Install Kitten TTS 2 mini (#1304)
+    ///
+    /// Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `POST /api/v1/speech/kitten`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/kitten/post(installKitten)`.
+    func installKitten(_ input: Operations.InstallKitten.Input) async throws -> Operations.InstallKitten.Output
+    /// Remove Kitten TTS 2 mini (#1304)
+    ///
+    /// Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/speech/kitten`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/kitten/delete(removeKitten)`.
+    func removeKitten(_ input: Operations.RemoveKitten.Input) async throws -> Operations.RemoveKitten.Output
     /// A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155)
     ///
     /// The recording is attached first with POST /api/v1/artifacts (audio). Runs speech.transcribe (Whisper) on this computer or a paired one that has it, and answers the text for the person to check before sending. Visitors and paired devices may use it.
@@ -2462,7 +2575,7 @@ extension APIProtocol {
     }
     /// Access from anywhere's setting and its listener (#456)
     ///
-    /// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+    /// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
     ///
     /// - Remark: HTTP `GET /api/v1/remote-access`.
     /// - Remark: Generated from `#/paths//api/v1/remote-access/get(getRemoteAccess)`.
@@ -2487,9 +2600,18 @@ extension APIProtocol {
     public func getRouteSecret(headers: Operations.GetRouteSecret.Input.Headers = .init()) async throws -> Operations.GetRouteSecret.Output {
         try await getRouteSecret(Operations.GetRouteSecret.Input(headers: headers))
     }
+    /// This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+    ///
+    /// Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+    ///
+    /// - Remark: HTTP `GET /api/v1/remote-access/device-token`.
+    /// - Remark: Generated from `#/paths//api/v1/remote-access/device-token/get(getDeviceToken)`.
+    public func getDeviceToken(headers: Operations.GetDeviceToken.Input.Headers = .init()) async throws -> Operations.GetDeviceToken.Output {
+        try await getDeviceToken(Operations.GetDeviceToken.Input(headers: headers))
+    }
     /// Hand over a subscription's relay token (#456)
     ///
-    /// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+    /// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
     ///
     /// - Remark: HTTP `PUT /api/v1/remote-access/relay-token`.
     /// - Remark: Generated from `#/paths//api/v1/remote-access/relay-token/put(putRelayToken)`.
@@ -2504,6 +2626,24 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/checkout/post(startSubscriptionCheckout)`.
     public func startSubscriptionCheckout() async throws -> Operations.StartSubscriptionCheckout.Output {
         try await startSubscriptionCheckout(Operations.StartSubscriptionCheckout.Input())
+    }
+    /// Close the checkout opened here before it's paid (#1257)
+    ///
+    /// Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/remote-access/subscription/checkout`.
+    /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/checkout/delete(cancelSubscriptionCheckout)`.
+    public func cancelSubscriptionCheckout() async throws -> Operations.CancelSubscriptionCheckout.Output {
+        try await cancelSubscriptionCheckout(Operations.CancelSubscriptionCheckout.Input())
+    }
+    /// Move the subscription bought here onto this computer (#1257)
+    ///
+    /// When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+    ///
+    /// - Remark: HTTP `POST /api/v1/remote-access/subscription/move`.
+    /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)`.
+    public func moveSubscription() async throws -> Operations.MoveSubscription.Output {
+        try await moveSubscription(Operations.MoveSubscription.Input())
     }
     /// The billing page for the subscription bought here (#639)
     ///
@@ -2520,6 +2660,15 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//api/v1/tls/get(getApiTLS)`.
     public func getApiTLS(headers: Operations.GetApiTLS.Input.Headers = .init()) async throws -> Operations.GetApiTLS.Output {
         try await getApiTLS(Operations.GetApiTLS.Input(headers: headers))
+    }
+    /// The certificate that replaces one naming the computer (#1263)
+    ///
+    /// Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+    ///
+    /// - Remark: HTTP `GET /api/v1/tls/next`.
+    /// - Remark: Generated from `#/paths//api/v1/tls/next/get(getNextApiTLS)`.
+    public func getNextApiTLS(headers: Operations.GetNextApiTLS.Input.Headers = .init()) async throws -> Operations.GetNextApiTLS.Output {
+        try await getNextApiTLS(Operations.GetNextApiTLS.Input(headers: headers))
     }
     /// AGPL corresponding-source offer
     ///
@@ -3484,6 +3633,15 @@ extension APIProtocol {
     public func findModelsInOtherApps(headers: Operations.FindModelsInOtherApps.Input.Headers = .init()) async throws -> Operations.FindModelsInOtherApps.Output {
         try await findModelsInOtherApps(Operations.FindModelsInOtherApps.Input(headers: headers))
     }
+    /// Who accepted which model's license terms, and when
+    ///
+    /// Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+    ///
+    /// - Remark: HTTP `GET /api/v1/models/license-acceptances`.
+    /// - Remark: Generated from `#/paths//api/v1/models/license-acceptances/get(listModelLicenseAcceptances)`.
+    public func listModelLicenseAcceptances(headers: Operations.ListModelLicenseAcceptances.Input.Headers = .init()) async throws -> Operations.ListModelLicenseAcceptances.Output {
+        try await listModelLicenseAcceptances(Operations.ListModelLicenseAcceptances.Input(headers: headers))
+    }
     /// What a download from a URL would bring, without downloading it
     ///
     /// The file and its size (and its vision projector's) from the repository, the free space where models are kept, whether it's already a model here, and copies of the same file other apps have (by name, Ollama's SHA-256 blob, or a large file's exact size), which can be added where they are instead (#611).
@@ -3530,6 +3688,72 @@ extension APIProtocol {
             headers: headers,
             body: body
         ))
+    }
+    /// The connected ComfyUI and what a check finds on it (Admin)
+    ///
+    /// The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out.
+    ///
+    /// - Remark: HTTP `GET /api/v1/comfyui`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/get(getComfyUI)`.
+    public func getComfyUI(headers: Operations.GetComfyUI.Input.Headers = .init()) async throws -> Operations.GetComfyUI.Output {
+        try await getComfyUI(Operations.GetComfyUI.Input(headers: headers))
+    }
+    /// Connect a ComfyUI, change its token, or disconnect it (Admin)
+    ///
+    /// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+    ///
+    /// - Remark: HTTP `PUT /api/v1/comfyui`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/put(setComfyUI)`.
+    public func setComfyUI(
+        headers: Operations.SetComfyUI.Input.Headers = .init(),
+        body: Operations.SetComfyUI.Input.Body
+    ) async throws -> Operations.SetComfyUI.Output {
+        try await setComfyUI(Operations.SetComfyUI.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Saved ComfyUI workflows, without their graphs (Admin)
+    ///
+    /// - Remark: HTTP `GET /api/v1/comfyui/workflows`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/get(listComfyWorkflows)`.
+    public func listComfyWorkflows(headers: Operations.ListComfyWorkflows.Input.Headers = .init()) async throws -> Operations.ListComfyWorkflows.Output {
+        try await listComfyWorkflows(Operations.ListComfyWorkflows.Input(headers: headers))
+    }
+    /// Save a ComfyUI workflow, or replace the one with its name (Admin)
+    ///
+    /// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+    ///
+    /// - Remark: HTTP `POST /api/v1/comfyui/workflows`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/post(saveComfyWorkflow)`.
+    public func saveComfyWorkflow(
+        headers: Operations.SaveComfyWorkflow.Input.Headers = .init(),
+        body: Operations.SaveComfyWorkflow.Input.Body
+    ) async throws -> Operations.SaveComfyWorkflow.Output {
+        try await saveComfyWorkflow(Operations.SaveComfyWorkflow.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+    ///
+    /// - Remark: HTTP `POST /api/v1/comfyui/workflows/detect`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/detect/post(detectComfyWorkflow)`.
+    public func detectComfyWorkflow(
+        headers: Operations.DetectComfyWorkflow.Input.Headers = .init(),
+        body: Operations.DetectComfyWorkflow.Input.Body
+    ) async throws -> Operations.DetectComfyWorkflow.Output {
+        try await detectComfyWorkflow(Operations.DetectComfyWorkflow.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Remove a saved ComfyUI workflow (Admin)
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/comfyui/workflows/{name}`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/{name}/delete(deleteComfyWorkflow)`.
+    public func deleteComfyWorkflow(path: Operations.DeleteComfyWorkflow.Input.Path) async throws -> Operations.DeleteComfyWorkflow.Output {
+        try await deleteComfyWorkflow(Operations.DeleteComfyWorkflow.Input(path: path))
     }
     /// The OpenAI-compatible server whose models can be chosen for a chat, and the models it offers
     ///
@@ -4062,6 +4286,74 @@ extension APIProtocol {
             headers: headers,
             body: body
         ))
+    }
+    /// Live voice mode, over a WebSocket (#795)
+    ///
+    /// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+    ///
+    /// - Remark: HTTP `GET /api/v1/voice/realtime`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/realtime/get(voiceRealtime)`.
+    public func voiceRealtime(headers: Operations.VoiceRealtime.Input.Headers = .init()) async throws -> Operations.VoiceRealtime.Output {
+        try await voiceRealtime(Operations.VoiceRealtime.Input(headers: headers))
+    }
+    /// Read a little text aloud in the computer's voice (#795)
+    ///
+    /// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+    ///
+    /// - Remark: HTTP `POST /api/v1/speech/say`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/say/post(speechSay)`.
+    public func speechSay(
+        headers: Operations.SpeechSay.Input.Headers = .init(),
+        body: Operations.SpeechSay.Input.Body
+    ) async throws -> Operations.SpeechSay.Output {
+        try await speechSay(Operations.SpeechSay.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// The Voice settings (#1304)
+    ///
+    /// Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `GET /api/v1/speech/voices`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/voices/get(speechVoices)`.
+    public func speechVoices(headers: Operations.SpeechVoices.Input.Headers = .init()) async throws -> Operations.SpeechVoices.Output {
+        try await speechVoices(Operations.SpeechVoices.Input(headers: headers))
+    }
+    /// Choose the voice a language is read aloud in (#1304)
+    ///
+    /// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/speech/voices/{language}`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/voices/{language}/put(setSpeechVoice)`.
+    public func setSpeechVoice(
+        path: Operations.SetSpeechVoice.Input.Path,
+        headers: Operations.SetSpeechVoice.Input.Headers = .init(),
+        body: Operations.SetSpeechVoice.Input.Body
+    ) async throws -> Operations.SetSpeechVoice.Output {
+        try await setSpeechVoice(Operations.SetSpeechVoice.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Install Kitten TTS 2 mini (#1304)
+    ///
+    /// Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `POST /api/v1/speech/kitten`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/kitten/post(installKitten)`.
+    public func installKitten(headers: Operations.InstallKitten.Input.Headers = .init()) async throws -> Operations.InstallKitten.Output {
+        try await installKitten(Operations.InstallKitten.Input(headers: headers))
+    }
+    /// Remove Kitten TTS 2 mini (#1304)
+    ///
+    /// Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/speech/kitten`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/kitten/delete(removeKitten)`.
+    public func removeKitten(headers: Operations.RemoveKitten.Input.Headers = .init()) async throws -> Operations.RemoveKitten.Output {
+        try await removeKitten(Operations.RemoveKitten.Input(headers: headers))
     }
     /// A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155)
     ///
@@ -5524,6 +5816,229 @@ public enum Servers {
 public enum Components {
     /// Types generated from the `#/components/schemas` section of the OpenAPI document.
     public enum Schemas {
+        /// The Voice settings (#1304, contract 1.112)
+        ///
+        /// - Remark: Generated from `#/components/schemas/VoiceSettings`.
+        public struct VoiceSettings: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten`.
+            public struct KittenPayload: Codable, Hashable, Sendable {
+                /// Known values: `not_installed`, `installing`, `installed`, `failed`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten/state`.
+                public var state: Swift.String
+                /// While installing: program, voices, warming, or listening (contract 1.113)
+                ///
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten/stage`.
+                public var stage: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten/error`.
+                public var error: Swift.String?
+                /// Why it can't be installed on this computer
+                ///
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten/unavailable`.
+                public var unavailable: Swift.String?
+                /// Shown wherever a Kitten voice is used: Powered by KittenML
+                ///
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten/credit`.
+                public var credit: Swift.String
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten/url`.
+                public var url: Swift.String
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten/license`.
+                public var license: Swift.String
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten/languages`.
+                public var languages: [Swift.String]
+                /// Creates a new `KittenPayload`.
+                ///
+                /// - Parameters:
+                ///   - state: Known values: `not_installed`, `installing`, `installed`, `failed`; others may be added.
+                ///   - stage: While installing: program, voices, warming, or listening (contract 1.113)
+                ///   - error:
+                ///   - unavailable: Why it can't be installed on this computer
+                ///   - credit: Shown wherever a Kitten voice is used: Powered by KittenML
+                ///   - url:
+                ///   - license:
+                ///   - languages:
+                public init(
+                    state: Swift.String,
+                    stage: Swift.String? = nil,
+                    error: Swift.String? = nil,
+                    unavailable: Swift.String? = nil,
+                    credit: Swift.String,
+                    url: Swift.String,
+                    license: Swift.String,
+                    languages: [Swift.String]
+                ) {
+                    self.state = state
+                    self.stage = stage
+                    self.error = error
+                    self.unavailable = unavailable
+                    self.credit = credit
+                    self.url = url
+                    self.license = license
+                    self.languages = languages
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case state
+                    case stage
+                    case error
+                    case unavailable
+                    case credit
+                    case url
+                    case license
+                    case languages
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/VoiceSettings/kitten`.
+            public var kitten: Components.Schemas.VoiceSettings.KittenPayload
+            /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload`.
+            public struct LanguagesPayloadPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/language`.
+                public var language: Swift.String
+                /// The chosen voice; empty is automatic
+                ///
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/voice`.
+                public var voice: Swift.String
+                /// The voice used when none is chosen
+                ///
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/automatic`.
+                public var automatic: Swift.String
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/VoicesPayload`.
+                public struct VoicesPayloadPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/VoicesPayload/id`.
+                    public var id: Swift.String
+                    /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/VoicesPayload/name`.
+                    public var name: Swift.String
+                    /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/VoicesPayload/description`.
+                    public var description: Swift.String?
+                    /// Known values: `kitten`, `kokoro`, `piper`; others may be added.
+                    ///
+                    /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/VoicesPayload/engine`.
+                    public var engine: Swift.String
+                    /// Creates a new `VoicesPayloadPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - id:
+                    ///   - name:
+                    ///   - description:
+                    ///   - engine: Known values: `kitten`, `kokoro`, `piper`; others may be added.
+                    public init(
+                        id: Swift.String,
+                        name: Swift.String,
+                        description: Swift.String? = nil,
+                        engine: Swift.String
+                    ) {
+                        self.id = id
+                        self.name = name
+                        self.description = description
+                        self.engine = engine
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case id
+                        case name
+                        case description
+                        case engine
+                    }
+                }
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/voices`.
+                public typealias VoicesPayload = [Components.Schemas.VoiceSettings.LanguagesPayloadPayload.VoicesPayloadPayload]
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/voices`.
+                public var voices: Components.Schemas.VoiceSettings.LanguagesPayloadPayload.VoicesPayload
+                /// Creates a new `LanguagesPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - language:
+                ///   - voice: The chosen voice; empty is automatic
+                ///   - automatic: The voice used when none is chosen
+                ///   - voices:
+                public init(
+                    language: Swift.String,
+                    voice: Swift.String,
+                    automatic: Swift.String,
+                    voices: Components.Schemas.VoiceSettings.LanguagesPayloadPayload.VoicesPayload
+                ) {
+                    self.language = language
+                    self.voice = voice
+                    self.automatic = automatic
+                    self.voices = voices
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case language
+                    case voice
+                    case automatic
+                    case voices
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/VoiceSettings/languages`.
+            public typealias LanguagesPayload = [Components.Schemas.VoiceSettings.LanguagesPayloadPayload]
+            /// - Remark: Generated from `#/components/schemas/VoiceSettings/languages`.
+            public var languages: Components.Schemas.VoiceSettings.LanguagesPayload
+            /// - Remark: Generated from `#/components/schemas/VoiceSettings/NeedsPayload`.
+            public struct NeedsPayloadPayload: Codable, Hashable, Sendable {
+                /// chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/NeedsPayload/ability`.
+                public var ability: Swift.String
+                /// The catalog model to install; absent when none fits this computer
+                ///
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/NeedsPayload/model`.
+                public var model: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/NeedsPayload/name`.
+                public var name: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/VoiceSettings/NeedsPayload/size_bytes`.
+                public var sizeBytes: Swift.Int64?
+                /// Creates a new `NeedsPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - ability: chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+                ///   - model: The catalog model to install; absent when none fits this computer
+                ///   - name:
+                ///   - sizeBytes:
+                public init(
+                    ability: Swift.String,
+                    model: Swift.String? = nil,
+                    name: Swift.String? = nil,
+                    sizeBytes: Swift.Int64? = nil
+                ) {
+                    self.ability = ability
+                    self.model = model
+                    self.name = name
+                    self.sizeBytes = sizeBytes
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case ability
+                    case model
+                    case name
+                    case sizeBytes = "size_bytes"
+                }
+            }
+            /// The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113)
+            ///
+            /// - Remark: Generated from `#/components/schemas/VoiceSettings/needs`.
+            public typealias NeedsPayload = [Components.Schemas.VoiceSettings.NeedsPayloadPayload]
+            /// The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113)
+            ///
+            /// - Remark: Generated from `#/components/schemas/VoiceSettings/needs`.
+            public var needs: Components.Schemas.VoiceSettings.NeedsPayload?
+            /// Creates a new `VoiceSettings`.
+            ///
+            /// - Parameters:
+            ///   - kitten:
+            ///   - languages:
+            ///   - needs: The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113)
+            public init(
+                kitten: Components.Schemas.VoiceSettings.KittenPayload,
+                languages: Components.Schemas.VoiceSettings.LanguagesPayload,
+                needs: Components.Schemas.VoiceSettings.NeedsPayload? = nil
+            ) {
+                self.kitten = kitten
+                self.languages = languages
+                self.needs = needs
+            }
+            public enum CodingKeys: String, CodingKey {
+                case kitten
+                case languages
+                case needs
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/License`.
         public struct License: Codable, Hashable, Sendable {
             /// Known values: ``, `available`, `trial`, `unlocked`, `ended`; others may be added.
@@ -5752,6 +6267,10 @@ public enum Components {
             public var aboutMe: Swift.String?
             /// - Remark: Generated from `#/components/schemas/PersonalStyle/instructions`.
             public var instructions: Swift.String?
+            /// Where the person is, such as a town. Used only for questions about nearby places, weather, and directions, and as the start of the places tools when no place is named.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PersonalStyle/location`.
+            public var location: Swift.String?
             /// Creates a new `PersonalStyle`.
             ///
             /// - Parameters:
@@ -5761,13 +6280,15 @@ public enum Components {
             ///   - units: Known values: `metric`, `imperial`; others may be added.
             ///   - aboutMe:
             ///   - instructions:
+            ///   - location: Where the person is, such as a town. Used only for questions about nearby places, weather, and directions, and as the start of the places tools when no place is named.
             public init(
                 length: Swift.String? = nil,
                 tone: Swift.String? = nil,
                 format: Swift.String? = nil,
                 units: Swift.String? = nil,
                 aboutMe: Swift.String? = nil,
-                instructions: Swift.String? = nil
+                instructions: Swift.String? = nil,
+                location: Swift.String? = nil
             ) {
                 self.length = length
                 self.tone = tone
@@ -5775,6 +6296,7 @@ public enum Components {
                 self.units = units
                 self.aboutMe = aboutMe
                 self.instructions = instructions
+                self.location = location
             }
             public enum CodingKeys: String, CodingKey {
                 case length
@@ -5783,6 +6305,260 @@ public enum Components {
                 case units
                 case aboutMe = "about_me"
                 case instructions
+                case location
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ComfyUIStatus`.
+        public struct ComfyUIStatus: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ComfyUIStatus/base_url`.
+            public var baseUrl: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ComfyUIStatus/has_token`.
+            public var hasToken: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/ComfyUIStatus/info`.
+            public var info: Components.Schemas.ComfyUIInfo?
+            /// Why the check failed
+            ///
+            /// - Remark: Generated from `#/components/schemas/ComfyUIStatus/error`.
+            public var error: Swift.String?
+            /// Creates a new `ComfyUIStatus`.
+            ///
+            /// - Parameters:
+            ///   - baseUrl:
+            ///   - hasToken:
+            ///   - info:
+            ///   - error: Why the check failed
+            public init(
+                baseUrl: Swift.String,
+                hasToken: Swift.Bool,
+                info: Components.Schemas.ComfyUIInfo? = nil,
+                error: Swift.String? = nil
+            ) {
+                self.baseUrl = baseUrl
+                self.hasToken = hasToken
+                self.info = info
+                self.error = error
+            }
+            public enum CodingKeys: String, CodingKey {
+                case baseUrl = "base_url"
+                case hasToken = "has_token"
+                case info
+                case error
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ComfyUIInfo`.
+        public struct ComfyUIInfo: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/version`.
+            public var version: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/DevicesPayload`.
+            public struct DevicesPayloadPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/DevicesPayload/name`.
+                public var name: Swift.String
+                /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/DevicesPayload/type`.
+                public var _type: Swift.String
+                /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/DevicesPayload/vram_total`.
+                public var vramTotal: Swift.Int64
+                /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/DevicesPayload/vram_free`.
+                public var vramFree: Swift.Int64
+                /// Creates a new `DevicesPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - name:
+                ///   - _type:
+                ///   - vramTotal:
+                ///   - vramFree:
+                public init(
+                    name: Swift.String,
+                    _type: Swift.String,
+                    vramTotal: Swift.Int64,
+                    vramFree: Swift.Int64
+                ) {
+                    self.name = name
+                    self._type = _type
+                    self.vramTotal = vramTotal
+                    self.vramFree = vramFree
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case name
+                    case _type = "type"
+                    case vramTotal = "vram_total"
+                    case vramFree = "vram_free"
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/devices`.
+            public typealias DevicesPayload = [Components.Schemas.ComfyUIInfo.DevicesPayloadPayload]
+            /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/devices`.
+            public var devices: Components.Schemas.ComfyUIInfo.DevicesPayload
+            /// Model files by kind (checkpoints, diffusion, loras, vae, upscalers)
+            ///
+            /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/models`.
+            public struct ModelsPayload: Codable, Hashable, Sendable {
+                /// A container of undocumented properties.
+                public var additionalProperties: [String: [Swift.String]]
+                /// Creates a new `ModelsPayload`.
+                ///
+                /// - Parameters:
+                ///   - additionalProperties: A container of undocumented properties.
+                public init(additionalProperties: [String: [Swift.String]] = .init()) {
+                    self.additionalProperties = additionalProperties
+                }
+                public init(from decoder: any Decoder) throws {
+                    additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                }
+                public func encode(to encoder: any Encoder) throws {
+                    try encoder.encodeAdditionalProperties(additionalProperties)
+                }
+            }
+            /// Model files by kind (checkpoints, diffusion, loras, vae, upscalers)
+            ///
+            /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/models`.
+            public var models: Components.Schemas.ComfyUIInfo.ModelsPayload
+            /// How many node types ComfyUI offers
+            ///
+            /// - Remark: Generated from `#/components/schemas/ComfyUIInfo/node_types`.
+            public var nodeTypes: Swift.Int
+            /// Creates a new `ComfyUIInfo`.
+            ///
+            /// - Parameters:
+            ///   - version:
+            ///   - devices:
+            ///   - models: Model files by kind (checkpoints, diffusion, loras, vae, upscalers)
+            ///   - nodeTypes: How many node types ComfyUI offers
+            public init(
+                version: Swift.String? = nil,
+                devices: Components.Schemas.ComfyUIInfo.DevicesPayload,
+                models: Components.Schemas.ComfyUIInfo.ModelsPayload,
+                nodeTypes: Swift.Int
+            ) {
+                self.version = version
+                self.devices = devices
+                self.models = models
+                self.nodeTypes = nodeTypes
+            }
+            public enum CodingKeys: String, CodingKey {
+                case version
+                case devices
+                case models
+                case nodeTypes = "node_types"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInput`.
+        public struct ComfyWorkflowInput: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInput/node`.
+            public var node: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInput/field`.
+            public var field: Swift.String
+            /// Creates a new `ComfyWorkflowInput`.
+            ///
+            /// - Parameters:
+            ///   - node:
+            ///   - field:
+            public init(
+                node: Swift.String,
+                field: Swift.String
+            ) {
+                self.node = node
+                self.field = field
+            }
+            public enum CodingKeys: String, CodingKey {
+                case node
+                case field
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInputs`.
+        public struct ComfyWorkflowInputs: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInputs/prompt`.
+            public var prompt: Components.Schemas.ComfyWorkflowInput?
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInputs/negative`.
+            public var negative: Components.Schemas.ComfyWorkflowInput?
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInputs/seed`.
+            public var seed: Components.Schemas.ComfyWorkflowInput?
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInputs/image`.
+            public var image: Components.Schemas.ComfyWorkflowInput?
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInputs/width`.
+            public var width: Components.Schemas.ComfyWorkflowInput?
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflowInputs/height`.
+            public var height: Components.Schemas.ComfyWorkflowInput?
+            /// Creates a new `ComfyWorkflowInputs`.
+            ///
+            /// - Parameters:
+            ///   - prompt:
+            ///   - negative:
+            ///   - seed:
+            ///   - image:
+            ///   - width:
+            ///   - height:
+            public init(
+                prompt: Components.Schemas.ComfyWorkflowInput? = nil,
+                negative: Components.Schemas.ComfyWorkflowInput? = nil,
+                seed: Components.Schemas.ComfyWorkflowInput? = nil,
+                image: Components.Schemas.ComfyWorkflowInput? = nil,
+                width: Components.Schemas.ComfyWorkflowInput? = nil,
+                height: Components.Schemas.ComfyWorkflowInput? = nil
+            ) {
+                self.prompt = prompt
+                self.negative = negative
+                self.seed = seed
+                self.image = image
+                self.width = width
+                self.height = height
+            }
+            public enum CodingKeys: String, CodingKey {
+                case prompt
+                case negative
+                case seed
+                case image
+                case width
+                case height
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ComfyWorkflows`.
+        public struct ComfyWorkflows: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflows/workflows`.
+            public var workflows: [Components.Schemas.ComfyWorkflow]
+            /// Creates a new `ComfyWorkflows`.
+            ///
+            /// - Parameters:
+            ///   - workflows:
+            public init(workflows: [Components.Schemas.ComfyWorkflow]) {
+                self.workflows = workflows
+            }
+            public enum CodingKeys: String, CodingKey {
+                case workflows
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ComfyWorkflow`.
+        public struct ComfyWorkflow: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflow/name`.
+            public var name: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflow/description`.
+            public var description: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflow/inputs`.
+            public var inputs: Components.Schemas.ComfyWorkflowInputs
+            /// - Remark: Generated from `#/components/schemas/ComfyWorkflow/nodes`.
+            public var nodes: Swift.Int
+            /// Creates a new `ComfyWorkflow`.
+            ///
+            /// - Parameters:
+            ///   - name:
+            ///   - description:
+            ///   - inputs:
+            ///   - nodes:
+            public init(
+                name: Swift.String,
+                description: Swift.String? = nil,
+                inputs: Components.Schemas.ComfyWorkflowInputs,
+                nodes: Swift.Int
+            ) {
+                self.name = name
+                self.description = description
+                self.inputs = inputs
+                self.nodes = nodes
+            }
+            public enum CodingKeys: String, CodingKey {
+                case name
+                case description
+                case inputs
+                case nodes
             }
         }
         /// - Remark: Generated from `#/components/schemas/ExternalServer`.
@@ -7167,6 +7943,113 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/Model/slots`.
             public var slots: Swift.Int?
+            /// The catalog model that replaces an installed one, size for size, such as Qwen 3.5 4B for Qwen 2.5 3B, when it is not installed too (#593, contract 1.107).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/newer`.
+            public var newer: Swift.String?
+            /// What the model does first, for browsing the store, from the categories in manifests/models/categories.json, such as chat_coding, retrieval, or creative; uncategorized for a model nobody has checked (#593, contract 1.104). It never says Toskar can run the model; runtime does.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/primary_category`.
+            public var primaryCategory: Swift.String?
+            /// Every category the model belongs to
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/categories`.
+            public var categories: [Swift.String]?
+            /// What the model does in its categories, such as code_generation or text_embedding
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/tasks`.
+            public var tasks: [Swift.String]?
+            /// What the model takes, such as text, code, or image
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/input_modalities`.
+            public var inputModalities: [Swift.String]?
+            /// What the model gives, such as text, image, or embedding
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/output_modalities`.
+            public var outputModalities: [Swift.String]?
+            /// A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/license`.
+            public struct LicensePayload: Codable, Hashable, Sendable {
+                /// The SPDX identifier where there is one, such as apache-2.0, or the license's short name, such as llama3.2
+                ///
+                /// - Remark: Generated from `#/components/schemas/Model/license/id`.
+                public var id: Swift.String
+                /// - Remark: Generated from `#/components/schemas/Model/license/name`.
+                public var name: Swift.String
+                /// - Remark: Generated from `#/components/schemas/Model/license/url`.
+                public var url: Swift.String
+                /// Whether a business may use the model: yes, limited (such as Llama's above 700 million monthly users), or no Known values: `yes`, `limited`, `no`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/Model/license/commercial`.
+                public var commercial: Swift.String
+                /// Apps or published work built with the model credit it
+                ///
+                /// - Remark: Generated from `#/components/schemas/Model/license/attribution`.
+                public var attribution: Swift.Bool?
+                /// The person agrees to the license's terms before using the model
+                ///
+                /// - Remark: Generated from `#/components/schemas/Model/license/accept`.
+                public var accept: Swift.Bool?
+                /// - Remark: Generated from `#/components/schemas/Model/license/notes`.
+                public var notes: Swift.String?
+                /// free: any use, nothing to accept or credit. conditions: free, with terms. Known values: `free`, `conditions`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/Model/license/kind`.
+                public var kind: Swift.String?
+                /// When the person asking accepted its terms in Toskar, for a license with terms to accept (contract 1.103)
+                ///
+                /// - Remark: Generated from `#/components/schemas/Model/license/accepted_at`.
+                public var acceptedAt: Foundation.Date?
+                /// Creates a new `LicensePayload`.
+                ///
+                /// - Parameters:
+                ///   - id: The SPDX identifier where there is one, such as apache-2.0, or the license's short name, such as llama3.2
+                ///   - name:
+                ///   - url:
+                ///   - commercial: Whether a business may use the model: yes, limited (such as Llama's above 700 million monthly users), or no Known values: `yes`, `limited`, `no`; others may be added.
+                ///   - attribution: Apps or published work built with the model credit it
+                ///   - accept: The person agrees to the license's terms before using the model
+                ///   - notes:
+                ///   - kind: free: any use, nothing to accept or credit. conditions: free, with terms. Known values: `free`, `conditions`; others may be added.
+                ///   - acceptedAt: When the person asking accepted its terms in Toskar, for a license with terms to accept (contract 1.103)
+                public init(
+                    id: Swift.String,
+                    name: Swift.String,
+                    url: Swift.String,
+                    commercial: Swift.String,
+                    attribution: Swift.Bool? = nil,
+                    accept: Swift.Bool? = nil,
+                    notes: Swift.String? = nil,
+                    kind: Swift.String? = nil,
+                    acceptedAt: Foundation.Date? = nil
+                ) {
+                    self.id = id
+                    self.name = name
+                    self.url = url
+                    self.commercial = commercial
+                    self.attribution = attribution
+                    self.accept = accept
+                    self.notes = notes
+                    self.kind = kind
+                    self.acceptedAt = acceptedAt
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case id
+                    case name
+                    case url
+                    case commercial
+                    case attribution
+                    case accept
+                    case notes
+                    case kind
+                    case acceptedAt = "accepted_at"
+                }
+            }
+            /// A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/license`.
+            public var license: Components.Schemas.Model.LicensePayload?
             /// How well a model writes a language (multilingual spec §13–14, §31). Levels are coarse on purpose: they don't imply precision the sources don't have. A language a model has no level for is unknown, and is left out.
             ///
             /// - Remark: Generated from `#/components/schemas/Model/LanguagesPayload`.
@@ -7251,6 +8134,13 @@ public enum Components {
             ///   - contextChoice: The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).
             ///   - contextOptions: The context windows the model can take, up to its own, with how well it fits this computer at each (#962, contract 1.69).
             ///   - slots: How many requests a chat model installed on this computer answers at once, so a swarm can run that many agents on it together; each keeps the whole context window (#1135, contract 1.88). Absent for other models.
+            ///   - newer: The catalog model that replaces an installed one, size for size, such as Qwen 3.5 4B for Qwen 2.5 3B, when it is not installed too (#593, contract 1.107).
+            ///   - primaryCategory: What the model does first, for browsing the store, from the categories in manifests/models/categories.json, such as chat_coding, retrieval, or creative; uncategorized for a model nobody has checked (#593, contract 1.104). It never says Toskar can run the model; runtime does.
+            ///   - categories: Every category the model belongs to
+            ///   - tasks: What the model does in its categories, such as code_generation or text_embedding
+            ///   - inputModalities: What the model takes, such as text, code, or image
+            ///   - outputModalities: What the model gives, such as text, image, or embedding
+            ///   - license: A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link.
             ///   - languages: How well the model writes each language it has a level for (§13–14, §31), best first.
             public init(
                 id: Swift.String,
@@ -7281,6 +8171,13 @@ public enum Components {
                 contextChoice: Swift.Int? = nil,
                 contextOptions: Components.Schemas.Model.ContextOptionsPayload? = nil,
                 slots: Swift.Int? = nil,
+                newer: Swift.String? = nil,
+                primaryCategory: Swift.String? = nil,
+                categories: [Swift.String]? = nil,
+                tasks: [Swift.String]? = nil,
+                inputModalities: [Swift.String]? = nil,
+                outputModalities: [Swift.String]? = nil,
+                license: Components.Schemas.Model.LicensePayload? = nil,
                 languages: Components.Schemas.Model.LanguagesPayload? = nil
             ) {
                 self.id = id
@@ -7311,6 +8208,13 @@ public enum Components {
                 self.contextChoice = contextChoice
                 self.contextOptions = contextOptions
                 self.slots = slots
+                self.newer = newer
+                self.primaryCategory = primaryCategory
+                self.categories = categories
+                self.tasks = tasks
+                self.inputModalities = inputModalities
+                self.outputModalities = outputModalities
+                self.license = license
                 self.languages = languages
             }
             public enum CodingKeys: String, CodingKey {
@@ -7342,6 +8246,13 @@ public enum Components {
                 case contextChoice = "context_choice"
                 case contextOptions = "context_options"
                 case slots
+                case newer
+                case primaryCategory = "primary_category"
+                case categories
+                case tasks
+                case inputModalities = "input_modalities"
+                case outputModalities = "output_modalities"
+                case license
                 case languages
             }
         }
@@ -7900,6 +8811,10 @@ public enum Components {
                 public var description: Swift.String?
                 /// - Remark: Generated from `#/components/schemas/ImageSetup/ModelsPayload/license`.
                 public var license: Swift.String?
+                /// Whether a business may use it under its license (#593, contract 1.102) Known values: `yes`, `limited`, `no`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/ImageSetup/ModelsPayload/commercial`.
+                public var commercial: Swift.String?
                 /// - Remark: Generated from `#/components/schemas/ImageSetup/ModelsPayload/memory_bytes`.
                 public var memoryBytes: Swift.Int64?
                 /// - Remark: Generated from `#/components/schemas/ImageSetup/ModelsPayload/size_bytes`.
@@ -7970,6 +8885,7 @@ public enum Components {
                 ///   - name:
                 ///   - description:
                 ///   - license:
+                ///   - commercial: Whether a business may use it under its license (#593, contract 1.102) Known values: `yes`, `limited`, `no`; others may be added.
                 ///   - memoryBytes:
                 ///   - sizeBytes:
                 ///   - edits: Edits images, or for a video model, animates them
@@ -7982,6 +8898,7 @@ public enum Components {
                     name: Swift.String? = nil,
                     description: Swift.String? = nil,
                     license: Swift.String? = nil,
+                    commercial: Swift.String? = nil,
                     memoryBytes: Swift.Int64? = nil,
                     sizeBytes: Swift.Int64? = nil,
                     edits: Swift.Bool? = nil,
@@ -7994,6 +8911,7 @@ public enum Components {
                     self.name = name
                     self.description = description
                     self.license = license
+                    self.commercial = commercial
                     self.memoryBytes = memoryBytes
                     self.sizeBytes = sizeBytes
                     self.edits = edits
@@ -8007,6 +8925,7 @@ public enum Components {
                     case name
                     case description
                     case license
+                    case commercial
                     case memoryBytes = "memory_bytes"
                     case sizeBytes = "size_bytes"
                     case edits
@@ -9991,7 +10910,7 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/AutomationInput/CamerasPayload`.
             public struct CamerasPayloadPayload: Codable, Hashable, Sendable {
-                /// Known values: `homeassistant`; others may be added.
+                /// Known values: `homeassistant`, `reolink`; others may be added.
                 ///
                 /// - Remark: Generated from `#/components/schemas/AutomationInput/CamerasPayload/connector`.
                 public var connector: Swift.String
@@ -10002,7 +10921,7 @@ public enum Components {
                 /// Creates a new `CamerasPayloadPayload`.
                 ///
                 /// - Parameters:
-                ///   - connector: Known values: `homeassistant`; others may be added.
+                ///   - connector: Known values: `homeassistant`, `reolink`; others may be added.
                 ///   - device: The camera as that service names it, such as Home Assistant's camera.driveway
                 public init(
                     connector: Swift.String,
@@ -10024,6 +10943,124 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/AutomationInput/cameras`.
             public var cameras: Components.Schemas.AutomationInput.CamerasPayload?
+            /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationInput/say`.
+            public struct SayPayload: Codable, Hashable, Sendable {
+                /// Known values: `reolink`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/say/connector`.
+                public var connector: Swift.String
+                /// Always camera: one Reolink connection is one camera
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/say/device`.
+                public var device: Swift.String
+                /// With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/say/quiet_from`.
+                public var quietFrom: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/say/quiet_to`.
+                public var quietTo: Swift.String?
+                /// The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/say/voice`.
+                public var voice: Swift.String?
+                /// Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/say/listen`.
+                public var listen: Swift.Bool?
+                /// Creates a new `SayPayload`.
+                ///
+                /// - Parameters:
+                ///   - connector: Known values: `reolink`; others may be added.
+                ///   - device: Always camera: one Reolink connection is one camera
+                ///   - quietFrom: With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+                ///   - quietTo:
+                ///   - voice: The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+                ///   - listen: Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+                public init(
+                    connector: Swift.String,
+                    device: Swift.String,
+                    quietFrom: Swift.String? = nil,
+                    quietTo: Swift.String? = nil,
+                    voice: Swift.String? = nil,
+                    listen: Swift.Bool? = nil
+                ) {
+                    self.connector = connector
+                    self.device = device
+                    self.quietFrom = quietFrom
+                    self.quietTo = quietTo
+                    self.voice = voice
+                    self.listen = listen
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case connector
+                    case device
+                    case quietFrom = "quiet_from"
+                    case quietTo = "quiet_to"
+                    case voice
+                    case listen
+                }
+            }
+            /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationInput/say`.
+            public var say: Components.Schemas.AutomationInput.SayPayload?
+            /// - Remark: Generated from `#/components/schemas/AutomationInput/ActionsPayload`.
+            public struct ActionsPayloadPayload: Codable, Hashable, Sendable {
+                /// A tool ID
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/ActionsPayload/tool`.
+                public var tool: Swift.String
+                /// The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/ActionsPayload/args`.
+                public struct ArgsPayload: Codable, Hashable, Sendable {
+                    /// A container of undocumented properties.
+                    public var additionalProperties: [String: Swift.String]
+                    /// Creates a new `ArgsPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - additionalProperties: A container of undocumented properties.
+                    public init(additionalProperties: [String: Swift.String] = .init()) {
+                        self.additionalProperties = additionalProperties
+                    }
+                    public init(from decoder: any Decoder) throws {
+                        additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                    }
+                    public func encode(to encoder: any Encoder) throws {
+                        try encoder.encodeAdditionalProperties(additionalProperties)
+                    }
+                }
+                /// The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/ActionsPayload/args`.
+                public var args: Components.Schemas.AutomationInput.ActionsPayloadPayload.ArgsPayload?
+                /// Creates a new `ActionsPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - tool: A tool ID
+                ///   - args: The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+                public init(
+                    tool: Swift.String,
+                    args: Components.Schemas.AutomationInput.ActionsPayloadPayload.ArgsPayload? = nil
+                ) {
+                    self.tool = tool
+                    self.args = args
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case tool
+                    case args
+                }
+            }
+            /// Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationInput/actions`.
+            public typealias ActionsPayload = [Components.Schemas.AutomationInput.ActionsPayloadPayload]
+            /// Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationInput/actions`.
+            public var actions: Components.Schemas.AutomationInput.ActionsPayload?
             /// Creates a new `AutomationInput`.
             ///
             /// - Parameters:
@@ -10041,6 +11078,8 @@ public enum Components {
             ///   - saveFolder: A folder in the home folder, such as ~/Documents/Toskar, to also save each result to as a Markdown file. Empty stops saving.
             ///   - trigger: Run only when a page, feed, or folder changed, checked on the schedule. On update, a trigger with no kind runs on the schedule again.
             ///   - cameras: Cameras to look at as each run starts (#667). Their pictures, taken through the connected service, are shown to a model that can see. On update, an empty list stops looking.
+            ///   - say: Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+            ///   - actions: Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
             public init(
                 name: Swift.String,
                 enabled: Swift.Bool? = nil,
@@ -10055,7 +11094,9 @@ public enum Components {
                 draftId: Swift.String? = nil,
                 saveFolder: Swift.String? = nil,
                 trigger: Components.Schemas.AutomationInput.TriggerPayload? = nil,
-                cameras: Components.Schemas.AutomationInput.CamerasPayload? = nil
+                cameras: Components.Schemas.AutomationInput.CamerasPayload? = nil,
+                say: Components.Schemas.AutomationInput.SayPayload? = nil,
+                actions: Components.Schemas.AutomationInput.ActionsPayload? = nil
             ) {
                 self.name = name
                 self.enabled = enabled
@@ -10071,6 +11112,8 @@ public enum Components {
                 self.saveFolder = saveFolder
                 self.trigger = trigger
                 self.cameras = cameras
+                self.say = say
+                self.actions = actions
             }
             public enum CodingKeys: String, CodingKey {
                 case name
@@ -10087,6 +11130,8 @@ public enum Components {
                 case saveFolder = "save_folder"
                 case trigger
                 case cameras
+                case say
+                case actions
             }
         }
         /// A scheduled prompt owned by the daemon.
@@ -10251,6 +11296,124 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/Automation/cameras`.
             public var cameras: Components.Schemas.Automation.CamerasPayload?
+            /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Automation/say`.
+            public struct SayPayload: Codable, Hashable, Sendable {
+                /// Known values: `reolink`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/Automation/say/connector`.
+                public var connector: Swift.String
+                /// Always camera: one Reolink connection is one camera
+                ///
+                /// - Remark: Generated from `#/components/schemas/Automation/say/device`.
+                public var device: Swift.String
+                /// With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+                ///
+                /// - Remark: Generated from `#/components/schemas/Automation/say/quiet_from`.
+                public var quietFrom: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/Automation/say/quiet_to`.
+                public var quietTo: Swift.String?
+                /// The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+                ///
+                /// - Remark: Generated from `#/components/schemas/Automation/say/voice`.
+                public var voice: Swift.String?
+                /// Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+                ///
+                /// - Remark: Generated from `#/components/schemas/Automation/say/listen`.
+                public var listen: Swift.Bool?
+                /// Creates a new `SayPayload`.
+                ///
+                /// - Parameters:
+                ///   - connector: Known values: `reolink`; others may be added.
+                ///   - device: Always camera: one Reolink connection is one camera
+                ///   - quietFrom: With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+                ///   - quietTo:
+                ///   - voice: The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+                ///   - listen: Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+                public init(
+                    connector: Swift.String,
+                    device: Swift.String,
+                    quietFrom: Swift.String? = nil,
+                    quietTo: Swift.String? = nil,
+                    voice: Swift.String? = nil,
+                    listen: Swift.Bool? = nil
+                ) {
+                    self.connector = connector
+                    self.device = device
+                    self.quietFrom = quietFrom
+                    self.quietTo = quietTo
+                    self.voice = voice
+                    self.listen = listen
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case connector
+                    case device
+                    case quietFrom = "quiet_from"
+                    case quietTo = "quiet_to"
+                    case voice
+                    case listen
+                }
+            }
+            /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Automation/say`.
+            public var say: Components.Schemas.Automation.SayPayload?
+            /// - Remark: Generated from `#/components/schemas/Automation/ActionsPayload`.
+            public struct ActionsPayloadPayload: Codable, Hashable, Sendable {
+                /// A tool ID
+                ///
+                /// - Remark: Generated from `#/components/schemas/Automation/ActionsPayload/tool`.
+                public var tool: Swift.String
+                /// The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+                ///
+                /// - Remark: Generated from `#/components/schemas/Automation/ActionsPayload/args`.
+                public struct ArgsPayload: Codable, Hashable, Sendable {
+                    /// A container of undocumented properties.
+                    public var additionalProperties: [String: Swift.String]
+                    /// Creates a new `ArgsPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - additionalProperties: A container of undocumented properties.
+                    public init(additionalProperties: [String: Swift.String] = .init()) {
+                        self.additionalProperties = additionalProperties
+                    }
+                    public init(from decoder: any Decoder) throws {
+                        additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                    }
+                    public func encode(to encoder: any Encoder) throws {
+                        try encoder.encodeAdditionalProperties(additionalProperties)
+                    }
+                }
+                /// The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+                ///
+                /// - Remark: Generated from `#/components/schemas/Automation/ActionsPayload/args`.
+                public var args: Components.Schemas.Automation.ActionsPayloadPayload.ArgsPayload?
+                /// Creates a new `ActionsPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - tool: A tool ID
+                ///   - args: The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+                public init(
+                    tool: Swift.String,
+                    args: Components.Schemas.Automation.ActionsPayloadPayload.ArgsPayload? = nil
+                ) {
+                    self.tool = tool
+                    self.args = args
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case tool
+                    case args
+                }
+            }
+            /// Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Automation/actions`.
+            public typealias ActionsPayload = [Components.Schemas.Automation.ActionsPayloadPayload]
+            /// Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Automation/actions`.
+            public var actions: Components.Schemas.Automation.ActionsPayload?
             /// When the trigger last checked and found nothing new
             ///
             /// - Remark: Generated from `#/components/schemas/Automation/last_checked_at`.
@@ -10327,6 +11490,8 @@ public enum Components {
             ///   - saveFolder: The folder each result is also saved to
             ///   - trigger: Run only when a page, feed, or folder changed, checked on the schedule.
             ///   - cameras: The cameras looked at as each run starts (#667)
+            ///   - say: Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+            ///   - actions: Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
             ///   - lastCheckedAt: When the trigger last checked and found nothing new
             ///   - hookSet: A webhook trigger has a link; POST /api/v1/automations/{id}/hook makes a new one
             ///   - createdAt:
@@ -10355,6 +11520,8 @@ public enum Components {
                 saveFolder: Swift.String? = nil,
                 trigger: Components.Schemas.Automation.TriggerPayload? = nil,
                 cameras: Components.Schemas.Automation.CamerasPayload? = nil,
+                say: Components.Schemas.Automation.SayPayload? = nil,
+                actions: Components.Schemas.Automation.ActionsPayload? = nil,
                 lastCheckedAt: Foundation.Date? = nil,
                 hookSet: Swift.Bool? = nil,
                 createdAt: Foundation.Date,
@@ -10383,6 +11550,8 @@ public enum Components {
                 self.saveFolder = saveFolder
                 self.trigger = trigger
                 self.cameras = cameras
+                self.say = say
+                self.actions = actions
                 self.lastCheckedAt = lastCheckedAt
                 self.hookSet = hookSet
                 self.createdAt = createdAt
@@ -10412,6 +11581,8 @@ public enum Components {
                 case saveFolder = "save_folder"
                 case trigger
                 case cameras
+                case say
+                case actions
                 case lastCheckedAt = "last_checked_at"
                 case hookSet = "hook_set"
                 case createdAt = "created_at"
@@ -11472,8 +12643,14 @@ public enum Components {
             public var id: Swift.String?
             /// - Remark: Generated from `#/components/schemas/ToolDescriptor/name`.
             public var name: Swift.String?
+            /// Written for the model
+            ///
             /// - Remark: Generated from `#/components/schemas/ToolDescriptor/description`.
             public var description: Swift.String?
+            /// A short description for people (#1254); empty is description
+            ///
+            /// - Remark: Generated from `#/components/schemas/ToolDescriptor/summary`.
+            public var summary: Swift.String?
             /// - Remark: Generated from `#/components/schemas/ToolDescriptor/capability`.
             public var capability: Swift.String?
             /// - Remark: Generated from `#/components/schemas/ToolDescriptor/source`.
@@ -11609,7 +12786,8 @@ public enum Components {
             /// - Parameters:
             ///   - id:
             ///   - name:
-            ///   - description:
+            ///   - description: Written for the model
+            ///   - summary: A short description for people (#1254); empty is description
             ///   - capability:
             ///   - source:
             ///   - risk: Known values: `read`, `create`, `write`; others may be added.
@@ -11631,6 +12809,7 @@ public enum Components {
                 id: Swift.String? = nil,
                 name: Swift.String? = nil,
                 description: Swift.String? = nil,
+                summary: Swift.String? = nil,
                 capability: Swift.String? = nil,
                 source: Swift.String? = nil,
                 risk: Swift.String? = nil,
@@ -11652,6 +12831,7 @@ public enum Components {
                 self.id = id
                 self.name = name
                 self.description = description
+                self.summary = summary
                 self.capability = capability
                 self.source = source
                 self.risk = risk
@@ -11674,6 +12854,7 @@ public enum Components {
                 case id
                 case name
                 case description
+                case summary
                 case capability
                 case source
                 case risk
@@ -12456,6 +13637,23 @@ public enum Components {
                 case routeSecret = "route_secret"
                 case routeId = "route_id"
                 case relay
+                case token
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/DeviceToken`.
+        public struct DeviceToken: Codable, Hashable, Sendable {
+            /// This computer's device token for Toskar's relay, or "" when it has none.
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeviceToken/token`.
+            public var token: Swift.String
+            /// Creates a new `DeviceToken`.
+            ///
+            /// - Parameters:
+            ///   - token: This computer's device token for Toskar's relay, or "" when it has none.
+            public init(token: Swift.String) {
+                self.token = token
+            }
+            public enum CodingKeys: String, CodingKey {
                 case token
             }
         }
@@ -13316,6 +14514,14 @@ public enum Components {
             public var backend: Swift.String?
             /// - Remark: Generated from `#/components/schemas/MessageMeta/device`.
             public var device: Swift.String?
+            /// The model that wrote the answer, as shown to the user, such as "Llama 3.2 1B" (toskar-apps#447, contract 1.109).
+            ///
+            /// - Remark: Generated from `#/components/schemas/MessageMeta/model`.
+            public var model: Swift.String?
+            /// The computer the answer ran on, such as "Studio". Empty when the turn's steps ran on more than one computer.
+            ///
+            /// - Remark: Generated from `#/components/schemas/MessageMeta/computer`.
+            public var computer: Swift.String?
             /// - Remark: Generated from `#/components/schemas/MessageMeta/automation`.
             public var automation: Components.Schemas.AutomationDraft?
             /// - Remark: Generated from `#/components/schemas/MessageMeta/automation_run`.
@@ -13585,6 +14791,8 @@ public enum Components {
             ///   - context:
             ///   - backend: `backend` and Device ran the answer, such as vulkan and "AMD Radeon RX 7900 XTX", or cpu and "" (#317, contract 1.8), so a client such as the iPhone app can say whether it came from the GPU. Empty when not known, such as when a step ran on a paired computer.
             ///   - device:
+            ///   - model: The model that wrote the answer, as shown to the user, such as "Llama 3.2 1B" (toskar-apps#447, contract 1.109).
+            ///   - computer: The computer the answer ran on, such as "Studio". Empty when the turn's steps ran on more than one computer.
             ///   - automation:
             ///   - automationRun:
             ///   - deliberation: How the answer was reached when its profile deliberates: the drafts compared and the outcome (#459, contract 1.23).
@@ -13601,6 +14809,8 @@ public enum Components {
                 context: Components.Schemas.ContextUsage? = nil,
                 backend: Swift.String? = nil,
                 device: Swift.String? = nil,
+                model: Swift.String? = nil,
+                computer: Swift.String? = nil,
                 automation: Components.Schemas.AutomationDraft? = nil,
                 automationRun: Components.Schemas.AutomationRun? = nil,
                 deliberation: Components.Schemas.MessageMeta.DeliberationPayload? = nil,
@@ -13617,6 +14827,8 @@ public enum Components {
                 self.context = context
                 self.backend = backend
                 self.device = device
+                self.model = model
+                self.computer = computer
                 self.automation = automation
                 self.automationRun = automationRun
                 self.deliberation = deliberation
@@ -13634,6 +14846,8 @@ public enum Components {
                 case context
                 case backend
                 case device
+                case model
+                case computer
                 case automation
                 case automationRun = "automation_run"
                 case deliberation
@@ -15161,6 +16375,61 @@ public enum Components {
                 case models
             }
         }
+        /// Someone accepting a model's license terms in Toskar (#593, contract 1.103).
+        ///
+        /// - Remark: Generated from `#/components/schemas/LicenseAcceptance`.
+        public struct LicenseAcceptance: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/LicenseAcceptance/model_id`.
+            public var modelId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/LicenseAcceptance/license_id`.
+            public var licenseId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/LicenseAcceptance/license_name`.
+            public var licenseName: Swift.String
+            /// - Remark: Generated from `#/components/schemas/LicenseAcceptance/license_url`.
+            public var licenseUrl: Swift.String
+            /// - Remark: Generated from `#/components/schemas/LicenseAcceptance/person_id`.
+            public var personId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/LicenseAcceptance/person_name`.
+            public var personName: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/LicenseAcceptance/accepted_at`.
+            public var acceptedAt: Foundation.Date
+            /// Creates a new `LicenseAcceptance`.
+            ///
+            /// - Parameters:
+            ///   - modelId:
+            ///   - licenseId:
+            ///   - licenseName:
+            ///   - licenseUrl:
+            ///   - personId:
+            ///   - personName:
+            ///   - acceptedAt:
+            public init(
+                modelId: Swift.String,
+                licenseId: Swift.String,
+                licenseName: Swift.String,
+                licenseUrl: Swift.String,
+                personId: Swift.String,
+                personName: Swift.String? = nil,
+                acceptedAt: Foundation.Date
+            ) {
+                self.modelId = modelId
+                self.licenseId = licenseId
+                self.licenseName = licenseName
+                self.licenseUrl = licenseUrl
+                self.personId = personId
+                self.personName = personName
+                self.acceptedAt = acceptedAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case modelId = "model_id"
+                case licenseId = "license_id"
+                case licenseName = "license_name"
+                case licenseUrl = "license_url"
+                case personId = "person_id"
+                case personName = "person_name"
+                case acceptedAt = "accepted_at"
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/StoreModel`.
         public struct StoreModel: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/StoreModel/value1`.
@@ -15171,10 +16440,18 @@ public enum Components {
                 public var likes: Swift.Int?
                 /// - Remark: Generated from `#/components/schemas/StoreModel/value2/created_at`.
                 public var createdAt: Foundation.Date?
-                /// The license Hugging Face lists, such as apache-2.0
+                /// The license Hugging Face lists, such as apache-2.0, or the catalog's license name for a tested model
                 ///
                 /// - Remark: Generated from `#/components/schemas/StoreModel/value2/license`.
                 public var license: Swift.String?
+                /// Whether a business may use it, from the catalog's checked license or a license Hugging Face lists that says. Absent when unknown (#593, contract 1.102). Known values: `yes`, `limited`, `no`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/StoreModel/value2/commercial`.
+                public var commercial: Swift.String?
+                /// Free, or free with conditions. Absent when the license is unknown. Known values: `free`, `conditions`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/StoreModel/value2/license_kind`.
+                public var licenseKind: Swift.String?
                 /// The model's page
                 ///
                 /// - Remark: Generated from `#/components/schemas/StoreModel/value2/details_url`.
@@ -15192,7 +16469,9 @@ public enum Components {
                 /// - Parameters:
                 ///   - likes:
                 ///   - createdAt:
-                ///   - license: The license Hugging Face lists, such as apache-2.0
+                ///   - license: The license Hugging Face lists, such as apache-2.0, or the catalog's license name for a tested model
+                ///   - commercial: Whether a business may use it, from the catalog's checked license or a license Hugging Face lists that says. Absent when unknown (#593, contract 1.102). Known values: `yes`, `limited`, `no`; others may be added.
+                ///   - licenseKind: Free, or free with conditions. Absent when the license is unknown. Known values: `free`, `conditions`; others may be added.
                 ///   - detailsUrl: The model's page
                 ///   - fit:
                 ///   - catalogId: Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else.
@@ -15201,6 +16480,8 @@ public enum Components {
                     likes: Swift.Int? = nil,
                     createdAt: Foundation.Date? = nil,
                     license: Swift.String? = nil,
+                    commercial: Swift.String? = nil,
+                    licenseKind: Swift.String? = nil,
                     detailsUrl: Swift.String? = nil,
                     fit: Components.Schemas.ModelFit? = nil,
                     catalogId: Swift.String? = nil,
@@ -15209,6 +16490,8 @@ public enum Components {
                     self.likes = likes
                     self.createdAt = createdAt
                     self.license = license
+                    self.commercial = commercial
+                    self.licenseKind = licenseKind
                     self.detailsUrl = detailsUrl
                     self.fit = fit
                     self.catalogId = catalogId
@@ -15218,6 +16501,8 @@ public enum Components {
                     case likes
                     case createdAt = "created_at"
                     case license
+                    case commercial
+                    case licenseKind = "license_kind"
                     case detailsUrl = "details_url"
                     case fit
                     case catalogId = "catalog_id"
@@ -16283,6 +17568,124 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/AutomationDetail/cameras`.
             public var cameras: Components.Schemas.AutomationDetail.CamerasPayload?
+            /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationDetail/say`.
+            public struct SayPayload: Codable, Hashable, Sendable {
+                /// Known values: `reolink`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/connector`.
+                public var connector: Swift.String
+                /// Always camera: one Reolink connection is one camera
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/device`.
+                public var device: Swift.String
+                /// With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/quiet_from`.
+                public var quietFrom: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/quiet_to`.
+                public var quietTo: Swift.String?
+                /// The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/voice`.
+                public var voice: Swift.String?
+                /// Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/listen`.
+                public var listen: Swift.Bool?
+                /// Creates a new `SayPayload`.
+                ///
+                /// - Parameters:
+                ///   - connector: Known values: `reolink`; others may be added.
+                ///   - device: Always camera: one Reolink connection is one camera
+                ///   - quietFrom: With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+                ///   - quietTo:
+                ///   - voice: The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+                ///   - listen: Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+                public init(
+                    connector: Swift.String,
+                    device: Swift.String,
+                    quietFrom: Swift.String? = nil,
+                    quietTo: Swift.String? = nil,
+                    voice: Swift.String? = nil,
+                    listen: Swift.Bool? = nil
+                ) {
+                    self.connector = connector
+                    self.device = device
+                    self.quietFrom = quietFrom
+                    self.quietTo = quietTo
+                    self.voice = voice
+                    self.listen = listen
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case connector
+                    case device
+                    case quietFrom = "quiet_from"
+                    case quietTo = "quiet_to"
+                    case voice
+                    case listen
+                }
+            }
+            /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationDetail/say`.
+            public var say: Components.Schemas.AutomationDetail.SayPayload?
+            /// - Remark: Generated from `#/components/schemas/AutomationDetail/ActionsPayload`.
+            public struct ActionsPayloadPayload: Codable, Hashable, Sendable {
+                /// A tool ID
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/ActionsPayload/tool`.
+                public var tool: Swift.String
+                /// The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/ActionsPayload/args`.
+                public struct ArgsPayload: Codable, Hashable, Sendable {
+                    /// A container of undocumented properties.
+                    public var additionalProperties: [String: Swift.String]
+                    /// Creates a new `ArgsPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - additionalProperties: A container of undocumented properties.
+                    public init(additionalProperties: [String: Swift.String] = .init()) {
+                        self.additionalProperties = additionalProperties
+                    }
+                    public init(from decoder: any Decoder) throws {
+                        additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                    }
+                    public func encode(to encoder: any Encoder) throws {
+                        try encoder.encodeAdditionalProperties(additionalProperties)
+                    }
+                }
+                /// The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/ActionsPayload/args`.
+                public var args: Components.Schemas.AutomationDetail.ActionsPayloadPayload.ArgsPayload?
+                /// Creates a new `ActionsPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - tool: A tool ID
+                ///   - args: The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+                public init(
+                    tool: Swift.String,
+                    args: Components.Schemas.AutomationDetail.ActionsPayloadPayload.ArgsPayload? = nil
+                ) {
+                    self.tool = tool
+                    self.args = args
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case tool
+                    case args
+                }
+            }
+            /// Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationDetail/actions`.
+            public typealias ActionsPayload = [Components.Schemas.AutomationDetail.ActionsPayloadPayload]
+            /// Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationDetail/actions`.
+            public var actions: Components.Schemas.AutomationDetail.ActionsPayload?
             /// - Remark: Generated from `#/components/schemas/AutomationDetail/last_checked_at`.
             public var lastCheckedAt: Foundation.Date?
             /// - Remark: Generated from `#/components/schemas/AutomationDetail/hook_set`.
@@ -16361,6 +17764,8 @@ public enum Components {
             ///   - saveFolder: SaveFolder, when set, is a folder each result is also saved to as a Markdown file (#204), such as ~/Documents/Toskar/News.
             ///   - trigger: Trigger, when set, runs the automation only when what it watches changed, checked on the schedule (#204).
             ///   - cameras: Looked at as each run starts (#667).
+            ///   - say: Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+            ///   - actions: Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
             ///   - lastCheckedAt:
             ///   - hookSet:
             ///   - createdAt:
@@ -16391,6 +17796,8 @@ public enum Components {
                 saveFolder: Swift.String? = nil,
                 trigger: Components.Schemas.AutomationDetail.TriggerPayload? = nil,
                 cameras: Components.Schemas.AutomationDetail.CamerasPayload? = nil,
+                say: Components.Schemas.AutomationDetail.SayPayload? = nil,
+                actions: Components.Schemas.AutomationDetail.ActionsPayload? = nil,
                 lastCheckedAt: Foundation.Date? = nil,
                 hookSet: Swift.Bool? = nil,
                 createdAt: Foundation.Date,
@@ -16421,6 +17828,8 @@ public enum Components {
                 self.saveFolder = saveFolder
                 self.trigger = trigger
                 self.cameras = cameras
+                self.say = say
+                self.actions = actions
                 self.lastCheckedAt = lastCheckedAt
                 self.hookSet = hookSet
                 self.createdAt = createdAt
@@ -16452,6 +17861,8 @@ public enum Components {
                 case saveFolder = "save_folder"
                 case trigger
                 case cameras
+                case say
+                case actions
                 case lastCheckedAt = "last_checked_at"
                 case hookSet = "hook_set"
                 case createdAt = "created_at"
@@ -16955,6 +18366,10 @@ public enum Components {
                 public var optional: Swift.Bool?
                 /// - Remark: Generated from `#/components/schemas/ConnectorStatus/FieldsPayload/placeholder`.
                 public var placeholder: Swift.String?
+                /// Folded under Advanced in the form; most people leave it.
+                ///
+                /// - Remark: Generated from `#/components/schemas/ConnectorStatus/FieldsPayload/advanced`.
+                public var advanced: Swift.Bool?
                 /// Creates a new `FieldsPayloadPayload`.
                 ///
                 /// - Parameters:
@@ -16964,13 +18379,15 @@ public enum Components {
                 ///   - secret: `secret` values are stored in the secrets directory and never shown again.
                 ///   - optional:
                 ///   - placeholder:
+                ///   - advanced: Folded under Advanced in the form; most people leave it.
                 public init(
                     key: Swift.String,
                     label: Swift.String,
                     help: Swift.String? = nil,
                     secret: Swift.Bool,
                     optional: Swift.Bool? = nil,
-                    placeholder: Swift.String? = nil
+                    placeholder: Swift.String? = nil,
+                    advanced: Swift.Bool? = nil
                 ) {
                     self.key = key
                     self.label = label
@@ -16978,6 +18395,7 @@ public enum Components {
                     self.secret = secret
                     self.optional = optional
                     self.placeholder = placeholder
+                    self.advanced = advanced
                 }
                 public enum CodingKeys: String, CodingKey {
                     case key
@@ -16986,6 +18404,7 @@ public enum Components {
                     case secret
                     case optional
                     case placeholder
+                    case advanced
                 }
             }
             /// - Remark: Generated from `#/components/schemas/ConnectorStatus/fields`.
@@ -17038,6 +18457,10 @@ public enum Components {
                 public var name: Swift.String
                 /// - Remark: Generated from `#/components/schemas/ConnectorStatus/ToolsPayload/description`.
                 public var description: Swift.String
+                /// Summary is a short description for people, where Description is written for the model (#1254). Empty is Description.
+                ///
+                /// - Remark: Generated from `#/components/schemas/ConnectorStatus/ToolsPayload/summary`.
+                public var summary: Swift.String?
                 /// - Remark: Generated from `#/components/schemas/ConnectorStatus/ToolsPayload/capability`.
                 public var capability: Swift.String
                 /// - Remark: Generated from `#/components/schemas/ConnectorStatus/ToolsPayload/source`.
@@ -17068,6 +18491,7 @@ public enum Components {
                 ///   - id:
                 ///   - name:
                 ///   - description:
+                ///   - summary: Summary is a short description for people, where Description is written for the model (#1254). Empty is Description.
                 ///   - capability:
                 ///   - source:
                 ///   - schema:
@@ -17080,6 +18504,7 @@ public enum Components {
                     id: Swift.String,
                     name: Swift.String,
                     description: Swift.String,
+                    summary: Swift.String? = nil,
                     capability: Swift.String,
                     source: Swift.String,
                     schema: Swift.String,
@@ -17092,6 +18517,7 @@ public enum Components {
                     self.id = id
                     self.name = name
                     self.description = description
+                    self.summary = summary
                     self.capability = capability
                     self.source = source
                     self.schema = schema
@@ -17105,6 +18531,7 @@ public enum Components {
                     case id
                     case name
                     case description
+                    case summary
                     case capability
                     case source
                     case schema
@@ -18789,6 +20216,23 @@ public enum Components {
                 case now
                 case samples
                 case intervalSeconds = "interval_seconds"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/NextTLSInfo`.
+        public struct NextTLSInfo: Codable, Hashable, Sendable {
+            /// SHA-256 of the next certificate, as "sha256:<hex>"
+            ///
+            /// - Remark: Generated from `#/components/schemas/NextTLSInfo/fingerprint`.
+            public var fingerprint: Swift.String?
+            /// Creates a new `NextTLSInfo`.
+            ///
+            /// - Parameters:
+            ///   - fingerprint: SHA-256 of the next certificate, as "sha256:<hex>"
+            public init(fingerprint: Swift.String? = nil) {
+                self.fingerprint = fingerprint
+            }
+            public enum CodingKeys: String, CodingKey {
+                case fingerprint
             }
         }
         /// How the API speaks HTTPS.
@@ -30253,7 +31697,7 @@ public enum Operations {
     }
     /// Access from anywhere's setting and its listener (#456)
     ///
-    /// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+    /// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
     ///
     /// - Remark: HTTP `GET /api/v1/remote-access`.
     /// - Remark: Generated from `#/paths//api/v1/remote-access/get(getRemoteAccess)`.
@@ -30541,9 +31985,121 @@ public enum Operations {
             }
         }
     }
+    /// This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+    ///
+    /// Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+    ///
+    /// - Remark: HTTP `GET /api/v1/remote-access/device-token`.
+    /// - Remark: Generated from `#/paths//api/v1/remote-access/device-token/get(getDeviceToken)`.
+    public enum GetDeviceToken {
+        public static let id: Swift.String = "getDeviceToken"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/remote-access/device-token/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetDeviceToken.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetDeviceToken.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetDeviceToken.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.GetDeviceToken.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/remote-access/device-token/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/remote-access/device-token/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.DeviceToken)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.DeviceToken {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetDeviceToken.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetDeviceToken.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// token, possibly empty
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/device-token/get(getDeviceToken)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetDeviceToken.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetDeviceToken.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// Hand over a subscription's relay token (#456)
     ///
-    /// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+    /// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
     ///
     /// - Remark: HTTP `PUT /api/v1/remote-access/relay-token`.
     /// - Remark: Generated from `#/paths//api/v1/remote-access/relay-token/put(putRelayToken)`.
@@ -30593,13 +32149,13 @@ public enum Operations {
                 /// Creates a new `BadRequest`.
                 public init() {}
             }
-            /// RELAY_TOKEN_INVALID or RELAY_TOKEN_NOT_NEEDED
+            /// RELAY_TOKEN_INVALID, RELAY_TOKEN_SHORTER, RELAY_UNREACHABLE, or RELAY_TOKEN_NOT_NEEDED
             ///
             /// - Remark: Generated from `#/paths//api/v1/remote-access/relay-token/put(putRelayToken)/responses/400`.
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.PutRelayToken.Output.BadRequest)
-            /// RELAY_TOKEN_INVALID or RELAY_TOKEN_NOT_NEEDED
+            /// RELAY_TOKEN_INVALID, RELAY_TOKEN_SHORTER, RELAY_UNREACHABLE, or RELAY_TOKEN_NOT_NEEDED
             ///
             /// - Remark: Generated from `#/paths//api/v1/remote-access/relay-token/put(putRelayToken)/responses/400`.
             ///
@@ -30859,6 +32415,289 @@ public enum Operations {
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
     }
+    /// Close the checkout opened here before it's paid (#1257)
+    ///
+    /// Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/remote-access/subscription/checkout`.
+    /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/checkout/delete(cancelSubscriptionCheckout)`.
+    public enum CancelSubscriptionCheckout {
+        public static let id: Swift.String = "cancelSubscriptionCheckout"
+        public struct Input: Sendable, Hashable {
+            /// Creates a new `Input`.
+            public init() {}
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct NoContent: Sendable, Hashable {
+                /// Creates a new `NoContent`.
+                public init() {}
+            }
+            /// The checkout is closed
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/checkout/delete(cancelSubscriptionCheckout)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            case noContent(Operations.CancelSubscriptionCheckout.Output.NoContent)
+            /// The checkout is closed
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/checkout/delete(cancelSubscriptionCheckout)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            public static var noContent: Self {
+                .noContent(.init())
+            }
+            /// The associated value of the enum case if `self` is `.noContent`.
+            ///
+            /// - Throws: An error if `self` is not `.noContent`.
+            /// - SeeAlso: `.noContent`.
+            public var noContent: Operations.CancelSubscriptionCheckout.Output.NoContent {
+                get throws {
+                    switch self {
+                    case let .noContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "noContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// Creates a new `NotFound`.
+                public init() {}
+            }
+            /// CHECKOUT_NONE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/checkout/delete(cancelSubscriptionCheckout)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.CancelSubscriptionCheckout.Output.NotFound)
+            /// CHECKOUT_NONE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/checkout/delete(cancelSubscriptionCheckout)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            public static var notFound: Self {
+                .notFound(.init())
+            }
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.CancelSubscriptionCheckout.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+    }
+    /// Move the subscription bought here onto this computer (#1257)
+    ///
+    /// When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+    ///
+    /// - Remark: HTTP `POST /api/v1/remote-access/subscription/move`.
+    /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)`.
+    public enum MoveSubscription {
+        public static let id: Swift.String = "moveSubscription"
+        public struct Input: Sendable, Hashable {
+            /// Creates a new `Input`.
+            public init() {}
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct NoContent: Sendable, Hashable {
+                /// Creates a new `NoContent`.
+                public init() {}
+            }
+            /// Moved; the token is kept
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            case noContent(Operations.MoveSubscription.Output.NoContent)
+            /// Moved; the token is kept
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            public static var noContent: Self {
+                .noContent(.init())
+            }
+            /// The associated value of the enum case if `self` is `.noContent`.
+            ///
+            /// - Throws: An error if `self` is not `.noContent`.
+            /// - SeeAlso: `.noContent`.
+            public var noContent: Operations.MoveSubscription.Output.NoContent {
+                get throws {
+                    switch self {
+                    case let .noContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "noContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// Creates a new `Forbidden`.
+                public init() {}
+            }
+            /// MOVE_NEEDS_COMPUTER
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.MoveSubscription.Output.Forbidden)
+            /// MOVE_NEEDS_COMPUTER
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            public static var forbidden: Self {
+                .forbidden(.init())
+            }
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.MoveSubscription.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// Creates a new `NotFound`.
+                public init() {}
+            }
+            /// SUBSCRIPTION_NONE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.MoveSubscription.Output.NotFound)
+            /// SUBSCRIPTION_NONE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            public static var notFound: Self {
+                .notFound(.init())
+            }
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.MoveSubscription.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                public init() {}
+            }
+            /// MOVE_TOO_SOON
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.MoveSubscription.Output.TooManyRequests)
+            /// MOVE_TOO_SOON
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            public static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            public var tooManyRequests: Operations.MoveSubscription.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadGateway: Sendable, Hashable {
+                /// Creates a new `BadGateway`.
+                public init() {}
+            }
+            /// MOVE_FAILED or RELAY_UNREACHABLE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/502`.
+            ///
+            /// HTTP response code: `502 badGateway`.
+            case badGateway(Operations.MoveSubscription.Output.BadGateway)
+            /// MOVE_FAILED or RELAY_UNREACHABLE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/remote-access/subscription/move/post(moveSubscription)/responses/502`.
+            ///
+            /// HTTP response code: `502 badGateway`.
+            public static var badGateway: Self {
+                .badGateway(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badGateway`.
+            ///
+            /// - Throws: An error if `self` is not `.badGateway`.
+            /// - SeeAlso: `.badGateway`.
+            public var badGateway: Operations.MoveSubscription.Output.BadGateway {
+                get throws {
+                    switch self {
+                    case let .badGateway(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badGateway",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+    }
     /// The billing page for the subscription bought here (#639)
     ///
     /// Answers {url}, Stripe's billing page for the subscription bought in Settings: change the card, download receipts, cancel. Admins only. 409 SUBSCRIPTION_IN_APP_ONLY in the Mac App Store's copy; 404 SUBSCRIPTION_NONE when none was bought here (one bought in the Toskar app is managed in the device's store); 502 BILLING_UNAVAILABLE.
@@ -31050,6 +32889,118 @@ public enum Operations {
             /// - Throws: An error if `self` is not `.ok`.
             /// - SeeAlso: `.ok`.
             public var ok: Operations.GetApiTLS.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// The certificate that replaces one naming the computer (#1263)
+    ///
+    /// Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+    ///
+    /// - Remark: HTTP `GET /api/v1/tls/next`.
+    /// - Remark: Generated from `#/paths//api/v1/tls/next/get(getNextApiTLS)`.
+    public enum GetNextApiTLS {
+        public static let id: Swift.String = "getNextApiTLS"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/tls/next/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetNextApiTLS.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetNextApiTLS.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetNextApiTLS.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.GetNextApiTLS.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/tls/next/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/tls/next/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.NextTLSInfo)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.NextTLSInfo {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetNextApiTLS.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetNextApiTLS.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The next certificate's fingerprint, if there is one
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/tls/next/get(getNextApiTLS)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetNextApiTLS.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetNextApiTLS.Output.Ok {
                 get throws {
                     switch self {
                     case let .ok(response):
@@ -32324,7 +34275,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// OK. For Admins and the Owner, network_access (#711, contract 1.42) counts who could use Toskar from another computer: people (who sign in with a username and password, or still have a link to choose them), devices (connected with a code), keys (API keys for apps and scripts), and sign_in_service (a trusted proxy or OpenID Connect provider). lan_api_enabled can be turned on when any of them is there.
+            /// OK. For Admins and the Owner, network_access (#711, contract 1.42) counts who could use Toskar from another computer: people (who sign in with a username and password, or still have a link to choose them), devices (connected with a code), stale_devices (how many of those are likely left over: never used a day after pairing, or unused for 90 days; #1266, contract 1.109), keys (API keys for apps and scripts), and sign_in_service (a trusted proxy or OpenID Connect provider). lan_api_enabled can be turned on when any of them is there. For a key of someone below Admin, such as a Member's phone, data_dir, models_dir, runtimes_dir, logs_dir, api_host, node_id, remote_access_address and remote_access_relay are empty (#1264).
             ///
             /// - Remark: Generated from `#/paths//api/v1/settings/get(getSettings)/responses/200`.
             ///
@@ -44026,6 +45977,118 @@ public enum Operations {
             }
         }
     }
+    /// Who accepted which model's license terms, and when
+    ///
+    /// Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+    ///
+    /// - Remark: HTTP `GET /api/v1/models/license-acceptances`.
+    /// - Remark: Generated from `#/paths//api/v1/models/license-acceptances/get(listModelLicenseAcceptances)`.
+    public enum ListModelLicenseAcceptances {
+        public static let id: Swift.String = "listModelLicenseAcceptances"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/models/license-acceptances/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListModelLicenseAcceptances.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListModelLicenseAcceptances.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ListModelLicenseAcceptances.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.ListModelLicenseAcceptances.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/models/license-acceptances/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/models/license-acceptances/GET/responses/200/content/application\/json`.
+                    case json([Components.Schemas.LicenseAcceptance])
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: [Components.Schemas.LicenseAcceptance] {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListModelLicenseAcceptances.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListModelLicenseAcceptances.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The records
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/models/license-acceptances/get(listModelLicenseAcceptances)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListModelLicenseAcceptances.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListModelLicenseAcceptances.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// What a download from a URL would bring, without downloading it
     ///
     /// The file and its size (and its vision projector's) from the repository, the free space where models are kept, whether it's already a model here, and copies of the same file other apps have (by name, Ollama's SHA-256 blob, or a large file's exact size), which can be added where they are instead (#611).
@@ -44434,21 +46497,29 @@ public enum Operations {
                     public var nodeId: Swift.String?
                     /// - Remark: Generated from `#/paths/api/v1/models/{id}/install/POST/requestBody/json/wait`.
                     public var wait: Swift.Bool?
+                    /// The person accepts the model's license terms, for a license with terms to accept; Toskar keeps a record of who and when (#593, contract 1.103). An install without it isn't refused.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/models/{id}/install/POST/requestBody/json/accept_license`.
+                    public var acceptLicense: Swift.Bool?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
                     ///   - nodeId:
                     ///   - wait:
+                    ///   - acceptLicense: The person accepts the model's license terms, for a license with terms to accept; Toskar keeps a record of who and when (#593, contract 1.103). An install without it isn't refused.
                     public init(
                         nodeId: Swift.String? = nil,
-                        wait: Swift.Bool? = nil
+                        wait: Swift.Bool? = nil,
+                        acceptLicense: Swift.Bool? = nil
                     ) {
                         self.nodeId = nodeId
                         self.wait = wait
+                        self.acceptLicense = acceptLicense
                     }
                     public enum CodingKeys: String, CodingKey {
                         case nodeId = "node_id"
                         case wait
+                        case acceptLicense = "accept_license"
                     }
                 }
                 /// - Remark: Generated from `#/paths/api/v1/models/{id}/install/POST/requestBody/content/application\/json`.
@@ -44606,6 +46677,1095 @@ public enum Operations {
                     .json
                 ]
             }
+        }
+    }
+    /// The connected ComfyUI and what a check finds on it (Admin)
+    ///
+    /// The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out.
+    ///
+    /// - Remark: HTTP `GET /api/v1/comfyui`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/get(getComfyUI)`.
+    public enum GetComfyUI {
+        public static let id: Swift.String = "getComfyUI"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/comfyui/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetComfyUI.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetComfyUI.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetComfyUI.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.GetComfyUI.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ComfyUIStatus)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ComfyUIStatus {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetComfyUI.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetComfyUI.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Address and check
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/get(getComfyUI)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetComfyUI.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetComfyUI.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// Creates a new `Forbidden`.
+                public init() {}
+            }
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/get(getComfyUI)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.GetComfyUI.Output.Forbidden)
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/get(getComfyUI)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            public static var forbidden: Self {
+                .forbidden(.init())
+            }
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.GetComfyUI.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Connect a ComfyUI, change its token, or disconnect it (Admin)
+    ///
+    /// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+    ///
+    /// - Remark: HTTP `PUT /api/v1/comfyui`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/put(setComfyUI)`.
+    public enum SetComfyUI {
+        public static let id: Swift.String = "setComfyUI"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/comfyui/PUT/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetComfyUI.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetComfyUI.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SetComfyUI.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/comfyui/PUT/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/PUT/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/PUT/requestBody/json/base_url`.
+                    public var baseUrl: Swift.String?
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/PUT/requestBody/json/token`.
+                    public var token: Swift.String?
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/PUT/requestBody/json/clear_token`.
+                    public var clearToken: Swift.Bool?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - baseUrl:
+                    ///   - token:
+                    ///   - clearToken:
+                    public init(
+                        baseUrl: Swift.String? = nil,
+                        token: Swift.String? = nil,
+                        clearToken: Swift.Bool? = nil
+                    ) {
+                        self.baseUrl = baseUrl
+                        self.token = token
+                        self.clearToken = clearToken
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case baseUrl = "base_url"
+                        case token
+                        case clearToken = "clear_token"
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/PUT/requestBody/content/application\/json`.
+                case json(Operations.SetComfyUI.Input.Body.JsonPayload)
+            }
+            public var body: Operations.SetComfyUI.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.SetComfyUI.Input.Headers = .init(),
+                body: Operations.SetComfyUI.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/PUT/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/PUT/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ComfyUIStatus)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ComfyUIStatus {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetComfyUI.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetComfyUI.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Saved and checked
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/put(setComfyUI)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.SetComfyUI.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.SetComfyUI.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// The address isn't http(s)
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/put(setComfyUI)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.SetComfyUI.Output.BadRequest)
+            /// The address isn't http(s)
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/put(setComfyUI)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.SetComfyUI.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// Creates a new `Forbidden`.
+                public init() {}
+            }
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/put(setComfyUI)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.SetComfyUI.Output.Forbidden)
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/put(setComfyUI)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            public static var forbidden: Self {
+                .forbidden(.init())
+            }
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.SetComfyUI.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Saved ComfyUI workflows, without their graphs (Admin)
+    ///
+    /// - Remark: HTTP `GET /api/v1/comfyui/workflows`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/get(listComfyWorkflows)`.
+    public enum ListComfyWorkflows {
+        public static let id: Swift.String = "listComfyWorkflows"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListComfyWorkflows.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListComfyWorkflows.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ListComfyWorkflows.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.ListComfyWorkflows.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ComfyWorkflows)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ComfyWorkflows {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListComfyWorkflows.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListComfyWorkflows.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Workflows by name
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/get(listComfyWorkflows)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListComfyWorkflows.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListComfyWorkflows.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// Creates a new `Forbidden`.
+                public init() {}
+            }
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/get(listComfyWorkflows)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.ListComfyWorkflows.Output.Forbidden)
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/get(listComfyWorkflows)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            public static var forbidden: Self {
+                .forbidden(.init())
+            }
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.ListComfyWorkflows.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Save a ComfyUI workflow, or replace the one with its name (Admin)
+    ///
+    /// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+    ///
+    /// - Remark: HTTP `POST /api/v1/comfyui/workflows`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/post(saveComfyWorkflow)`.
+    public enum SaveComfyWorkflow {
+        public static let id: Swift.String = "saveComfyWorkflow"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SaveComfyWorkflow.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SaveComfyWorkflow.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SaveComfyWorkflow.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/requestBody/json/name`.
+                    public var name: Swift.String
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/requestBody/json/description`.
+                    public var description: Swift.String?
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/requestBody/json/graph`.
+                    public struct GraphPayload: Codable, Hashable, Sendable {
+                        /// A container of undocumented properties.
+                        public var additionalProperties: OpenAPIRuntime.OpenAPIObjectContainer
+                        /// Creates a new `GraphPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - additionalProperties: A container of undocumented properties.
+                        public init(additionalProperties: OpenAPIRuntime.OpenAPIObjectContainer = .init()) {
+                            self.additionalProperties = additionalProperties
+                        }
+                        public init(from decoder: any Decoder) throws {
+                            additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                        }
+                        public func encode(to encoder: any Encoder) throws {
+                            try encoder.encodeAdditionalProperties(additionalProperties)
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/requestBody/json/graph`.
+                    public var graph: Operations.SaveComfyWorkflow.Input.Body.JsonPayload.GraphPayload
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/requestBody/json/inputs`.
+                    public var inputs: Components.Schemas.ComfyWorkflowInputs?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - name:
+                    ///   - description:
+                    ///   - graph:
+                    ///   - inputs:
+                    public init(
+                        name: Swift.String,
+                        description: Swift.String? = nil,
+                        graph: Operations.SaveComfyWorkflow.Input.Body.JsonPayload.GraphPayload,
+                        inputs: Components.Schemas.ComfyWorkflowInputs? = nil
+                    ) {
+                        self.name = name
+                        self.description = description
+                        self.graph = graph
+                        self.inputs = inputs
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case name
+                        case description
+                        case graph
+                        case inputs
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/requestBody/content/application\/json`.
+                case json(Operations.SaveComfyWorkflow.Input.Body.JsonPayload)
+            }
+            public var body: Operations.SaveComfyWorkflow.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.SaveComfyWorkflow.Input.Headers = .init(),
+                body: Operations.SaveComfyWorkflow.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ComfyWorkflow)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ComfyWorkflow {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SaveComfyWorkflow.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SaveComfyWorkflow.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Saved
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/post(saveComfyWorkflow)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.SaveComfyWorkflow.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.SaveComfyWorkflow.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// Not in API format, or an input names a node or field the graph doesn't have
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/post(saveComfyWorkflow)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.SaveComfyWorkflow.Output.BadRequest)
+            /// Not in API format, or an input names a node or field the graph doesn't have
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/post(saveComfyWorkflow)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.SaveComfyWorkflow.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// Creates a new `Forbidden`.
+                public init() {}
+            }
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/post(saveComfyWorkflow)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.SaveComfyWorkflow.Output.Forbidden)
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/post(saveComfyWorkflow)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            public static var forbidden: Self {
+                .forbidden(.init())
+            }
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.SaveComfyWorkflow.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+    ///
+    /// - Remark: HTTP `POST /api/v1/comfyui/workflows/detect`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/detect/post(detectComfyWorkflow)`.
+    public enum DetectComfyWorkflow {
+        public static let id: Swift.String = "detectComfyWorkflow"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/detect/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DetectComfyWorkflow.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DetectComfyWorkflow.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.DetectComfyWorkflow.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/detect/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/detect/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/detect/POST/requestBody/json/graph`.
+                    public struct GraphPayload: Codable, Hashable, Sendable {
+                        /// A container of undocumented properties.
+                        public var additionalProperties: OpenAPIRuntime.OpenAPIObjectContainer
+                        /// Creates a new `GraphPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - additionalProperties: A container of undocumented properties.
+                        public init(additionalProperties: OpenAPIRuntime.OpenAPIObjectContainer = .init()) {
+                            self.additionalProperties = additionalProperties
+                        }
+                        public init(from decoder: any Decoder) throws {
+                            additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                        }
+                        public func encode(to encoder: any Encoder) throws {
+                            try encoder.encodeAdditionalProperties(additionalProperties)
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/detect/POST/requestBody/json/graph`.
+                    public var graph: Operations.DetectComfyWorkflow.Input.Body.JsonPayload.GraphPayload
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - graph:
+                    public init(graph: Operations.DetectComfyWorkflow.Input.Body.JsonPayload.GraphPayload) {
+                        self.graph = graph
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case graph
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/detect/POST/requestBody/content/application\/json`.
+                case json(Operations.DetectComfyWorkflow.Input.Body.JsonPayload)
+            }
+            public var body: Operations.DetectComfyWorkflow.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.DetectComfyWorkflow.Input.Headers = .init(),
+                body: Operations.DetectComfyWorkflow.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/detect/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/detect/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ComfyWorkflowInputs)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ComfyWorkflowInputs {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DetectComfyWorkflow.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DetectComfyWorkflow.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The inputs found
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/detect/post(detectComfyWorkflow)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.DetectComfyWorkflow.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.DetectComfyWorkflow.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// Not in API format
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/detect/post(detectComfyWorkflow)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.DetectComfyWorkflow.Output.BadRequest)
+            /// Not in API format
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/detect/post(detectComfyWorkflow)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.DetectComfyWorkflow.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// Creates a new `Forbidden`.
+                public init() {}
+            }
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/detect/post(detectComfyWorkflow)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.DetectComfyWorkflow.Output.Forbidden)
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/detect/post(detectComfyWorkflow)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            public static var forbidden: Self {
+                .forbidden(.init())
+            }
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.DetectComfyWorkflow.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Remove a saved ComfyUI workflow (Admin)
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/comfyui/workflows/{name}`.
+    /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/{name}/delete(deleteComfyWorkflow)`.
+    public enum DeleteComfyWorkflow {
+        public static let id: Swift.String = "deleteComfyWorkflow"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/{name}/DELETE/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/comfyui/workflows/{name}/DELETE/path/name`.
+                public var name: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - name:
+                public init(name: Swift.String) {
+                    self.name = name
+                }
+            }
+            public var path: Operations.DeleteComfyWorkflow.Input.Path
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            public init(path: Operations.DeleteComfyWorkflow.Input.Path) {
+                self.path = path
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct NoContent: Sendable, Hashable {
+                /// Creates a new `NoContent`.
+                public init() {}
+            }
+            /// Removed
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/{name}/delete(deleteComfyWorkflow)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            case noContent(Operations.DeleteComfyWorkflow.Output.NoContent)
+            /// Removed
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/{name}/delete(deleteComfyWorkflow)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            public static var noContent: Self {
+                .noContent(.init())
+            }
+            /// The associated value of the enum case if `self` is `.noContent`.
+            ///
+            /// - Throws: An error if `self` is not `.noContent`.
+            /// - SeeAlso: `.noContent`.
+            public var noContent: Operations.DeleteComfyWorkflow.Output.NoContent {
+                get throws {
+                    switch self {
+                    case let .noContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "noContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// Creates a new `Forbidden`.
+                public init() {}
+            }
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/{name}/delete(deleteComfyWorkflow)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.DeleteComfyWorkflow.Output.Forbidden)
+            /// Needs the admin role
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/comfyui/workflows/{name}/delete(deleteComfyWorkflow)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            public static var forbidden: Self {
+                .forbidden(.init())
+            }
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.DeleteComfyWorkflow.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
     }
     /// The OpenAI-compatible server whose models can be chosen for a chat, and the models it offers
@@ -51484,6 +54644,1111 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Live voice mode, over a WebSocket (#795)
+    ///
+    /// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+    ///
+    /// - Remark: HTTP `GET /api/v1/voice/realtime`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/realtime/get(voiceRealtime)`.
+    public enum VoiceRealtime {
+        public static let id: Swift.String = "voiceRealtime"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/voice/realtime/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.VoiceRealtime.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.VoiceRealtime.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.VoiceRealtime.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.VoiceRealtime.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct SwitchingProtocols: Sendable, Hashable {
+                /// Creates a new `SwitchingProtocols`.
+                public init() {}
+            }
+            /// Switching to the WebSocket
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/realtime/get(voiceRealtime)/responses/101`.
+            ///
+            /// HTTP response code: `101 switchingProtocols`.
+            case switchingProtocols(Operations.VoiceRealtime.Output.SwitchingProtocols)
+            /// Switching to the WebSocket
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/realtime/get(voiceRealtime)/responses/101`.
+            ///
+            /// HTTP response code: `101 switchingProtocols`.
+            public static var switchingProtocols: Self {
+                .switchingProtocols(.init())
+            }
+            /// The associated value of the enum case if `self` is `.switchingProtocols`.
+            ///
+            /// - Throws: An error if `self` is not `.switchingProtocols`.
+            /// - SeeAlso: `.switchingProtocols`.
+            public var switchingProtocols: Operations.VoiceRealtime.Output.SwitchingProtocols {
+                get throws {
+                    switch self {
+                    case let .switchingProtocols(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "switchingProtocols",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct UpgradeRequired: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/realtime/GET/responses/426/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/realtime/GET/responses/426/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.VoiceRealtime.Output.UpgradeRequired.Body
+                /// Creates a new `UpgradeRequired`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.VoiceRealtime.Output.UpgradeRequired.Body) {
+                    self.body = body
+                }
+            }
+            /// WEBSOCKET_REQUIRED
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/realtime/get(voiceRealtime)/responses/426`.
+            ///
+            /// HTTP response code: `426 upgradeRequired`.
+            case upgradeRequired(Operations.VoiceRealtime.Output.UpgradeRequired)
+            /// The associated value of the enum case if `self` is `.upgradeRequired`.
+            ///
+            /// - Throws: An error if `self` is not `.upgradeRequired`.
+            /// - SeeAlso: `.upgradeRequired`.
+            public var upgradeRequired: Operations.VoiceRealtime.Output.UpgradeRequired {
+                get throws {
+                    switch self {
+                    case let .upgradeRequired(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "upgradeRequired",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct ServiceUnavailable: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/realtime/GET/responses/503/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/realtime/GET/responses/503/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.VoiceRealtime.Output.ServiceUnavailable.Body
+                /// Creates a new `ServiceUnavailable`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.VoiceRealtime.Output.ServiceUnavailable.Body) {
+                    self.body = body
+                }
+            }
+            /// SPEECH_UNAVAILABLE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/realtime/get(voiceRealtime)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            case serviceUnavailable(Operations.VoiceRealtime.Output.ServiceUnavailable)
+            /// The associated value of the enum case if `self` is `.serviceUnavailable`.
+            ///
+            /// - Throws: An error if `self` is not `.serviceUnavailable`.
+            /// - SeeAlso: `.serviceUnavailable`.
+            public var serviceUnavailable: Operations.VoiceRealtime.Output.ServiceUnavailable {
+                get throws {
+                    switch self {
+                    case let .serviceUnavailable(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "serviceUnavailable",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Read a little text aloud in the computer's voice (#795)
+    ///
+    /// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+    ///
+    /// - Remark: HTTP `POST /api/v1/speech/say`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/say/post(speechSay)`.
+    public enum SpeechSay {
+        public static let id: Swift.String = "speechSay"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SpeechSay.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SpeechSay.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SpeechSay.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/requestBody/json/text`.
+                    public var text: Swift.String
+                    /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/requestBody/json/voice`.
+                    public var voice: Swift.String?
+                    /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/requestBody/json/language`.
+                    public var language: Swift.String?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - text:
+                    ///   - voice:
+                    ///   - language:
+                    public init(
+                        text: Swift.String,
+                        voice: Swift.String? = nil,
+                        language: Swift.String? = nil
+                    ) {
+                        self.text = text
+                        self.voice = voice
+                        self.language = language
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case text
+                        case voice
+                        case language
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/requestBody/content/application\/json`.
+                case json(Operations.SpeechSay.Input.Body.JsonPayload)
+            }
+            public var body: Operations.SpeechSay.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.SpeechSay.Input.Headers = .init(),
+                body: Operations.SpeechSay.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/responses/200/content/audio\/wav`.
+                    case audioWav(OpenAPIRuntime.HTTPBody)
+                    /// The associated value of the enum case if `self` is `.audioWav`.
+                    ///
+                    /// - Throws: An error if `self` is not `.audioWav`.
+                    /// - SeeAlso: `.audioWav`.
+                    public var audioWav: OpenAPIRuntime.HTTPBody {
+                        get throws {
+                            switch self {
+                            case let .audioWav(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SpeechSay.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SpeechSay.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The text read aloud
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/say/post(speechSay)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.SpeechSay.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.SpeechSay.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SpeechSay.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SpeechSay.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// BAD_REQUEST for no text or too much, or SPEECH_FAILED
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/say/post(speechSay)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.SpeechSay.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.SpeechSay.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct ServiceUnavailable: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/responses/503/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/responses/503/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SpeechSay.Output.ServiceUnavailable.Body
+                /// Creates a new `ServiceUnavailable`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SpeechSay.Output.ServiceUnavailable.Body) {
+                    self.body = body
+                }
+            }
+            /// SPEECH_UNAVAILABLE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/say/post(speechSay)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            case serviceUnavailable(Operations.SpeechSay.Output.ServiceUnavailable)
+            /// The associated value of the enum case if `self` is `.serviceUnavailable`.
+            ///
+            /// - Throws: An error if `self` is not `.serviceUnavailable`.
+            /// - SeeAlso: `.serviceUnavailable`.
+            public var serviceUnavailable: Operations.SpeechSay.Output.ServiceUnavailable {
+                get throws {
+                    switch self {
+                    case let .serviceUnavailable(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "serviceUnavailable",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case audioWav
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "audio/wav":
+                    self = .audioWav
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .audioWav:
+                    return "audio/wav"
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .audioWav,
+                    .json
+                ]
+            }
+        }
+    }
+    /// The Voice settings (#1304)
+    ///
+    /// Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `GET /api/v1/speech/voices`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/voices/get(speechVoices)`.
+    public enum SpeechVoices {
+        public static let id: Swift.String = "speechVoices"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/speech/voices/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SpeechVoices.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SpeechVoices.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SpeechVoices.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.SpeechVoices.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/voices/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/voices/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.VoiceSettings)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.VoiceSettings {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SpeechVoices.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SpeechVoices.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The Voice settings
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/voices/get(speechVoices)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.SpeechVoices.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.SpeechVoices.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/voices/GET/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/voices/GET/responses/403/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SpeechVoices.Output.Forbidden.Body
+                /// Creates a new `Forbidden`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SpeechVoices.Output.Forbidden.Body) {
+                    self.body = body
+                }
+            }
+            /// ROLE_REQUIRED
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/voices/get(speechVoices)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.SpeechVoices.Output.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.SpeechVoices.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Choose the voice a language is read aloud in (#1304)
+    ///
+    /// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/speech/voices/{language}`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/voices/{language}/put(setSpeechVoice)`.
+    public enum SetSpeechVoice {
+        public static let id: Swift.String = "setSpeechVoice"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/path`.
+            public struct Path: Sendable, Hashable {
+                /// A language code, such as de
+                ///
+                /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/path/language`.
+                public var language: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - language: A language code, such as de
+                public init(language: Swift.String) {
+                    self.language = language
+                }
+            }
+            public var path: Operations.SetSpeechVoice.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetSpeechVoice.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetSpeechVoice.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SetSpeechVoice.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// One of the language's voices from GET /api/v1/speech/voices, or empty for automatic
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/requestBody/json/voice`.
+                    public var voice: Swift.String?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - voice: One of the language's voices from GET /api/v1/speech/voices, or empty for automatic
+                    public init(voice: Swift.String? = nil) {
+                        self.voice = voice
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case voice
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/requestBody/content/application\/json`.
+                case json(Operations.SetSpeechVoice.Input.Body.JsonPayload)
+            }
+            public var body: Operations.SetSpeechVoice.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.SetSpeechVoice.Input.Path,
+                headers: Operations.SetSpeechVoice.Input.Headers = .init(),
+                body: Operations.SetSpeechVoice.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/responses/200/content/application\/json`.
+                    case json(Components.Schemas.VoiceSettings)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.VoiceSettings {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetSpeechVoice.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetSpeechVoice.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The Voice settings
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/voices/{language}/put(setSpeechVoice)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.SetSpeechVoice.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.SetSpeechVoice.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/voices/{language}/PUT/responses/400/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetSpeechVoice.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetSpeechVoice.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// BAD_REQUEST or INVALID_VOICE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/voices/{language}/put(setSpeechVoice)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.SetSpeechVoice.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.SetSpeechVoice.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Install Kitten TTS 2 mini (#1304)
+    ///
+    /// Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `POST /api/v1/speech/kitten`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/kitten/post(installKitten)`.
+    public enum InstallKitten {
+        public static let id: Swift.String = "installKitten"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/speech/kitten/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.InstallKitten.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.InstallKitten.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.InstallKitten.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.InstallKitten.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/kitten/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/kitten/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.VoiceSettings)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.VoiceSettings {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.InstallKitten.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.InstallKitten.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The Voice settings
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/kitten/post(installKitten)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.InstallKitten.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.InstallKitten.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct ServiceUnavailable: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/kitten/POST/responses/503/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/kitten/POST/responses/503/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.InstallKitten.Output.ServiceUnavailable.Body
+                /// Creates a new `ServiceUnavailable`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.InstallKitten.Output.ServiceUnavailable.Body) {
+                    self.body = body
+                }
+            }
+            /// SPEECH_UNAVAILABLE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/kitten/post(installKitten)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            case serviceUnavailable(Operations.InstallKitten.Output.ServiceUnavailable)
+            /// The associated value of the enum case if `self` is `.serviceUnavailable`.
+            ///
+            /// - Throws: An error if `self` is not `.serviceUnavailable`.
+            /// - SeeAlso: `.serviceUnavailable`.
+            public var serviceUnavailable: Operations.InstallKitten.Output.ServiceUnavailable {
+                get throws {
+                    switch self {
+                    case let .serviceUnavailable(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "serviceUnavailable",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Remove Kitten TTS 2 mini (#1304)
+    ///
+    /// Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/speech/kitten`.
+    /// - Remark: Generated from `#/paths//api/v1/speech/kitten/delete(removeKitten)`.
+    public enum RemoveKitten {
+        public static let id: Swift.String = "removeKitten"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/speech/kitten/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RemoveKitten.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RemoveKitten.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.RemoveKitten.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.RemoveKitten.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/speech/kitten/DELETE/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/speech/kitten/DELETE/responses/200/content/application\/json`.
+                    case json(Components.Schemas.VoiceSettings)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.VoiceSettings {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.RemoveKitten.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.RemoveKitten.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The Voice settings
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/speech/kitten/delete(removeKitten)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.RemoveKitten.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.RemoveKitten.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
                             response: self
                         )
                     }

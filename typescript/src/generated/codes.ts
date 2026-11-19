@@ -47,16 +47,32 @@ export const ErrorCodes = {
   BROWSE_FAILED: 'BROWSE_FAILED',
   /** No cache has that name. */
   CACHE_NOT_FOUND: 'CACHE_NOT_FOUND',
+  /** Enter the camera's address, such as 192.168.1.50. */
+  CAMERA_ADDRESS: 'CAMERA_ADDRESS',
+  /** Toskar couldn't reach the camera's speaker, so the visitor wasn't answered. Check that the camera is on and on the same network as this computer. */
+  CAMERA_SPEAKER_UNREACHABLE: 'CAMERA_SPEAKER_UNREACHABLE',
+  /** Toskar couldn't reach a camera at that address. Check the address, and that the camera's HTTP or HTTPS server is on. */
+  CAMERA_UNREACHABLE: 'CAMERA_UNREACHABLE',
   /** This is turned off for your account. Ask {{admin}} or another Admin to turn it on. */
   CAPABILITY_OFF: 'CAPABILITY_OFF',
   /** Toskar doesn't know that capability. */
   CAPABILITY_UNKNOWN: 'CAPABILITY_UNKNOWN',
   /** {{detail}} */
   CHAT_FAILED: 'CHAT_FAILED',
+  /** There's no checkout open to cancel. */
+  CHECKOUT_NONE: 'CHECKOUT_NONE',
   /** {{detail}} */
   CLAIM_FAILED: 'CLAIM_FAILED',
+  /** The ComfyUI address must start with http:// or https://, such as http://127.0.0.1:8188. */
+  COMFYUI_BAD_URL: 'COMFYUI_BAD_URL',
+  /** {{detail}} */
+  COMFYUI_BAD_WORKFLOW: 'COMFYUI_BAD_WORKFLOW',
+  /** {{detail}} */
+  COMFYUI_FAILED: 'COMFYUI_FAILED',
   /** The chat couldn't be compacted: {{detail}} */
   COMPACT_FAILED: 'COMPACT_FAILED',
+  /** A device connected through another can't connect more. Connect it from the phone. */
+  COMPANION_LIMIT: 'COMPANION_LIMIT',
   /** The computer running this model is offline. */
   COMPUTER_OFFLINE: 'COMPUTER_OFFLINE',
   /** To remove {{name}}, type their name to confirm. */
@@ -103,6 +119,8 @@ export const ErrorCodes = {
   DEVICE_NOT_FOUND: 'DEVICE_NOT_FOUND',
   /** Couldn't create a diagnostics bundle. */
   DIAGNOSTICS_FAILED: 'DIAGNOSTICS_FAILED',
+  /** Someone came to the door, and Toskar couldn't answer: {{detail}} */
+  DOOR_NOT_ANSWERED: 'DOOR_NOT_ANSWERED',
   /** {{detail}} */
   EGRESS_FAILED: 'EGRESS_FAILED',
   /** That isn't an email address. */
@@ -161,6 +179,8 @@ export const ErrorCodes = {
   INVALID_RETENTION: 'INVALID_RETENTION',
   /** “{{value}}” isn't a valid value for {{setting}}. */
   INVALID_SETTING: 'INVALID_SETTING',
+  /** That voice isn't one {{language}} can be read in here. */
+  INVALID_VOICE: 'INVALID_VOICE',
   /** This link has expired or was already used. Ask for a new one. */
   INVITE_INVALID: 'INVITE_INVALID',
   /** {{detail}} */
@@ -259,6 +279,12 @@ export const ErrorCodes = {
   MODEL_UNHEALTHY: 'MODEL_UNHEALTHY',
   /** {{detail}} */
   MODEL_UPDATE_FAILED: 'MODEL_UPDATE_FAILED',
+  /** Toskar's relay didn't move the subscription ({{relay_code}}). */
+  MOVE_FAILED: 'MOVE_FAILED',
+  /** To move it, Toskar's relay needs to hear from the computer it's on now: turn that computer on once, or wait until it has been off for 3 days. */
+  MOVE_NEEDS_COMPUTER: 'MOVE_NEEDS_COMPUTER',
+  /** The subscription moved less than a day ago. It can move again tomorrow. */
+  MOVE_TOO_SOON: 'MOVE_TOO_SOON',
   /** A name is 1 to 80 characters. */
   NAME_INVALID: 'NAME_INVALID',
   /** This needs your approval before the automation can go on. */
@@ -421,6 +447,10 @@ export const ErrorCodes = {
   RELAY_TOKEN_INVALID: 'RELAY_TOKEN_INVALID',
   /** This computer uses your organization's relay, so it doesn't need a subscription. */
   RELAY_TOKEN_NOT_NEEDED: 'RELAY_TOKEN_NOT_NEEDED',
+  /** This computer already has a relay token that lasts longer, so it keeps that one. */
+  RELAY_TOKEN_SHORTER: 'RELAY_TOKEN_SHORTER',
+  /** Toskar's relay couldn't be reached. Try again in a minute. */
+  RELAY_UNREACHABLE: 'RELAY_UNREACHABLE',
   /** Access from anywhere is off, so there's nothing to check. Turn it on first. */
   REMOTE_ACCESS_OFF: 'REMOTE_ACCESS_OFF',
   /** Enter a host name or IP, with a port when it differs, such as home.example.com or 203.0.113.7:7333. */
@@ -517,6 +547,8 @@ export const ErrorCodes = {
   STOP_FAILED: 'STOP_FAILED',
   /** This computer already has access from anywhere. */
   SUBSCRIPTION_ACTIVE: 'SUBSCRIPTION_ACTIVE',
+  /** Another device's subscription already covers this computer, so there's nothing to buy here. */
+  SUBSCRIPTION_COVERED: 'SUBSCRIPTION_COVERED',
   /** Couldn't start the subscription. */
   SUBSCRIPTION_FAILED: 'SUBSCRIPTION_FAILED',
   /** This copy of Toskar is from the App Store, so access from anywhere is sold in the Toskar app on your phone or tablet. */
@@ -575,8 +607,12 @@ export const ErrorCodes = {
   USERNAME_INVALID: 'USERNAME_INVALID',
   /** That username is taken. */
   USERNAME_TAKEN: 'USERNAME_TAKEN',
+  /** Live voice isn't available on this computer. */
+  VOICE_UNAVAILABLE: 'VOICE_UNAVAILABLE',
   /** {{detail}} */
   WARM_FAILED: 'WARM_FAILED',
+  /** Live voice needs a WebSocket connection. */
+  WEBSOCKET_REQUIRED: 'WEBSOCKET_REQUIRED',
 } as const
 
 /** One of ErrorCodes, or a code from a newer Core. */

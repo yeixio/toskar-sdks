@@ -6,8 +6,8 @@ namespace Toskar;
 /// <summary>The client contract this SDK was built for.</summary>
 public static class Contract
 {
-    /// <summary>The contract version, such as 1.98.</summary>
-    public const string Version = "1.98";
+    /// <summary>The contract version, such as 1.114.</summary>
+    public const string Version = "1.114";
 }
 
 /// <summary>
@@ -122,6 +122,21 @@ public static class ErrorCodes
     public const string CACHE_NOT_FOUND = "CACHE_NOT_FOUND";
 
     /// <summary>
+    /// Enter the camera's address, such as 192.168.1.50.
+    /// </summary>
+    public const string CAMERA_ADDRESS = "CAMERA_ADDRESS";
+
+    /// <summary>
+    /// Toskar couldn't reach the camera's speaker, so the visitor wasn't answered. Check that the camera is on and on the same network as this computer.
+    /// </summary>
+    public const string CAMERA_SPEAKER_UNREACHABLE = "CAMERA_SPEAKER_UNREACHABLE";
+
+    /// <summary>
+    /// Toskar couldn't reach a camera at that address. Check the address, and that the camera's HTTP or HTTPS server is on.
+    /// </summary>
+    public const string CAMERA_UNREACHABLE = "CAMERA_UNREACHABLE";
+
+    /// <summary>
     /// This is turned off for your account. Ask {{admin}} or another Admin to turn it on.
     /// </summary>
     public const string CAPABILITY_OFF = "CAPABILITY_OFF";
@@ -137,14 +152,39 @@ public static class ErrorCodes
     public const string CHAT_FAILED = "CHAT_FAILED";
 
     /// <summary>
+    /// There's no checkout open to cancel.
+    /// </summary>
+    public const string CHECKOUT_NONE = "CHECKOUT_NONE";
+
+    /// <summary>
     /// {{detail}}
     /// </summary>
     public const string CLAIM_FAILED = "CLAIM_FAILED";
 
     /// <summary>
+    /// The ComfyUI address must start with http:// or https://, such as http://127.0.0.1:8188.
+    /// </summary>
+    public const string COMFYUI_BAD_URL = "COMFYUI_BAD_URL";
+
+    /// <summary>
+    /// {{detail}}
+    /// </summary>
+    public const string COMFYUI_BAD_WORKFLOW = "COMFYUI_BAD_WORKFLOW";
+
+    /// <summary>
+    /// {{detail}}
+    /// </summary>
+    public const string COMFYUI_FAILED = "COMFYUI_FAILED";
+
+    /// <summary>
     /// The chat couldn't be compacted: {{detail}}
     /// </summary>
     public const string COMPACT_FAILED = "COMPACT_FAILED";
+
+    /// <summary>
+    /// A device connected through another can't connect more. Connect it from the phone.
+    /// </summary>
+    public const string COMPANION_LIMIT = "COMPANION_LIMIT";
 
     /// <summary>
     /// The computer running this model is offline.
@@ -260,6 +300,11 @@ public static class ErrorCodes
     /// Couldn't create a diagnostics bundle.
     /// </summary>
     public const string DIAGNOSTICS_FAILED = "DIAGNOSTICS_FAILED";
+
+    /// <summary>
+    /// Someone came to the door, and Toskar couldn't answer: {{detail}}
+    /// </summary>
+    public const string DOOR_NOT_ANSWERED = "DOOR_NOT_ANSWERED";
 
     /// <summary>
     /// {{detail}}
@@ -405,6 +450,11 @@ public static class ErrorCodes
     /// “{{value}}” isn't a valid value for {{setting}}.
     /// </summary>
     public const string INVALID_SETTING = "INVALID_SETTING";
+
+    /// <summary>
+    /// That voice isn't one {{language}} can be read in here.
+    /// </summary>
+    public const string INVALID_VOICE = "INVALID_VOICE";
 
     /// <summary>
     /// This link has expired or was already used. Ask for a new one.
@@ -650,6 +700,21 @@ public static class ErrorCodes
     /// {{detail}}
     /// </summary>
     public const string MODEL_UPDATE_FAILED = "MODEL_UPDATE_FAILED";
+
+    /// <summary>
+    /// Toskar's relay didn't move the subscription ({{relay_code}}).
+    /// </summary>
+    public const string MOVE_FAILED = "MOVE_FAILED";
+
+    /// <summary>
+    /// To move it, Toskar's relay needs to hear from the computer it's on now: turn that computer on once, or wait until it has been off for 3 days.
+    /// </summary>
+    public const string MOVE_NEEDS_COMPUTER = "MOVE_NEEDS_COMPUTER";
+
+    /// <summary>
+    /// The subscription moved less than a day ago. It can move again tomorrow.
+    /// </summary>
+    public const string MOVE_TOO_SOON = "MOVE_TOO_SOON";
 
     /// <summary>
     /// A name is 1 to 80 characters.
@@ -1057,6 +1122,16 @@ public static class ErrorCodes
     public const string RELAY_TOKEN_NOT_NEEDED = "RELAY_TOKEN_NOT_NEEDED";
 
     /// <summary>
+    /// This computer already has a relay token that lasts longer, so it keeps that one.
+    /// </summary>
+    public const string RELAY_TOKEN_SHORTER = "RELAY_TOKEN_SHORTER";
+
+    /// <summary>
+    /// Toskar's relay couldn't be reached. Try again in a minute.
+    /// </summary>
+    public const string RELAY_UNREACHABLE = "RELAY_UNREACHABLE";
+
+    /// <summary>
     /// Access from anywhere is off, so there's nothing to check. Turn it on first.
     /// </summary>
     public const string REMOTE_ACCESS_OFF = "REMOTE_ACCESS_OFF";
@@ -1297,6 +1372,11 @@ public static class ErrorCodes
     public const string SUBSCRIPTION_ACTIVE = "SUBSCRIPTION_ACTIVE";
 
     /// <summary>
+    /// Another device's subscription already covers this computer, so there's nothing to buy here.
+    /// </summary>
+    public const string SUBSCRIPTION_COVERED = "SUBSCRIPTION_COVERED";
+
+    /// <summary>
     /// Couldn't start the subscription.
     /// </summary>
     public const string SUBSCRIPTION_FAILED = "SUBSCRIPTION_FAILED";
@@ -1442,7 +1522,17 @@ public static class ErrorCodes
     public const string USERNAME_TAKEN = "USERNAME_TAKEN";
 
     /// <summary>
+    /// Live voice isn't available on this computer.
+    /// </summary>
+    public const string VOICE_UNAVAILABLE = "VOICE_UNAVAILABLE";
+
+    /// <summary>
     /// {{detail}}
     /// </summary>
     public const string WARM_FAILED = "WARM_FAILED";
+
+    /// <summary>
+    /// Live voice needs a WebSocket connection.
+    /// </summary>
+    public const string WEBSOCKET_REQUIRED = "WEBSOCKET_REQUIRED";
 }

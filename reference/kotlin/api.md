@@ -154,6 +154,16 @@ Stop the setup in progress; what was downloaded is kept and resumed next time
 fun cancelImageSetup(): ImageSetup
 ```
 
+### cancelSubscriptionCheckout()
+
+Close the checkout opened here before it's paid (#1257)
+
+Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+
+```kotlin
+fun cancelSubscriptionCheckout(): Unit
+```
+
 ### cancelTrainingJob(id)
 
 Cancel a training job
@@ -442,6 +452,14 @@ Delete an automation
 fun deleteAutomation(id: String): Unit
 ```
 
+### deleteComfyWorkflow(name)
+
+Remove a saved ComfyUI workflow (Admin)
+
+```kotlin
+fun deleteComfyWorkflow(name: String): Unit
+```
+
 ### deleteConversation(id)
 
 Delete conversation
@@ -614,6 +632,14 @@ One tool's descriptor
 
 ```kotlin
 fun describeTool(id: String): ToolDescriptor
+```
+
+### detectComfyWorkflow(body)
+
+Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+
+```kotlin
+fun detectComfyWorkflow(body: DetectComfyWorkflowRequest): ComfyWorkflowInputs
 ```
 
 ### disconnectMyDevice(id)
@@ -832,6 +858,16 @@ What the chat's running turn has done so far
 fun getChatTurn(id: String): ChatTurn
 ```
 
+### getComfyUI()
+
+The connected ComfyUI and what a check finds on it (Admin)
+
+The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out.
+
+```kotlin
+fun getComfyUI(): ComfyUIStatus
+```
+
 ### getCommunityRatings()
 
 Everyone's ratings of the models here, from hardware like this computer's and overall
@@ -858,6 +894,16 @@ Whether a phone has connected with the code shown
 
 ```kotlin
 fun getDevicePairing(): DevicePairing
+```
+
+### getDeviceToken()
+
+This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+
+Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+
+```kotlin
+fun getDeviceToken(): DeviceToken
 ```
 
 ### getExternalServer()
@@ -1010,6 +1056,16 @@ New open models, runtime releases, and AI labs' announcements, a few lines each,
 fun getNews(): News
 ```
 
+### getNextApiTLS()
+
+The certificate that replaces one naming the computer (#1263)
+
+Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+
+```kotlin
+fun getNextApiTLS(): NextTLSInfo
+```
+
 ### getNotification(id)
 
 One notification with each channel's delivery
@@ -1146,7 +1202,7 @@ fun getQuietHours(): QuietHours
 
 Access from anywhere's setting and its listener (#456)
 
-enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
 
 ```kotlin
 fun getRemoteAccess(): Unit
@@ -1282,6 +1338,16 @@ Parameters:
 fun importModel(body: ImportModelRequest, filename: String? = null, displayName: String? = null, id: String? = null): ImportedModel
 ```
 
+### installKitten()
+
+Install Kitten TTS 2 mini (#1304)
+
+Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+
+```kotlin
+fun installKitten(): VoiceSettings
+```
+
 ### installModel(id, body, wait, nodeId)
 
 Download a catalog model, here or on a paired computer
@@ -1401,6 +1467,14 @@ Caches with their declared policies and sizes
 fun listCaches(): List<CacheInfo>
 ```
 
+### listComfyWorkflows()
+
+Saved ComfyUI workflows, without their graphs (Admin)
+
+```kotlin
+fun listComfyWorkflows(): ComfyWorkflows
+```
+
 ### listConnectors()
 
 List connected services and their status. Secret values are never returned.
@@ -1514,6 +1588,16 @@ Memories and the categories they can have
 
 ```kotlin
 fun listMemories(): MemoryList
+```
+
+### listModelLicenseAcceptances()
+
+Who accepted which model's license terms, and when
+
+Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+
+```kotlin
+fun listModelLicenseAcceptances(): List<LicenseAcceptance>
 ```
 
 ### listModels()
@@ -1846,6 +1930,16 @@ Shelves of models: Hugging Face's rankings, left out what doesn't run here, and 
 fun modelStore(): ModelStore
 ```
 
+### moveSubscription()
+
+Move the subscription bought here onto this computer (#1257)
+
+When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+
+```kotlin
+fun moveSubscription(): Unit
+```
+
 ### oidcCallback(state, code)
 
 Where the provider sends people back (#206)
@@ -2049,7 +2143,7 @@ fun putModelRating(id: String, body: PutModelRatingRequest): ModelRating
 
 Hand over a subscription's relay token (#456)
 
-Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
 
 ```kotlin
 fun putRelayToken(): Unit
@@ -2133,6 +2227,16 @@ Delete an installed image model to free its space
 
 ```kotlin
 fun removeImageModel(id: String): ImageSetup
+```
+
+### removeKitten()
+
+Remove Kitten TTS 2 mini (#1304)
+
+Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+
+```kotlin
+fun removeKitten(): VoiceSettings
 ```
 
 ### removeMCPServer(id)
@@ -2293,6 +2397,16 @@ The token in the link is the only proof, so this needs no API key. The request b
 fun runHook(token: String, body: String? = null): HookRun
 ```
 
+### saveComfyWorkflow(body)
+
+Save a ComfyUI workflow, or replace the one with its name (Admin)
+
+graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+
+```kotlin
+fun saveComfyWorkflow(body: SaveComfyWorkflowRequest): ComfyWorkflow
+```
+
 ### searchKnowledge(body)
 
 Search connected knowledge
@@ -2317,6 +2431,16 @@ Change what an API key may ask of the assistant
 
 ```kotlin
 fun setAPIKeyPermissions(id: String, body: SetAPIKeyPermissionsRequest? = null): Unit
+```
+
+### setComfyUI(body)
+
+Connect a ComfyUI, change its token, or disconnect it (Admin)
+
+The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+
+```kotlin
+fun setComfyUI(body: SetComfyUIRequest): ComfyUIStatus
 ```
 
 ### setExternalServer(body)
@@ -2451,6 +2575,20 @@ Set how long run records are kept; 0 keeps them
 fun setRunRetention(body: SetRunRetentionRequest? = null): Unit
 ```
 
+### setSpeechVoice(language, body)
+
+Choose the voice a language is read aloud in (#1304)
+
+Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+
+Parameters:
+
+- `language`: A language code, such as de
+
+```kotlin
+fun setSpeechVoice(language: String, body: SetSpeechVoiceRequest): VoiceSettings
+```
+
 ### setTestPrompts(id, body)
 
 Set the prompts evaluation compares
@@ -2511,6 +2649,26 @@ Forget the tool source's sign-in
 
 ```kotlin
 fun signOutMCPServer(id: String): Unit
+```
+
+### speechSay(body)
+
+Read a little text aloud in the computer's voice (#795)
+
+Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+
+```kotlin
+fun speechSay(body: SpeechSayRequest): ByteArray
+```
+
+### speechVoices()
+
+The Voice settings (#1304)
+
+Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+
+```kotlin
+fun speechVoices(): VoiceSettings
 ```
 
 ### startBenchmark(body)
@@ -2873,6 +3031,16 @@ Images and video share the program, so this switches both. The GPU build is Meta
 
 ```kotlin
 fun useVideoBuild(body: UseVideoBuildRequest): ImageSetup
+```
+
+### voiceRealtime()
+
+Live voice mode, over a WebSocket (#795)
+
+Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+
+```kotlin
+fun voiceRealtime(): Unit
 ```
 
 ### warmModel(body)

@@ -194,6 +194,15 @@ type AssistantOptions struct {
 
 // Automation A scheduled prompt owned by the daemon.
 type Automation struct {
+	// Actions Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+	Actions *[]struct {
+		// Args The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+		Args *map[string]string `json:"args,omitempty"`
+
+		// Tool A tool ID
+		Tool string `json:"tool"`
+	} `json:"actions,omitempty"`
+
 	// Cameras The cameras looked at as each run starts (#667)
 	Cameras *[]struct {
 		Connector string `json:"connector"`
@@ -250,6 +259,25 @@ type Automation struct {
 	// SaveFolder The folder each result is also saved to
 	SaveFolder *string `json:"save_folder,omitempty"`
 
+	// Say Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+	Say *struct {
+		// Connector Known values: `reolink`; others may be added.
+		Connector string `json:"connector"`
+
+		// Device Always camera: one Reolink connection is one camera
+		Device string `json:"device"`
+
+		// Listen Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+		Listen *bool `json:"listen,omitempty"`
+
+		// QuietFrom With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+		QuietFrom *string `json:"quiet_from,omitempty"`
+		QuietTo   *string `json:"quiet_to,omitempty"`
+
+		// Voice The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+		Voice *string `json:"voice,omitempty"`
+	} `json:"say,omitempty"`
+
 	// Schedule The time rule for an automation. Clock fields are civil time in TimeZone. At and Anchor are absolute instants.
 	Schedule Schedule `json:"schedule"`
 	Tools    []string `json:"tools"`
@@ -288,6 +316,15 @@ type Automation struct {
 
 // AutomationDetail An automation and its newest runs, newest occurrence first.
 type AutomationDetail struct {
+	// Actions Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+	Actions *[]struct {
+		// Args The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+		Args *map[string]string `json:"args,omitempty"`
+
+		// Tool A tool ID
+		Tool string `json:"tool"`
+	} `json:"actions,omitempty"`
+
 	// Cameras Looked at as each run starts (#667).
 	Cameras *[]struct {
 		Connector string `json:"connector"`
@@ -342,6 +379,25 @@ type AutomationDetail struct {
 	// SaveFolder SaveFolder, when set, is a folder each result is also saved to as a Markdown file (#204), such as ~/Documents/Toskar/News.
 	SaveFolder *string `json:"save_folder,omitempty"`
 
+	// Say Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+	Say *struct {
+		// Connector Known values: `reolink`; others may be added.
+		Connector string `json:"connector"`
+
+		// Device Always camera: one Reolink connection is one camera
+		Device string `json:"device"`
+
+		// Listen Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+		Listen *bool `json:"listen,omitempty"`
+
+		// QuietFrom With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+		QuietFrom *string `json:"quiet_from,omitempty"`
+		QuietTo   *string `json:"quiet_to,omitempty"`
+
+		// Voice The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+		Voice *string `json:"voice,omitempty"`
+	} `json:"say,omitempty"`
+
 	// Schedule The time rule for an automation. Clock fields are civil time in TimeZone. At and Anchor are absolute instants.
 	Schedule Schedule `json:"schedule"`
 	Tools    []string `json:"tools"`
@@ -387,9 +443,18 @@ type AutomationDraft struct {
 
 // AutomationInput The caller-supplied body of a new automation.
 type AutomationInput struct {
+	// Actions Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them.
+	Actions *[]struct {
+		// Args The arguments that must match, such as {"service": "light.turn_on", "entity_id": "light.porch"}
+		Args *map[string]string `json:"args,omitempty"`
+
+		// Tool A tool ID
+		Tool string `json:"tool"`
+	} `json:"actions,omitempty"`
+
 	// Cameras Cameras to look at as each run starts (#667). Their pictures, taken through the connected service, are shown to a model that can see. On update, an empty list stops looking.
 	Cameras *[]struct {
-		// Connector Known values: `homeassistant`; others may be added.
+		// Connector Known values: `homeassistant`, `reolink`; others may be added.
 		Connector string `json:"connector"`
 
 		// Device The camera as that service names it, such as Home Assistant's camera.driveway
@@ -417,6 +482,25 @@ type AutomationInput struct {
 
 	// SaveFolder A folder in the home folder, such as ~/Documents/Toskar, to also save each result to as a Markdown file. Empty stops saving.
 	SaveFolder *string `json:"save_folder,omitempty"`
+
+	// Say Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
+	Say *struct {
+		// Connector Known values: `reolink`; others may be added.
+		Connector string `json:"connector"`
+
+		// Device Always camera: one Reolink connection is one camera
+		Device string `json:"device"`
+
+		// Listen Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+		Listen *bool `json:"listen,omitempty"`
+
+		// QuietFrom With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
+		QuietFrom *string `json:"quiet_from,omitempty"`
+		QuietTo   *string `json:"quiet_to,omitempty"`
+
+		// Voice The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
+		Voice *string `json:"voice,omitempty"`
+	} `json:"say,omitempty"`
 
 	// Schedule The time rule for an automation. Clock fields are civil time in TimeZone. At and Anchor are absolute instants.
 	Schedule Schedule `json:"schedule"`
@@ -885,6 +969,62 @@ type ClassifiedMaterial struct {
 	Warning string `json:"warning"`
 }
 
+// ComfyUIInfo defines model for ComfyUIInfo.
+type ComfyUIInfo struct {
+	Devices []struct {
+		Name      string `json:"name"`
+		Type      string `json:"type"`
+		VramFree  int64  `json:"vram_free"`
+		VramTotal int64  `json:"vram_total"`
+	} `json:"devices"`
+
+	// Models Model files by kind (checkpoints, diffusion, loras, vae, upscalers)
+	Models map[string][]string `json:"models"`
+
+	// NodeTypes How many node types ComfyUI offers
+	NodeTypes int     `json:"node_types"`
+	Version   *string `json:"version,omitempty"`
+}
+
+// ComfyUIStatus defines model for ComfyUIStatus.
+type ComfyUIStatus struct {
+	BaseUrl string `json:"base_url"`
+
+	// Error Why the check failed
+	Error    *string      `json:"error,omitempty"`
+	HasToken bool         `json:"has_token"`
+	Info     *ComfyUIInfo `json:"info,omitempty"`
+}
+
+// ComfyWorkflow defines model for ComfyWorkflow.
+type ComfyWorkflow struct {
+	Description *string             `json:"description,omitempty"`
+	Inputs      ComfyWorkflowInputs `json:"inputs"`
+	Name        string              `json:"name"`
+	Nodes       int                 `json:"nodes"`
+}
+
+// ComfyWorkflowInput defines model for ComfyWorkflowInput.
+type ComfyWorkflowInput struct {
+	Field string `json:"field"`
+	Node  string `json:"node"`
+}
+
+// ComfyWorkflowInputs defines model for ComfyWorkflowInputs.
+type ComfyWorkflowInputs struct {
+	Height   *ComfyWorkflowInput `json:"height,omitempty"`
+	Image    *ComfyWorkflowInput `json:"image,omitempty"`
+	Negative *ComfyWorkflowInput `json:"negative,omitempty"`
+	Prompt   *ComfyWorkflowInput `json:"prompt,omitempty"`
+	Seed     *ComfyWorkflowInput `json:"seed,omitempty"`
+	Width    *ComfyWorkflowInput `json:"width,omitempty"`
+}
+
+// ComfyWorkflows defines model for ComfyWorkflows.
+type ComfyWorkflows struct {
+	Workflows []ComfyWorkflow `json:"workflows"`
+}
+
 // CommunityRatings Everyone's ratings of the models here.
 type CommunityRatings struct {
 	// Enabled Whether community ratings are shown.
@@ -925,6 +1065,8 @@ type ConnectorStatus struct {
 	Description string     `json:"description"`
 	Error       *string    `json:"error,omitempty"`
 	Fields      []struct {
+		// Advanced Folded under Advanced in the form; most people leave it.
+		Advanced    *bool   `json:"advanced,omitempty"`
 		Help        *string `json:"help,omitempty"`
 		Key         string  `json:"key"`
 		Label       string  `json:"label"`
@@ -957,6 +1099,9 @@ type ConnectorStatus struct {
 		Risk   string `json:"risk"`
 		Schema string `json:"schema"`
 		Source string `json:"source"`
+
+		// Summary Summary is a short description for people, where Description is written for the model (#1254). Empty is Description.
+		Summary *string `json:"summary,omitempty"`
 	} `json:"tools"`
 
 	// Values `values` shows non-secret fields as stored, and secret ones masked.
@@ -1090,6 +1235,12 @@ type DeviceRoute struct {
 
 	// Token This computer's token for the relay, for every paired device on the home network
 	Token *string `json:"token,omitempty"`
+}
+
+// DeviceToken defines model for DeviceToken.
+type DeviceToken struct {
+	// Token This computer's device token for Toskar's relay, or "" when it has none.
+	Token string `json:"token"`
 }
 
 // DiagnosticsBundle Where a diagnostics bundle was saved on this computer.
@@ -1382,6 +1533,8 @@ type ImageSetup struct {
 		TotalBytes *int64  `json:"total_bytes,omitempty"`
 	} `json:"job,omitempty"`
 	Models *[]struct {
+		// Commercial Whether a business may use it under its license (#593, contract 1.102) Known values: `yes`, `limited`, `no`; others may be added.
+		Commercial  *string `json:"commercial,omitempty"`
 		Description *string `json:"description,omitempty"`
 
 		// Edits Edits images, or for a video model, animates them
@@ -1622,6 +1775,17 @@ type License struct {
 	TrialEnds *time.Time `json:"trial_ends,omitempty"`
 }
 
+// LicenseAcceptance Someone accepting a model's license terms in Toskar (#593, contract 1.103).
+type LicenseAcceptance struct {
+	AcceptedAt  time.Time `json:"accepted_at"`
+	LicenseId   string    `json:"license_id"`
+	LicenseName string    `json:"license_name"`
+	LicenseUrl  string    `json:"license_url"`
+	ModelId     string    `json:"model_id"`
+	PersonId    string    `json:"person_id"`
+	PersonName  *string   `json:"person_name,omitempty"`
+}
+
 // LiveFigures defines model for LiveFigures.
 type LiveFigures struct {
 	Current  *LiveSample   `json:"current,omitempty"`
@@ -1797,6 +1961,9 @@ type MessageMeta struct {
 	// Backend `backend` and Device ran the answer, such as vulkan and "AMD Radeon RX 7900 XTX", or cpu and "" (#317, contract 1.8), so a client such as the iPhone app can say whether it came from the GPU. Empty when not known, such as when a step ran on a paired computer.
 	Backend *string `json:"backend,omitempty"`
 
+	// Computer The computer the answer ran on, such as "Studio". Empty when the turn's steps ran on more than one computer.
+	Computer *string `json:"computer,omitempty"`
+
 	// Context How a turn used the model's context window, in tokens.
 	Context *ContextUsage `json:"context,omitempty"`
 
@@ -1860,6 +2027,9 @@ type MessageMeta struct {
 		Unknown *[]string `json:"unknown,omitempty"`
 	} `json:"link_check,omitempty"`
 
+	// Model The model that wrote the answer, as shown to the user, such as "Llama 3.2 1B" (toskar-apps#447, contract 1.109).
+	Model *string `json:"model,omitempty"`
+
 	// Notice `notice` tells the user something changed that may affect the answer, such as a smaller model answering after the chosen one failed.
 	Notice *string `json:"notice,omitempty"`
 
@@ -1900,7 +2070,10 @@ type Model struct {
 		ToolCalling     bool    `json:"tool_calling"`
 		Vision          bool    `json:"vision"`
 	} `json:"capabilities"`
-	Context *int `json:"context,omitempty"`
+
+	// Categories Every category the model belongs to
+	Categories *[]string `json:"categories,omitempty"`
+	Context    *int      `json:"context,omitempty"`
 
 	// ContextChoice The context window the person chose for the model; 0 or absent for Auto (#962, contract 1.69).
 	ContextChoice *int `json:"context_choice,omitempty"`
@@ -1921,10 +2094,13 @@ type Model struct {
 	Family  *string `json:"family,omitempty"`
 
 	// Fit Describes how well a model fits a node's hardware.
-	Fit         *ModelFit `json:"fit,omitempty"`
-	Id          string    `json:"id"`
-	Installed   bool      `json:"installed"`
-	InstalledOn *[]struct {
+	Fit *ModelFit `json:"fit,omitempty"`
+	Id  string    `json:"id"`
+
+	// InputModalities What the model takes, such as text, code, or image
+	InputModalities *[]string `json:"input_modalities,omitempty"`
+	Installed       bool      `json:"installed"`
+	InstalledOn     *[]struct {
 		NodeId   string `json:"node_id"`
 		NodeName string `json:"node_name"`
 	} `json:"installed_on,omitempty"`
@@ -1943,11 +2119,44 @@ type Model struct {
 		// Sources `sources` the level comes from: "model_card", "maintainer", "benchmark", "provider", "community", or "local_evaluation".
 		Sources []string `json:"sources"`
 	} `json:"languages,omitempty"`
-	LastUsedAt        *time.Time `json:"last_used_at,omitempty"`
-	MemoryNeededBytes *int64     `json:"memory_needed_bytes,omitempty"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+
+	// License A catalog model's license and what it allows, checked by hand (#593, contract 1.102). Absent where it's unknown, as for a model added from a link.
+	License *struct {
+		// Accept The person agrees to the license's terms before using the model
+		Accept *bool `json:"accept,omitempty"`
+
+		// AcceptedAt When the person asking accepted its terms in Toskar, for a license with terms to accept (contract 1.103)
+		AcceptedAt *time.Time `json:"accepted_at,omitempty"`
+
+		// Attribution Apps or published work built with the model credit it
+		Attribution *bool `json:"attribution,omitempty"`
+
+		// Commercial Whether a business may use the model: yes, limited (such as Llama's above 700 million monthly users), or no Known values: `yes`, `limited`, `no`; others may be added.
+		Commercial string `json:"commercial"`
+
+		// Id The SPDX identifier where there is one, such as apache-2.0, or the license's short name, such as llama3.2
+		Id string `json:"id"`
+
+		// Kind free: any use, nothing to accept or credit. conditions: free, with terms. Known values: `free`, `conditions`; others may be added.
+		Kind  *string `json:"kind,omitempty"`
+		Name  string  `json:"name"`
+		Notes *string `json:"notes,omitempty"`
+		Url   string  `json:"url"`
+	} `json:"license,omitempty"`
+	MemoryNeededBytes *int64 `json:"memory_needed_bytes,omitempty"`
+
+	// Newer The catalog model that replaces an installed one, size for size, such as Qwen 3.5 4B for Qwen 2.5 3B, when it is not installed too (#593, contract 1.107).
+	Newer *string `json:"newer,omitempty"`
+
+	// OutputModalities What the model gives, such as text, image, or embedding
+	OutputModalities *[]string `json:"output_modalities,omitempty"`
 
 	// Parameters e.g. "14B"
-	Parameters       *string   `json:"parameters,omitempty"`
+	Parameters *string `json:"parameters,omitempty"`
+
+	// PrimaryCategory What the model does first, for browsing the store, from the categories in manifests/models/categories.json, such as chat_coding, retrieval, or creative; uncategorized for a model nobody has checked (#593, contract 1.104). It never says Toskar can run the model; runtime does.
+	PrimaryCategory  *string   `json:"primary_category,omitempty"`
 	Purpose          *[]string `json:"purpose,omitempty"`
 	RecommendedRoles *[]string `json:"recommended_roles,omitempty"`
 	Runtime          *[]string `json:"runtime,omitempty"`
@@ -1974,7 +2183,10 @@ type Model struct {
 	SupportRole *string `json:"support_role,omitempty"`
 
 	// Tags coding, general, reasoning, vision, fast, large
-	Tags    *[]string `json:"tags,omitempty"`
+	Tags *[]string `json:"tags,omitempty"`
+
+	// Tasks What the model does in its categories, such as code_generation or text_embedding
+	Tasks   *[]string `json:"tasks,omitempty"`
 	Variant *string   `json:"variant,omitempty"`
 }
 
@@ -2303,6 +2515,12 @@ type News struct {
 
 	// Updated When toskar.ai last wrote the news.
 	Updated *string `json:"updated,omitempty"`
+}
+
+// NextTLSInfo defines model for NextTLSInfo.
+type NextTLSInfo struct {
+	// Fingerprint SHA-256 of the next certificate, as "sha256:<hex>"
+	Fingerprint *string `json:"fingerprint,omitempty"`
 }
 
 // Node defines model for Node.
@@ -2727,6 +2945,9 @@ type PersonalStyle struct {
 
 	// Length Known values: `brief`, `balanced`, `detailed`; others may be added.
 	Length *string `json:"length,omitempty"`
+
+	// Location Where the person is, such as a town. Used only for questions about nearby places, weather, and directions, and as the start of the places tools when no place is named.
+	Location *string `json:"location,omitempty"`
 
 	// Tone Known values: `friendly`, `neutral`, `direct`; others may be added.
 	Tone *string `json:"tone,omitempty"`
@@ -3406,8 +3627,11 @@ type Status struct {
 // StoreModel defines model for StoreModel.
 type StoreModel struct {
 	// CatalogId Its entry in Toskar's catalog, tested with Toskar, installed by this ID. Empty for everything else.
-	CatalogId *string    `json:"catalog_id,omitempty"`
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CatalogId *string `json:"catalog_id,omitempty"`
+
+	// Commercial Whether a business may use it, from the catalog's checked license or a license Hugging Face lists that says. Absent when unknown (#593, contract 1.102). Known values: `yes`, `limited`, `no`; others may be added.
+	Commercial *string    `json:"commercial,omitempty"`
+	CreatedAt  *time.Time `json:"created_at,omitempty"`
 
 	// DetailsUrl The model's page
 	DetailsUrl  *string `json:"details_url,omitempty"`
@@ -3420,16 +3644,19 @@ type StoreModel struct {
 	Id        string    `json:"id"`
 	Installed *bool     `json:"installed,omitempty"`
 
-	// License The license Hugging Face lists, such as apache-2.0
-	License    *string   `json:"license,omitempty"`
-	Likes      *int      `json:"likes,omitempty"`
-	Parameters *string   `json:"parameters,omitempty"`
-	RepoId     string    `json:"repo_id"`
-	SizeBytes  *int64    `json:"size_bytes,omitempty"`
-	SourceUrl  string    `json:"source_url"`
-	Summary    *string   `json:"summary,omitempty"`
-	Tags       *[]string `json:"tags,omitempty"`
-	Variant    *string   `json:"variant,omitempty"`
+	// License The license Hugging Face lists, such as apache-2.0, or the catalog's license name for a tested model
+	License *string `json:"license,omitempty"`
+
+	// LicenseKind Free, or free with conditions. Absent when the license is unknown. Known values: `free`, `conditions`; others may be added.
+	LicenseKind *string   `json:"license_kind,omitempty"`
+	Likes       *int      `json:"likes,omitempty"`
+	Parameters  *string   `json:"parameters,omitempty"`
+	RepoId      string    `json:"repo_id"`
+	SizeBytes   *int64    `json:"size_bytes,omitempty"`
+	SourceUrl   string    `json:"source_url"`
+	Summary     *string   `json:"summary,omitempty"`
+	Tags        *[]string `json:"tags,omitempty"`
+	Variant     *string   `json:"variant,omitempty"`
 }
 
 // StoreShelf defines model for StoreShelf.
@@ -3611,8 +3838,10 @@ type ToolActivity struct {
 type ToolDescriptor struct {
 	Capability    *string `json:"capability,omitempty"`
 	DefaultPolicy *string `json:"default_policy,omitempty"`
-	Description   *string `json:"description,omitempty"`
-	Enabled       *bool   `json:"enabled,omitempty"`
+
+	// Description Written for the model
+	Description *string `json:"description,omitempty"`
+	Enabled     *bool   `json:"enabled,omitempty"`
 
 	// Execution Known values: `local`, `remote`, `either`; others may be added.
 	Execution *string `json:"execution,omitempty"`
@@ -3642,8 +3871,11 @@ type ToolDescriptor struct {
 	} `json:"requirements,omitempty"`
 
 	// Risk Known values: `read`, `create`, `write`; others may be added.
-	Risk     *string `json:"risk,omitempty"`
-	Source   *string `json:"source,omitempty"`
+	Risk   *string `json:"risk,omitempty"`
+	Source *string `json:"source,omitempty"`
+
+	// Summary A short description for people (#1254); empty is description
+	Summary  *string `json:"summary,omitempty"`
 	Supports *struct {
 		Cancel   *bool `json:"cancel,omitempty"`
 		Progress *bool `json:"progress,omitempty"`
@@ -4039,6 +4271,54 @@ type VisitorLink struct {
 	Path      string    `json:"path"`
 }
 
+// VoiceSettings The Voice settings (#1304, contract 1.112)
+type VoiceSettings struct {
+	Kitten struct {
+		// Credit Shown wherever a Kitten voice is used: Powered by KittenML
+		Credit    string   `json:"credit"`
+		Error     *string  `json:"error,omitempty"`
+		Languages []string `json:"languages"`
+		License   string   `json:"license"`
+
+		// Stage While installing: program, voices, warming, or listening (contract 1.113)
+		Stage *string `json:"stage,omitempty"`
+
+		// State Known values: `not_installed`, `installing`, `installed`, `failed`; others may be added.
+		State string `json:"state"`
+
+		// Unavailable Why it can't be installed on this computer
+		Unavailable *string `json:"unavailable,omitempty"`
+		Url         string  `json:"url"`
+	} `json:"kitten"`
+	Languages []struct {
+		// Automatic The voice used when none is chosen
+		Automatic string `json:"automatic"`
+		Language  string `json:"language"`
+
+		// Voice The chosen voice; empty is automatic
+		Voice  string `json:"voice"`
+		Voices []struct {
+			Description *string `json:"description,omitempty"`
+
+			// Engine Known values: `kitten`, `kokoro`, `piper`; others may be added.
+			Engine string `json:"engine"`
+			Id     string `json:"id"`
+			Name   string `json:"name"`
+		} `json:"voices"`
+	} `json:"languages"`
+
+	// Needs The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113)
+	Needs *[]struct {
+		// Ability chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+		Ability string `json:"ability"`
+
+		// Model The catalog model to install; absent when none fits this computer
+		Model     *string `json:"model,omitempty"`
+		Name      *string `json:"name,omitempty"`
+		SizeBytes *int64  `json:"size_bytes,omitempty"`
+	} `json:"needs,omitempty"`
+}
+
 // CreateAPIKeyJSONBody defines parameters for CreateAPIKey.
 type CreateAPIKeyJSONBody struct {
 	Name *string `json:"name,omitempty"`
@@ -4177,6 +4457,26 @@ type ChatParams struct {
 // StopChatJSONBody defines parameters for StopChat.
 type StopChatJSONBody struct {
 	ConversationId string `json:"conversation_id"`
+}
+
+// SetComfyUIJSONBody defines parameters for SetComfyUI.
+type SetComfyUIJSONBody struct {
+	BaseUrl    *string `json:"base_url,omitempty"`
+	ClearToken *bool   `json:"clear_token,omitempty"`
+	Token      *string `json:"token,omitempty"`
+}
+
+// SaveComfyWorkflowJSONBody defines parameters for SaveComfyWorkflow.
+type SaveComfyWorkflowJSONBody struct {
+	Description *string                `json:"description,omitempty"`
+	Graph       map[string]interface{} `json:"graph"`
+	Inputs      *ComfyWorkflowInputs   `json:"inputs,omitempty"`
+	Name        string                 `json:"name"`
+}
+
+// DetectComfyWorkflowJSONBody defines parameters for DetectComfyWorkflow.
+type DetectComfyWorkflowJSONBody struct {
+	Graph map[string]interface{} `json:"graph"`
 }
 
 // ConnectServiceJSONBody defines parameters for ConnectService.
@@ -4574,8 +4874,10 @@ type SetModelContextJSONBodyContextWindow int
 
 // InstallModelJSONBody defines parameters for InstallModel.
 type InstallModelJSONBody struct {
-	NodeId *string `json:"node_id,omitempty"`
-	Wait   *bool   `json:"wait,omitempty"`
+	// AcceptLicense The person accepts the model's license terms, for a license with terms to accept; Toskar keeps a record of who and when (#593, contract 1.103). An install without it isn't refused.
+	AcceptLicense *bool   `json:"accept_license,omitempty"`
+	NodeId        *string `json:"node_id,omitempty"`
+	Wait          *bool   `json:"wait,omitempty"`
 }
 
 // InstallModelParams defines parameters for InstallModel.
@@ -4849,12 +5151,25 @@ type ReadAloudJSONBody struct {
 	Voice *string `json:"voice,omitempty"`
 }
 
+// SpeechSayJSONBody defines parameters for SpeechSay.
+type SpeechSayJSONBody struct {
+	Language *string `json:"language,omitempty"`
+	Text     string  `json:"text"`
+	Voice    *string `json:"voice,omitempty"`
+}
+
 // TranscribeRecordingJSONBody defines parameters for TranscribeRecording.
 type TranscribeRecordingJSONBody struct {
 	ArtifactId string `json:"artifact_id"`
 
 	// Language A hint such as en or de; empty detects the language
 	Language *string `json:"language,omitempty"`
+}
+
+// SetSpeechVoiceJSONBody defines parameters for SetSpeechVoice.
+type SetSpeechVoiceJSONBody struct {
+	// Voice One of the language's voices from GET /api/v1/speech/voices, or empty for automatic
+	Voice *string `json:"voice,omitempty"`
 }
 
 // ListSwarmsParams defines parameters for ListSwarms.
@@ -5176,6 +5491,15 @@ type ChatJSONRequestBody ChatJSONBody
 // StopChatJSONRequestBody defines body for StopChat for application/json ContentType.
 type StopChatJSONRequestBody StopChatJSONBody
 
+// SetComfyUIJSONRequestBody defines body for SetComfyUI for application/json ContentType.
+type SetComfyUIJSONRequestBody SetComfyUIJSONBody
+
+// SaveComfyWorkflowJSONRequestBody defines body for SaveComfyWorkflow for application/json ContentType.
+type SaveComfyWorkflowJSONRequestBody SaveComfyWorkflowJSONBody
+
+// DetectComfyWorkflowJSONRequestBody defines body for DetectComfyWorkflow for application/json ContentType.
+type DetectComfyWorkflowJSONRequestBody DetectComfyWorkflowJSONBody
+
 // ConnectServiceJSONRequestBody defines body for ConnectService for application/json ContentType.
 type ConnectServiceJSONRequestBody ConnectServiceJSONBody
 
@@ -5404,8 +5728,14 @@ type ResetAppJSONRequestBody ResetAppJSONBody
 // ReadAloudJSONRequestBody defines body for ReadAloud for application/json ContentType.
 type ReadAloudJSONRequestBody ReadAloudJSONBody
 
+// SpeechSayJSONRequestBody defines body for SpeechSay for application/json ContentType.
+type SpeechSayJSONRequestBody SpeechSayJSONBody
+
 // TranscribeRecordingJSONRequestBody defines body for TranscribeRecording for application/json ContentType.
 type TranscribeRecordingJSONRequestBody TranscribeRecordingJSONBody
+
+// SetSpeechVoiceJSONRequestBody defines body for SetSpeechVoice for application/json ContentType.
+type SetSpeechVoiceJSONRequestBody SetSpeechVoiceJSONBody
 
 // StartSwarmJSONRequestBody defines body for StartSwarm for application/json ContentType.
 type StartSwarmJSONRequestBody StartSwarmJSONBody
@@ -6420,6 +6750,73 @@ type ClientInterface interface {
 	// Corresponds with POST /api/v1/chat/stop (the `StopChat` operationId).
 	StopChat(ctx context.Context, body StopChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetComfyUI The connected ComfyUI and what a check finds on it (Admin)
+	//
+	// The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out.
+	//
+	// Corresponds with GET /api/v1/comfyui (the `GetComfyUI` operationId).
+	GetComfyUI(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetComfyUIWithBody Connect a ComfyUI, change its token, or disconnect it (Admin)
+	//
+	// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /api/v1/comfyui (the `SetComfyUI` operationId).
+	SetComfyUIWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetComfyUI Connect a ComfyUI, change its token, or disconnect it (Admin)
+	//
+	// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /api/v1/comfyui (the `SetComfyUI` operationId).
+	SetComfyUI(ctx context.Context, body SetComfyUIJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListComfyWorkflows Saved ComfyUI workflows, without their graphs (Admin)
+	//
+	// Corresponds with GET /api/v1/comfyui/workflows (the `ListComfyWorkflows` operationId).
+	ListComfyWorkflows(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SaveComfyWorkflowWithBody Save a ComfyUI workflow, or replace the one with its name (Admin)
+	//
+	// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/comfyui/workflows (the `SaveComfyWorkflow` operationId).
+	SaveComfyWorkflowWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SaveComfyWorkflow Save a ComfyUI workflow, or replace the one with its name (Admin)
+	//
+	// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/comfyui/workflows (the `SaveComfyWorkflow` operationId).
+	SaveComfyWorkflow(ctx context.Context, body SaveComfyWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DetectComfyWorkflowWithBody Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/comfyui/workflows/detect (the `DetectComfyWorkflow` operationId).
+	DetectComfyWorkflowWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DetectComfyWorkflow Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/comfyui/workflows/detect (the `DetectComfyWorkflow` operationId).
+	DetectComfyWorkflow(ctx context.Context, body DetectComfyWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteComfyWorkflow Remove a saved ComfyUI workflow (Admin)
+	//
+	// Corresponds with DELETE /api/v1/comfyui/workflows/{name} (the `DeleteComfyWorkflow` operationId).
+	DeleteComfyWorkflow(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListConnectors List connected services and their status. Secret values are never returned.
 	//
 	// Corresponds with GET /api/v1/connectors (the `ListConnectors` operationId).
@@ -7267,6 +7664,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/models/install-from-url/preview (the `PreviewModelFromURL` operationId).
 	PreviewModelFromURL(ctx context.Context, body PreviewModelFromURLJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListModelLicenseAcceptances Who accepted which model's license terms, and when
+	//
+	// Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+	//
+	// Corresponds with GET /api/v1/models/license-acceptances (the `ListModelLicenseAcceptances` operationId).
+	ListModelLicenseAcceptances(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RecommendModels Recommended models for this computer
 	//
@@ -8240,7 +8644,7 @@ type ClientInterface interface {
 
 	// GetRemoteAccess Access from anywhere's setting and its listener (#456)
 	//
-	// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+	// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
 	//
 	// Corresponds with GET /api/v1/remote-access (the `GetRemoteAccess` operationId).
 	GetRemoteAccess(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8252,9 +8656,16 @@ type ClientInterface interface {
 	// Corresponds with POST /api/v1/remote-access/check (the `CheckRemoteAccess` operationId).
 	CheckRemoteAccess(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetDeviceToken This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+	//
+	// Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+	//
+	// Corresponds with GET /api/v1/remote-access/device-token (the `GetDeviceToken` operationId).
+	GetDeviceToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PutRelayToken Hand over a subscription's relay token (#456)
 	//
-	// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+	// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
 	//
 	// Corresponds with PUT /api/v1/remote-access/relay-token (the `PutRelayToken` operationId).
 	PutRelayToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8265,6 +8676,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /api/v1/remote-access/route (the `GetRouteSecret` operationId).
 	GetRouteSecret(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelSubscriptionCheckout Close the checkout opened here before it's paid (#1257)
+	//
+	// Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+	//
+	// Corresponds with DELETE /api/v1/remote-access/subscription/checkout (the `CancelSubscriptionCheckout` operationId).
+	CancelSubscriptionCheckout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StartSubscriptionCheckout Subscribe to access from anywhere here, with Stripe (#639)
 	//
@@ -8279,6 +8697,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/remote-access/subscription/manage (the `ManageSubscription` operationId).
 	ManageSubscription(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MoveSubscription Move the subscription bought here onto this computer (#1257)
+	//
+	// When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+	//
+	// Corresponds with POST /api/v1/remote-access/subscription/move (the `MoveSubscription` operationId).
+	MoveSubscription(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RoleCapabilities What each role may use (#589)
 	//
@@ -8413,6 +8838,38 @@ type ClientInterface interface {
 	// Corresponds with POST /api/v1/speech (the `ReadAloud` operationId).
 	ReadAloud(ctx context.Context, body ReadAloudJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RemoveKitten Remove Kitten TTS 2 mini (#1304)
+	//
+	// Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+	//
+	// Corresponds with DELETE /api/v1/speech/kitten (the `RemoveKitten` operationId).
+	RemoveKitten(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// InstallKitten Install Kitten TTS 2 mini (#1304)
+	//
+	// Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+	//
+	// Corresponds with POST /api/v1/speech/kitten (the `InstallKitten` operationId).
+	InstallKitten(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SpeechSayWithBody Read a little text aloud in the computer's voice (#795)
+	//
+	// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/speech/say (the `SpeechSay` operationId).
+	SpeechSayWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SpeechSay Read a little text aloud in the computer's voice (#795)
+	//
+	// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/speech/say (the `SpeechSay` operationId).
+	SpeechSay(ctx context.Context, body SpeechSayJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// TranscribeRecordingWithBody A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155)
 	//
 	// The recording is attached first with POST /api/v1/artifacts (audio). Runs speech.transcribe (Whisper) on this computer or a paired one that has it, and answers the text for the person to check before sending. Visitors and paired devices may use it.
@@ -8430,6 +8887,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/speech/transcribe (the `TranscribeRecording` operationId).
 	TranscribeRecording(ctx context.Context, body TranscribeRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SpeechVoices The Voice settings (#1304)
+	//
+	// Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+	//
+	// Corresponds with GET /api/v1/speech/voices (the `SpeechVoices` operationId).
+	SpeechVoices(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetSpeechVoiceWithBody Choose the voice a language is read aloud in (#1304)
+	//
+	// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /api/v1/speech/voices/{language} (the `SetSpeechVoice` operationId).
+	SetSpeechVoiceWithBody(ctx context.Context, language string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetSpeechVoice Choose the voice a language is read aloud in (#1304)
+	//
+	// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /api/v1/speech/voices/{language} (the `SetSpeechVoice` operationId).
+	SetSpeechVoice(ctx context.Context, language string, body SetSpeechVoiceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListSwarms The caller's swarms
 	//
@@ -8505,6 +8987,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /api/v1/tls (the `GetApiTLS` operationId).
 	GetApiTLS(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNextApiTLS The certificate that replaces one naming the computer (#1263)
+	//
+	// Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+	//
+	// Corresponds with GET /api/v1/tls/next (the `GetNextApiTLS` operationId).
+	GetNextApiTLS(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTools Every tool's descriptor, with whether it is on, its health, and the profiles that allow it
 	//
@@ -8867,6 +9356,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/video/setup/build (the `UseVideoBuild` operationId).
 	UseVideoBuild(ctx context.Context, body UseVideoBuildJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VoiceRealtime Live voice mode, over a WebSocket (#795)
+	//
+	// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+	//
+	// Corresponds with GET /api/v1/voice/realtime (the `VoiceRealtime` operationId).
+	VoiceRealtime(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunHookWithBody Start the automation a webhook link belongs to
 	//
@@ -9682,6 +10178,163 @@ func (c *Client) StopChatWithBody(ctx context.Context, contentType string, body 
 // Corresponds with POST /api/v1/chat/stop (the `StopChat` operationId).
 func (c *Client) StopChat(ctx context.Context, body StopChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStopChatRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetComfyUI The connected ComfyUI and what a check finds on it (Admin)
+//
+// The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out.
+//
+// Corresponds with GET /api/v1/comfyui (the `GetComfyUI` operationId).
+func (c *Client) GetComfyUI(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetComfyUIRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetComfyUIWithBody Connect a ComfyUI, change its token, or disconnect it (Admin)
+//
+// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /api/v1/comfyui (the `SetComfyUI` operationId).
+func (c *Client) SetComfyUIWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetComfyUIRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetComfyUI Connect a ComfyUI, change its token, or disconnect it (Admin)
+//
+// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /api/v1/comfyui (the `SetComfyUI` operationId).
+func (c *Client) SetComfyUI(ctx context.Context, body SetComfyUIJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetComfyUIRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListComfyWorkflows Saved ComfyUI workflows, without their graphs (Admin)
+//
+// Corresponds with GET /api/v1/comfyui/workflows (the `ListComfyWorkflows` operationId).
+func (c *Client) ListComfyWorkflows(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListComfyWorkflowsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SaveComfyWorkflowWithBody Save a ComfyUI workflow, or replace the one with its name (Admin)
+//
+// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/comfyui/workflows (the `SaveComfyWorkflow` operationId).
+func (c *Client) SaveComfyWorkflowWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSaveComfyWorkflowRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SaveComfyWorkflow Save a ComfyUI workflow, or replace the one with its name (Admin)
+//
+// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/comfyui/workflows (the `SaveComfyWorkflow` operationId).
+func (c *Client) SaveComfyWorkflow(ctx context.Context, body SaveComfyWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSaveComfyWorkflowRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DetectComfyWorkflowWithBody Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/comfyui/workflows/detect (the `DetectComfyWorkflow` operationId).
+func (c *Client) DetectComfyWorkflowWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDetectComfyWorkflowRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DetectComfyWorkflow Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/comfyui/workflows/detect (the `DetectComfyWorkflow` operationId).
+func (c *Client) DetectComfyWorkflow(ctx context.Context, body DetectComfyWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDetectComfyWorkflowRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteComfyWorkflow Remove a saved ComfyUI workflow (Admin)
+//
+// Corresponds with DELETE /api/v1/comfyui/workflows/{name} (the `DeleteComfyWorkflow` operationId).
+func (c *Client) DeleteComfyWorkflow(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteComfyWorkflowRequest(c.Server, name)
 	if err != nil {
 		return nil, err
 	}
@@ -11810,6 +12463,23 @@ func (c *Client) PreviewModelFromURLWithBody(ctx context.Context, contentType st
 // Corresponds with POST /api/v1/models/install-from-url/preview (the `PreviewModelFromURL` operationId).
 func (c *Client) PreviewModelFromURL(ctx context.Context, body PreviewModelFromURLJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPreviewModelFromURLRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListModelLicenseAcceptances Who accepted which model's license terms, and when
+//
+// Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+//
+// Corresponds with GET /api/v1/models/license-acceptances (the `ListModelLicenseAcceptances` operationId).
+func (c *Client) ListModelLicenseAcceptances(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListModelLicenseAcceptancesRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -14192,7 +14862,7 @@ func (c *Client) GetCommunityRatings(ctx context.Context, reqEditors ...RequestE
 
 // GetRemoteAccess Access from anywhere's setting and its listener (#456)
 //
-// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
 //
 // Corresponds with GET /api/v1/remote-access (the `GetRemoteAccess` operationId).
 func (c *Client) GetRemoteAccess(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -14224,9 +14894,26 @@ func (c *Client) CheckRemoteAccess(ctx context.Context, reqEditors ...RequestEdi
 	return c.Client.Do(req)
 }
 
+// GetDeviceToken This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+//
+// Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+//
+// Corresponds with GET /api/v1/remote-access/device-token (the `GetDeviceToken` operationId).
+func (c *Client) GetDeviceToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDeviceTokenRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // PutRelayToken Hand over a subscription's relay token (#456)
 //
-// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
 //
 // Corresponds with PUT /api/v1/remote-access/relay-token (the `PutRelayToken` operationId).
 func (c *Client) PutRelayToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -14248,6 +14935,23 @@ func (c *Client) PutRelayToken(ctx context.Context, reqEditors ...RequestEditorF
 // Corresponds with GET /api/v1/remote-access/route (the `GetRouteSecret` operationId).
 func (c *Client) GetRouteSecret(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRouteSecretRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CancelSubscriptionCheckout Close the checkout opened here before it's paid (#1257)
+//
+// Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+//
+// Corresponds with DELETE /api/v1/remote-access/subscription/checkout (the `CancelSubscriptionCheckout` operationId).
+func (c *Client) CancelSubscriptionCheckout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelSubscriptionCheckoutRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -14282,6 +14986,23 @@ func (c *Client) StartSubscriptionCheckout(ctx context.Context, reqEditors ...Re
 // Corresponds with POST /api/v1/remote-access/subscription/manage (the `ManageSubscription` operationId).
 func (c *Client) ManageSubscription(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewManageSubscriptionRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MoveSubscription Move the subscription bought here onto this computer (#1257)
+//
+// When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+//
+// Corresponds with POST /api/v1/remote-access/subscription/move (the `MoveSubscription` operationId).
+func (c *Client) MoveSubscription(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMoveSubscriptionRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -14615,6 +15336,78 @@ func (c *Client) ReadAloud(ctx context.Context, body ReadAloudJSONRequestBody, r
 	return c.Client.Do(req)
 }
 
+// RemoveKitten Remove Kitten TTS 2 mini (#1304)
+//
+// Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+//
+// Corresponds with DELETE /api/v1/speech/kitten (the `RemoveKitten` operationId).
+func (c *Client) RemoveKitten(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveKittenRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// InstallKitten Install Kitten TTS 2 mini (#1304)
+//
+// Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+//
+// Corresponds with POST /api/v1/speech/kitten (the `InstallKitten` operationId).
+func (c *Client) InstallKitten(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewInstallKittenRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SpeechSayWithBody Read a little text aloud in the computer's voice (#795)
+//
+// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/speech/say (the `SpeechSay` operationId).
+func (c *Client) SpeechSayWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSpeechSayRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SpeechSay Read a little text aloud in the computer's voice (#795)
+//
+// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/speech/say (the `SpeechSay` operationId).
+func (c *Client) SpeechSay(ctx context.Context, body SpeechSayJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSpeechSayRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // TranscribeRecordingWithBody A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155)
 //
 // The recording is attached first with POST /api/v1/artifacts (audio). Runs speech.transcribe (Whisper) on this computer or a paired one that has it, and answers the text for the person to check before sending. Visitors and paired devices may use it.
@@ -14643,6 +15436,61 @@ func (c *Client) TranscribeRecordingWithBody(ctx context.Context, contentType st
 // Corresponds with POST /api/v1/speech/transcribe (the `TranscribeRecording` operationId).
 func (c *Client) TranscribeRecording(ctx context.Context, body TranscribeRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewTranscribeRecordingRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SpeechVoices The Voice settings (#1304)
+//
+// Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+//
+// Corresponds with GET /api/v1/speech/voices (the `SpeechVoices` operationId).
+func (c *Client) SpeechVoices(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSpeechVoicesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetSpeechVoiceWithBody Choose the voice a language is read aloud in (#1304)
+//
+// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /api/v1/speech/voices/{language} (the `SetSpeechVoice` operationId).
+func (c *Client) SetSpeechVoiceWithBody(ctx context.Context, language string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetSpeechVoiceRequestWithBody(c.Server, language, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetSpeechVoice Choose the voice a language is read aloud in (#1304)
+//
+// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /api/v1/speech/voices/{language} (the `SetSpeechVoice` operationId).
+func (c *Client) SetSpeechVoice(ctx context.Context, language string, body SetSpeechVoiceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetSpeechVoiceRequest(c.Server, language, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14828,6 +15676,23 @@ func (c *Client) GetTask(ctx context.Context, id string, reqEditors ...RequestEd
 // Corresponds with GET /api/v1/tls (the `GetApiTLS` operationId).
 func (c *Client) GetApiTLS(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetApiTLSRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetNextApiTLS The certificate that replaces one naming the computer (#1263)
+//
+// Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+//
+// Corresponds with GET /api/v1/tls/next (the `GetNextApiTLS` operationId).
+func (c *Client) GetNextApiTLS(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNextApiTLSRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -15790,6 +16655,23 @@ func (c *Client) UseVideoBuildWithBody(ctx context.Context, contentType string, 
 // Corresponds with POST /api/v1/video/setup/build (the `UseVideoBuild` operationId).
 func (c *Client) UseVideoBuild(ctx context.Context, body UseVideoBuildJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUseVideoBuildRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VoiceRealtime Live voice mode, over a WebSocket (#795)
+//
+// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+//
+// Corresponds with GET /api/v1/voice/realtime (the `VoiceRealtime` operationId).
+func (c *Client) VoiceRealtime(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVoiceRealtimeRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -17357,6 +18239,214 @@ func NewStopChatRequestWithBody(server string, contentType string, body io.Reade
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetComfyUIRequest constructs an http.Request for the GetComfyUI method
+func NewGetComfyUIRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/comfyui")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetComfyUIRequest calls the generic SetComfyUI builder with application/json body
+func NewSetComfyUIRequest(server string, body SetComfyUIJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetComfyUIRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSetComfyUIRequestWithBody constructs an http.Request for the SetComfyUI method, with any body, and a specified content type
+func NewSetComfyUIRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/comfyui")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListComfyWorkflowsRequest constructs an http.Request for the ListComfyWorkflows method
+func NewListComfyWorkflowsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/comfyui/workflows")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSaveComfyWorkflowRequest calls the generic SaveComfyWorkflow builder with application/json body
+func NewSaveComfyWorkflowRequest(server string, body SaveComfyWorkflowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSaveComfyWorkflowRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSaveComfyWorkflowRequestWithBody constructs an http.Request for the SaveComfyWorkflow method, with any body, and a specified content type
+func NewSaveComfyWorkflowRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/comfyui/workflows")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDetectComfyWorkflowRequest calls the generic DetectComfyWorkflow builder with application/json body
+func NewDetectComfyWorkflowRequest(server string, body DetectComfyWorkflowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDetectComfyWorkflowRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewDetectComfyWorkflowRequestWithBody constructs an http.Request for the DetectComfyWorkflow method, with any body, and a specified content type
+func NewDetectComfyWorkflowRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/comfyui/workflows/detect")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteComfyWorkflowRequest constructs an http.Request for the DeleteComfyWorkflow method
+func NewDeleteComfyWorkflowRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/comfyui/workflows/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -20981,6 +22071,33 @@ func NewPreviewModelFromURLRequestWithBody(server string, contentType string, bo
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListModelLicenseAcceptancesRequest constructs an http.Request for the ListModelLicenseAcceptances method
+func NewListModelLicenseAcceptancesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/models/license-acceptances")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -25176,6 +26293,33 @@ func NewCheckRemoteAccessRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetDeviceTokenRequest constructs an http.Request for the GetDeviceToken method
+func NewGetDeviceTokenRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/remote-access/device-token")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPutRelayTokenRequest constructs an http.Request for the PutRelayToken method
 func NewPutRelayTokenRequest(server string) (*http.Request, error) {
 	var err error
@@ -25230,6 +26374,33 @@ func NewGetRouteSecretRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewCancelSubscriptionCheckoutRequest constructs an http.Request for the CancelSubscriptionCheckout method
+func NewCancelSubscriptionCheckoutRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/remote-access/subscription/checkout")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewStartSubscriptionCheckoutRequest constructs an http.Request for the StartSubscriptionCheckout method
 func NewStartSubscriptionCheckoutRequest(server string) (*http.Request, error) {
 	var err error
@@ -25267,6 +26438,33 @@ func NewManageSubscriptionRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/remote-access/subscription/manage")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewMoveSubscriptionRequest constructs an http.Request for the MoveSubscription method
+func NewMoveSubscriptionRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/remote-access/subscription/move")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -25800,6 +26998,100 @@ func NewReadAloudRequestWithBody(server string, contentType string, body io.Read
 	return req, nil
 }
 
+// NewRemoveKittenRequest constructs an http.Request for the RemoveKitten method
+func NewRemoveKittenRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/speech/kitten")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewInstallKittenRequest constructs an http.Request for the InstallKitten method
+func NewInstallKittenRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/speech/kitten")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSpeechSayRequest calls the generic SpeechSay builder with application/json body
+func NewSpeechSayRequest(server string, body SpeechSayJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSpeechSayRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSpeechSayRequestWithBody constructs an http.Request for the SpeechSay method, with any body, and a specified content type
+func NewSpeechSayRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/speech/say")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewTranscribeRecordingRequest calls the generic TranscribeRecording builder with application/json body
 func NewTranscribeRecordingRequest(server string, body TranscribeRecordingJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -25831,6 +27123,80 @@ func NewTranscribeRecordingRequestWithBody(server string, contentType string, bo
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSpeechVoicesRequest constructs an http.Request for the SpeechVoices method
+func NewSpeechVoicesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/speech/voices")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetSpeechVoiceRequest calls the generic SetSpeechVoice builder with application/json body
+func NewSetSpeechVoiceRequest(server string, language string, body SetSpeechVoiceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetSpeechVoiceRequestWithBody(server, language, "application/json", bodyReader)
+}
+
+// NewSetSpeechVoiceRequestWithBody constructs an http.Request for the SetSpeechVoice method, with any body, and a specified content type
+func NewSetSpeechVoiceRequestWithBody(server string, language string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "language", language, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/speech/voices/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -26147,6 +27513,33 @@ func NewGetApiTLSRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/tls")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNextApiTLSRequest constructs an http.Request for the GetNextApiTLS method
+func NewGetNextApiTLSRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/tls/next")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -27938,6 +29331,33 @@ func NewUseVideoBuildRequestWithBody(server string, contentType string, body io.
 	return req, nil
 }
 
+// NewVoiceRealtimeRequest constructs an http.Request for the VoiceRealtime method
+func NewVoiceRealtimeRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/voice/realtime")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRunHookRequestWithBody constructs an http.Request for the RunHook method, with any body, and a specified content type
 func NewRunHookRequestWithBody(server string, token string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -28655,6 +30075,79 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/chat/stop (the `StopChat` operationId).
 	StopChatWithResponse(ctx context.Context, body StopChatJSONRequestBody, reqEditors ...RequestEditorFn) (*StopChatResponse, error)
+
+	// GetComfyUIWithResponse The connected ComfyUI and what a check finds on it (Admin)
+	//
+	// The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/comfyui (the `GetComfyUI` operationId).
+	GetComfyUIWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetComfyUIResponse, error)
+
+	// SetComfyUIWithBodyWithResponse Connect a ComfyUI, change its token, or disconnect it (Admin)
+	//
+	// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/comfyui (the `SetComfyUI` operationId).
+	SetComfyUIWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetComfyUIResponse, error)
+
+	// SetComfyUIWithResponse Connect a ComfyUI, change its token, or disconnect it (Admin)
+	//
+	// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/comfyui (the `SetComfyUI` operationId).
+	SetComfyUIWithResponse(ctx context.Context, body SetComfyUIJSONRequestBody, reqEditors ...RequestEditorFn) (*SetComfyUIResponse, error)
+
+	// ListComfyWorkflowsWithResponse Saved ComfyUI workflows, without their graphs (Admin)
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/comfyui/workflows (the `ListComfyWorkflows` operationId).
+	ListComfyWorkflowsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListComfyWorkflowsResponse, error)
+
+	// SaveComfyWorkflowWithBodyWithResponse Save a ComfyUI workflow, or replace the one with its name (Admin)
+	//
+	// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/comfyui/workflows (the `SaveComfyWorkflow` operationId).
+	SaveComfyWorkflowWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SaveComfyWorkflowResponse, error)
+
+	// SaveComfyWorkflowWithResponse Save a ComfyUI workflow, or replace the one with its name (Admin)
+	//
+	// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/comfyui/workflows (the `SaveComfyWorkflow` operationId).
+	SaveComfyWorkflowWithResponse(ctx context.Context, body SaveComfyWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*SaveComfyWorkflowResponse, error)
+
+	// DetectComfyWorkflowWithBodyWithResponse Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/comfyui/workflows/detect (the `DetectComfyWorkflow` operationId).
+	DetectComfyWorkflowWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DetectComfyWorkflowResponse, error)
+
+	// DetectComfyWorkflowWithResponse Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/comfyui/workflows/detect (the `DetectComfyWorkflow` operationId).
+	DetectComfyWorkflowWithResponse(ctx context.Context, body DetectComfyWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*DetectComfyWorkflowResponse, error)
+
+	// DeleteComfyWorkflowWithResponse Remove a saved ComfyUI workflow (Admin)
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/v1/comfyui/workflows/{name} (the `DeleteComfyWorkflow` operationId).
+	DeleteComfyWorkflowWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteComfyWorkflowResponse, error)
 
 	// ListConnectorsWithResponse List connected services and their status. Secret values are never returned.
 	//
@@ -29631,6 +31124,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/models/install-from-url/preview (the `PreviewModelFromURL` operationId).
 	PreviewModelFromURLWithResponse(ctx context.Context, body PreviewModelFromURLJSONRequestBody, reqEditors ...RequestEditorFn) (*PreviewModelFromURLResponse, error)
+
+	// ListModelLicenseAcceptancesWithResponse Who accepted which model's license terms, and when
+	//
+	// Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/models/license-acceptances (the `ListModelLicenseAcceptances` operationId).
+	ListModelLicenseAcceptancesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListModelLicenseAcceptancesResponse, error)
 
 	// RecommendModelsWithResponse Recommended models for this computer
 	//
@@ -30732,7 +32234,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetRemoteAccessWithResponse Access from anywhere's setting and its listener (#456)
 	//
-	// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+	// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -30748,9 +32250,18 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /api/v1/remote-access/check (the `CheckRemoteAccess` operationId).
 	CheckRemoteAccessWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CheckRemoteAccessResponse, error)
 
+	// GetDeviceTokenWithResponse This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+	//
+	// Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/remote-access/device-token (the `GetDeviceToken` operationId).
+	GetDeviceTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDeviceTokenResponse, error)
+
 	// PutRelayTokenWithResponse Hand over a subscription's relay token (#456)
 	//
-	// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+	// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -30765,6 +32276,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /api/v1/remote-access/route (the `GetRouteSecret` operationId).
 	GetRouteSecretWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRouteSecretResponse, error)
+
+	// CancelSubscriptionCheckoutWithResponse Close the checkout opened here before it's paid (#1257)
+	//
+	// Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/v1/remote-access/subscription/checkout (the `CancelSubscriptionCheckout` operationId).
+	CancelSubscriptionCheckoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CancelSubscriptionCheckoutResponse, error)
 
 	// StartSubscriptionCheckoutWithResponse Subscribe to access from anywhere here, with Stripe (#639)
 	//
@@ -30783,6 +32303,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/remote-access/subscription/manage (the `ManageSubscription` operationId).
 	ManageSubscriptionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ManageSubscriptionResponse, error)
+
+	// MoveSubscriptionWithResponse Move the subscription bought here onto this computer (#1257)
+	//
+	// When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/remote-access/subscription/move (the `MoveSubscription` operationId).
+	MoveSubscriptionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*MoveSubscriptionResponse, error)
 
 	// RoleCapabilitiesWithResponse What each role may use (#589)
 	//
@@ -30931,6 +32460,42 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /api/v1/speech (the `ReadAloud` operationId).
 	ReadAloudWithResponse(ctx context.Context, body ReadAloudJSONRequestBody, reqEditors ...RequestEditorFn) (*ReadAloudResponse, error)
 
+	// RemoveKittenWithResponse Remove Kitten TTS 2 mini (#1304)
+	//
+	// Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/v1/speech/kitten (the `RemoveKitten` operationId).
+	RemoveKittenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RemoveKittenResponse, error)
+
+	// InstallKittenWithResponse Install Kitten TTS 2 mini (#1304)
+	//
+	// Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/speech/kitten (the `InstallKitten` operationId).
+	InstallKittenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*InstallKittenResponse, error)
+
+	// SpeechSayWithBodyWithResponse Read a little text aloud in the computer's voice (#795)
+	//
+	// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/speech/say (the `SpeechSay` operationId).
+	SpeechSayWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SpeechSayResponse, error)
+
+	// SpeechSayWithResponse Read a little text aloud in the computer's voice (#795)
+	//
+	// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/speech/say (the `SpeechSay` operationId).
+	SpeechSayWithResponse(ctx context.Context, body SpeechSayJSONRequestBody, reqEditors ...RequestEditorFn) (*SpeechSayResponse, error)
+
 	// TranscribeRecordingWithBodyWithResponse A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155)
 	//
 	// The recording is attached first with POST /api/v1/artifacts (audio). Runs speech.transcribe (Whisper) on this computer or a paired one that has it, and answers the text for the person to check before sending. Visitors and paired devices may use it.
@@ -30948,6 +32513,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/speech/transcribe (the `TranscribeRecording` operationId).
 	TranscribeRecordingWithResponse(ctx context.Context, body TranscribeRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*TranscribeRecordingResponse, error)
+
+	// SpeechVoicesWithResponse The Voice settings (#1304)
+	//
+	// Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/speech/voices (the `SpeechVoices` operationId).
+	SpeechVoicesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SpeechVoicesResponse, error)
+
+	// SetSpeechVoiceWithBodyWithResponse Choose the voice a language is read aloud in (#1304)
+	//
+	// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/speech/voices/{language} (the `SetSpeechVoice` operationId).
+	SetSpeechVoiceWithBodyWithResponse(ctx context.Context, language string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetSpeechVoiceResponse, error)
+
+	// SetSpeechVoiceWithResponse Choose the voice a language is read aloud in (#1304)
+	//
+	// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/speech/voices/{language} (the `SetSpeechVoice` operationId).
+	SetSpeechVoiceWithResponse(ctx context.Context, language string, body SetSpeechVoiceJSONRequestBody, reqEditors ...RequestEditorFn) (*SetSpeechVoiceResponse, error)
 
 	// ListSwarmsWithResponse The caller's swarms
 	//
@@ -31037,6 +32629,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /api/v1/tls (the `GetApiTLS` operationId).
 	GetApiTLSWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiTLSResponse, error)
+
+	// GetNextApiTLSWithResponse The certificate that replaces one naming the computer (#1263)
+	//
+	// Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/tls/next (the `GetNextApiTLS` operationId).
+	GetNextApiTLSWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNextApiTLSResponse, error)
 
 	// ListToolsWithResponse Every tool's descriptor, with whether it is on, its health, and the profiles that allow it
 	//
@@ -31463,6 +33064,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/video/setup/build (the `UseVideoBuild` operationId).
 	UseVideoBuildWithResponse(ctx context.Context, body UseVideoBuildJSONRequestBody, reqEditors ...RequestEditorFn) (*UseVideoBuildResponse, error)
+
+	// VoiceRealtimeWithResponse Live voice mode, over a WebSocket (#795)
+	//
+	// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/voice/realtime (the `VoiceRealtime` operationId).
+	VoiceRealtimeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*VoiceRealtimeResponse, error)
 
 	// RunHookWithBodyWithResponse Start the automation a webhook link belongs to
 	//
@@ -33162,6 +34772,245 @@ func (r StopChatResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r StopChatResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetComfyUIResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ComfyUIStatus
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetComfyUIResponse) GetJSON200() *ComfyUIStatus {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetComfyUIResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetComfyUIResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetComfyUIResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetComfyUIResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetComfyUIResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ComfyUIStatus
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetComfyUIResponse) GetJSON200() *ComfyUIStatus {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r SetComfyUIResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetComfyUIResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetComfyUIResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetComfyUIResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListComfyWorkflowsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ComfyWorkflows
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListComfyWorkflowsResponse) GetJSON200() *ComfyWorkflows {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListComfyWorkflowsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListComfyWorkflowsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListComfyWorkflowsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListComfyWorkflowsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SaveComfyWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ComfyWorkflow
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SaveComfyWorkflowResponse) GetJSON200() *ComfyWorkflow {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r SaveComfyWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SaveComfyWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SaveComfyWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SaveComfyWorkflowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DetectComfyWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ComfyWorkflowInputs
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DetectComfyWorkflowResponse) GetJSON200() *ComfyWorkflowInputs {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r DetectComfyWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DetectComfyWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DetectComfyWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DetectComfyWorkflowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteComfyWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteComfyWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteComfyWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteComfyWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteComfyWorkflowResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -37042,6 +38891,47 @@ func (r PreviewModelFromURLResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PreviewModelFromURLResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListModelLicenseAcceptancesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]LicenseAcceptance
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListModelLicenseAcceptancesResponse) GetJSON200() *[]LicenseAcceptance {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListModelLicenseAcceptancesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListModelLicenseAcceptancesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListModelLicenseAcceptancesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListModelLicenseAcceptancesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -41333,6 +43223,47 @@ func (r CheckRemoteAccessResponse) ContentType() string {
 	return ""
 }
 
+type GetDeviceTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DeviceToken
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetDeviceTokenResponse) GetJSON200() *DeviceToken {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetDeviceTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDeviceTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDeviceTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDeviceTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type PutRelayTokenResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -41408,6 +43339,40 @@ func (r GetRouteSecretResponse) ContentType() string {
 	return ""
 }
 
+type CancelSubscriptionCheckoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r CancelSubscriptionCheckoutResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CancelSubscriptionCheckoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CancelSubscriptionCheckoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CancelSubscriptionCheckoutResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type StartSubscriptionCheckoutResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -41470,6 +43435,40 @@ func (r ManageSubscriptionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ManageSubscriptionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MoveSubscriptionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r MoveSubscriptionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r MoveSubscriptionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MoveSubscriptionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MoveSubscriptionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -41995,6 +43994,143 @@ func (r ReadAloudResponse) ContentType() string {
 	return ""
 }
 
+type RemoveKittenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VoiceSettings
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemoveKittenResponse) GetJSON200() *VoiceSettings {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveKittenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveKittenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveKittenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveKittenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type InstallKittenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VoiceSettings
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r InstallKittenResponse) GetJSON200() *VoiceSettings {
+	return r.JSON200
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r InstallKittenResponse) GetJSON503() *Error {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r InstallKittenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r InstallKittenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r InstallKittenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r InstallKittenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SpeechSayResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *Error
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *Error
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SpeechSayResponse) GetJSON400() *Error {
+	return r.JSON400
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r SpeechSayResponse) GetJSON503() *Error {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r SpeechSayResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SpeechSayResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SpeechSayResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SpeechSayResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type TranscribeRecordingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -42037,6 +44173,102 @@ func (r TranscribeRecordingResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r TranscribeRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SpeechVoicesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VoiceSettings
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SpeechVoicesResponse) GetJSON200() *VoiceSettings {
+	return r.JSON200
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SpeechVoicesResponse) GetJSON403() *Error {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r SpeechVoicesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SpeechVoicesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SpeechVoicesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SpeechVoicesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetSpeechVoiceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VoiceSettings
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetSpeechVoiceResponse) GetJSON200() *VoiceSettings {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetSpeechVoiceResponse) GetJSON400() *Error {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r SetSpeechVoiceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetSpeechVoiceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetSpeechVoiceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetSpeechVoiceResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -42469,6 +44701,47 @@ func (r GetApiTLSResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetApiTLSResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetNextApiTLSResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *NextTLSInfo
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetNextApiTLSResponse) GetJSON200() *NextTLSInfo {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetNextApiTLSResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNextApiTLSResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNextApiTLSResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNextApiTLSResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -44578,6 +46851,54 @@ func (r UseVideoBuildResponse) ContentType() string {
 	return ""
 }
 
+type VoiceRealtimeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON426 the response for an HTTP 426 `application/json` response
+	JSON426 *Error
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *Error
+}
+
+// GetJSON426 returns the response for an HTTP 426 `application/json` response
+func (r VoiceRealtimeResponse) GetJSON426() *Error {
+	return r.JSON426
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r VoiceRealtimeResponse) GetJSON503() *Error {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r VoiceRealtimeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VoiceRealtimeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VoiceRealtimeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VoiceRealtimeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type RunHookResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -45621,6 +47942,133 @@ func (c *ClientWithResponses) StopChatWithResponse(ctx context.Context, body Sto
 		return nil, err
 	}
 	return ParseStopChatResponse(rsp)
+}
+
+// GetComfyUIWithResponse The connected ComfyUI and what a check finds on it (Admin)
+//
+// The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/comfyui (the `GetComfyUI` operationId).
+func (c *ClientWithResponses) GetComfyUIWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetComfyUIResponse, error) {
+	rsp, err := c.GetComfyUI(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetComfyUIResponse(rsp)
+}
+
+// SetComfyUIWithBodyWithResponse Connect a ComfyUI, change its token, or disconnect it (Admin)
+//
+// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/comfyui (the `SetComfyUI` operationId).
+func (c *ClientWithResponses) SetComfyUIWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetComfyUIResponse, error) {
+	rsp, err := c.SetComfyUIWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetComfyUIResponse(rsp)
+}
+
+// SetComfyUIWithResponse Connect a ComfyUI, change its token, or disconnect it (Admin)
+//
+// The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/comfyui (the `SetComfyUI` operationId).
+func (c *ClientWithResponses) SetComfyUIWithResponse(ctx context.Context, body SetComfyUIJSONRequestBody, reqEditors ...RequestEditorFn) (*SetComfyUIResponse, error) {
+	rsp, err := c.SetComfyUI(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetComfyUIResponse(rsp)
+}
+
+// ListComfyWorkflowsWithResponse Saved ComfyUI workflows, without their graphs (Admin)
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/comfyui/workflows (the `ListComfyWorkflows` operationId).
+func (c *ClientWithResponses) ListComfyWorkflowsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListComfyWorkflowsResponse, error) {
+	rsp, err := c.ListComfyWorkflows(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListComfyWorkflowsResponse(rsp)
+}
+
+// SaveComfyWorkflowWithBodyWithResponse Save a ComfyUI workflow, or replace the one with its name (Admin)
+//
+// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/comfyui/workflows (the `SaveComfyWorkflow` operationId).
+func (c *ClientWithResponses) SaveComfyWorkflowWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SaveComfyWorkflowResponse, error) {
+	rsp, err := c.SaveComfyWorkflowWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSaveComfyWorkflowResponse(rsp)
+}
+
+// SaveComfyWorkflowWithResponse Save a ComfyUI workflow, or replace the one with its name (Admin)
+//
+// graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/comfyui/workflows (the `SaveComfyWorkflow` operationId).
+func (c *ClientWithResponses) SaveComfyWorkflowWithResponse(ctx context.Context, body SaveComfyWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*SaveComfyWorkflowResponse, error) {
+	rsp, err := c.SaveComfyWorkflow(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSaveComfyWorkflowResponse(rsp)
+}
+
+// DetectComfyWorkflowWithBodyWithResponse Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/comfyui/workflows/detect (the `DetectComfyWorkflow` operationId).
+func (c *ClientWithResponses) DetectComfyWorkflowWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DetectComfyWorkflowResponse, error) {
+	rsp, err := c.DetectComfyWorkflowWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDetectComfyWorkflowResponse(rsp)
+}
+
+// DetectComfyWorkflowWithResponse Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin)
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/comfyui/workflows/detect (the `DetectComfyWorkflow` operationId).
+func (c *ClientWithResponses) DetectComfyWorkflowWithResponse(ctx context.Context, body DetectComfyWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*DetectComfyWorkflowResponse, error) {
+	rsp, err := c.DetectComfyWorkflow(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDetectComfyWorkflowResponse(rsp)
+}
+
+// DeleteComfyWorkflowWithResponse Remove a saved ComfyUI workflow (Admin)
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/v1/comfyui/workflows/{name} (the `DeleteComfyWorkflow` operationId).
+func (c *ClientWithResponses) DeleteComfyWorkflowWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteComfyWorkflowResponse, error) {
+	rsp, err := c.DeleteComfyWorkflow(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteComfyWorkflowResponse(rsp)
 }
 
 // ListConnectorsWithResponse List connected services and their status. Secret values are never returned.
@@ -47365,6 +49813,21 @@ func (c *ClientWithResponses) PreviewModelFromURLWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParsePreviewModelFromURLResponse(rsp)
+}
+
+// ListModelLicenseAcceptancesWithResponse Who accepted which model's license terms, and when
+//
+// Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/models/license-acceptances (the `ListModelLicenseAcceptances` operationId).
+func (c *ClientWithResponses) ListModelLicenseAcceptancesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListModelLicenseAcceptancesResponse, error) {
+	rsp, err := c.ListModelLicenseAcceptances(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListModelLicenseAcceptancesResponse(rsp)
 }
 
 // RecommendModelsWithResponse Recommended models for this computer
@@ -49307,7 +51770,7 @@ func (c *ClientWithResponses) GetCommunityRatingsWithResponse(ctx context.Contex
 
 // GetRemoteAccessWithResponse Access from anywhere's setting and its listener (#456)
 //
-// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+// enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -49335,9 +51798,24 @@ func (c *ClientWithResponses) CheckRemoteAccessWithResponse(ctx context.Context,
 	return ParseCheckRemoteAccessResponse(rsp)
 }
 
+// GetDeviceTokenWithResponse This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+//
+// Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/remote-access/device-token (the `GetDeviceToken` operationId).
+func (c *ClientWithResponses) GetDeviceTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDeviceTokenResponse, error) {
+	rsp, err := c.GetDeviceToken(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDeviceTokenResponse(rsp)
+}
+
 // PutRelayTokenWithResponse Hand over a subscription's relay token (#456)
 //
-// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+// Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -49363,6 +51841,21 @@ func (c *ClientWithResponses) GetRouteSecretWithResponse(ctx context.Context, re
 		return nil, err
 	}
 	return ParseGetRouteSecretResponse(rsp)
+}
+
+// CancelSubscriptionCheckoutWithResponse Close the checkout opened here before it's paid (#1257)
+//
+// Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/v1/remote-access/subscription/checkout (the `CancelSubscriptionCheckout` operationId).
+func (c *ClientWithResponses) CancelSubscriptionCheckoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CancelSubscriptionCheckoutResponse, error) {
+	rsp, err := c.CancelSubscriptionCheckout(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelSubscriptionCheckoutResponse(rsp)
 }
 
 // StartSubscriptionCheckoutWithResponse Subscribe to access from anywhere here, with Stripe (#639)
@@ -49393,6 +51886,21 @@ func (c *ClientWithResponses) ManageSubscriptionWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseManageSubscriptionResponse(rsp)
+}
+
+// MoveSubscriptionWithResponse Move the subscription bought here onto this computer (#1257)
+//
+// When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/remote-access/subscription/move (the `MoveSubscription` operationId).
+func (c *ClientWithResponses) MoveSubscriptionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*MoveSubscriptionResponse, error) {
+	rsp, err := c.MoveSubscription(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMoveSubscriptionResponse(rsp)
 }
 
 // RoleCapabilitiesWithResponse What each role may use (#589)
@@ -49656,6 +52164,66 @@ func (c *ClientWithResponses) ReadAloudWithResponse(ctx context.Context, body Re
 	return ParseReadAloudResponse(rsp)
 }
 
+// RemoveKittenWithResponse Remove Kitten TTS 2 mini (#1304)
+//
+// Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/v1/speech/kitten (the `RemoveKitten` operationId).
+func (c *ClientWithResponses) RemoveKittenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RemoveKittenResponse, error) {
+	rsp, err := c.RemoveKitten(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveKittenResponse(rsp)
+}
+
+// InstallKittenWithResponse Install Kitten TTS 2 mini (#1304)
+//
+// Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/speech/kitten (the `InstallKitten` operationId).
+func (c *ClientWithResponses) InstallKittenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*InstallKittenResponse, error) {
+	rsp, err := c.InstallKitten(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseInstallKittenResponse(rsp)
+}
+
+// SpeechSayWithBodyWithResponse Read a little text aloud in the computer's voice (#795)
+//
+// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/speech/say (the `SpeechSay` operationId).
+func (c *ClientWithResponses) SpeechSayWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SpeechSayResponse, error) {
+	rsp, err := c.SpeechSayWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSpeechSayResponse(rsp)
+}
+
+// SpeechSayWithResponse Read a little text aloud in the computer's voice (#795)
+//
+// Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/speech/say (the `SpeechSay` operationId).
+func (c *ClientWithResponses) SpeechSayWithResponse(ctx context.Context, body SpeechSayJSONRequestBody, reqEditors ...RequestEditorFn) (*SpeechSayResponse, error) {
+	rsp, err := c.SpeechSay(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSpeechSayResponse(rsp)
+}
+
 // TranscribeRecordingWithBodyWithResponse A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155)
 //
 // The recording is attached first with POST /api/v1/artifacts (audio). Runs speech.transcribe (Whisper) on this computer or a paired one that has it, and answers the text for the person to check before sending. Visitors and paired devices may use it.
@@ -49684,6 +52252,51 @@ func (c *ClientWithResponses) TranscribeRecordingWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseTranscribeRecordingResponse(rsp)
+}
+
+// SpeechVoicesWithResponse The Voice settings (#1304)
+//
+// Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/speech/voices (the `SpeechVoices` operationId).
+func (c *ClientWithResponses) SpeechVoicesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SpeechVoicesResponse, error) {
+	rsp, err := c.SpeechVoices(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSpeechVoicesResponse(rsp)
+}
+
+// SetSpeechVoiceWithBodyWithResponse Choose the voice a language is read aloud in (#1304)
+//
+// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/speech/voices/{language} (the `SetSpeechVoice` operationId).
+func (c *ClientWithResponses) SetSpeechVoiceWithBodyWithResponse(ctx context.Context, language string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetSpeechVoiceResponse, error) {
+	rsp, err := c.SetSpeechVoiceWithBody(ctx, language, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetSpeechVoiceResponse(rsp)
+}
+
+// SetSpeechVoiceWithResponse Choose the voice a language is read aloud in (#1304)
+//
+// Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/speech/voices/{language} (the `SetSpeechVoice` operationId).
+func (c *ClientWithResponses) SetSpeechVoiceWithResponse(ctx context.Context, language string, body SetSpeechVoiceJSONRequestBody, reqEditors ...RequestEditorFn) (*SetSpeechVoiceResponse, error) {
+	rsp, err := c.SetSpeechVoice(ctx, language, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetSpeechVoiceResponse(rsp)
 }
 
 // ListSwarmsWithResponse The caller's swarms
@@ -49839,6 +52452,21 @@ func (c *ClientWithResponses) GetApiTLSWithResponse(ctx context.Context, reqEdit
 		return nil, err
 	}
 	return ParseGetApiTLSResponse(rsp)
+}
+
+// GetNextApiTLSWithResponse The certificate that replaces one naming the computer (#1263)
+//
+// Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/tls/next (the `GetNextApiTLS` operationId).
+func (c *ClientWithResponses) GetNextApiTLSWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNextApiTLSResponse, error) {
+	rsp, err := c.GetNextApiTLS(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNextApiTLSResponse(rsp)
 }
 
 // ListToolsWithResponse Every tool's descriptor, with whether it is on, its health, and the profiles that allow it
@@ -50625,6 +53253,21 @@ func (c *ClientWithResponses) UseVideoBuildWithResponse(ctx context.Context, bod
 		return nil, err
 	}
 	return ParseUseVideoBuildResponse(rsp)
+}
+
+// VoiceRealtimeWithResponse Live voice mode, over a WebSocket (#795)
+//
+// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/voice/realtime (the `VoiceRealtime` operationId).
+func (c *ClientWithResponses) VoiceRealtimeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*VoiceRealtimeResponse, error) {
+	rsp, err := c.VoiceRealtime(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVoiceRealtimeResponse(rsp)
 }
 
 // RunHookWithBodyWithResponse Start the automation a webhook link belongs to
@@ -51917,6 +54560,176 @@ func ParseStopChatResponse(rsp *http.Response) (*StopChatResponse, error) {
 		}
 		response.JSON200 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseGetComfyUIResponse parses an HTTP response from a GetComfyUIWithResponse call
+func ParseGetComfyUIResponse(rsp *http.Response) (*GetComfyUIResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetComfyUIResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ComfyUIStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 403:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseSetComfyUIResponse parses an HTTP response from a SetComfyUIWithResponse call
+func ParseSetComfyUIResponse(rsp *http.Response) (*SetComfyUIResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetComfyUIResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ComfyUIStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 403:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseListComfyWorkflowsResponse parses an HTTP response from a ListComfyWorkflowsWithResponse call
+func ParseListComfyWorkflowsResponse(rsp *http.Response) (*ListComfyWorkflowsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListComfyWorkflowsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ComfyWorkflows
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 403:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseSaveComfyWorkflowResponse parses an HTTP response from a SaveComfyWorkflowWithResponse call
+func ParseSaveComfyWorkflowResponse(rsp *http.Response) (*SaveComfyWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SaveComfyWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ComfyWorkflow
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 403:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseDetectComfyWorkflowResponse parses an HTTP response from a DetectComfyWorkflowWithResponse call
+func ParseDetectComfyWorkflowResponse(rsp *http.Response) (*DetectComfyWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DetectComfyWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ComfyWorkflowInputs
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 403:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteComfyWorkflowResponse parses an HTTP response from a DeleteComfyWorkflowWithResponse call
+func ParseDeleteComfyWorkflowResponse(rsp *http.Response) (*DeleteComfyWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteComfyWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil
@@ -54356,6 +57169,32 @@ func ParsePreviewModelFromURLResponse(rsp *http.Response) (*PreviewModelFromURLR
 
 	case rsp.StatusCode == 400:
 		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseListModelLicenseAcceptancesResponse parses an HTTP response from a ListModelLicenseAcceptancesWithResponse call
+func ParseListModelLicenseAcceptancesResponse(rsp *http.Response) (*ListModelLicenseAcceptancesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListModelLicenseAcceptancesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []LicenseAcceptance
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 
@@ -57144,6 +59983,32 @@ func ParseCheckRemoteAccessResponse(rsp *http.Response) (*CheckRemoteAccessRespo
 	return response, nil
 }
 
+// ParseGetDeviceTokenResponse parses an HTTP response from a GetDeviceTokenWithResponse call
+func ParseGetDeviceTokenResponse(rsp *http.Response) (*GetDeviceTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDeviceTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeviceToken
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePutRelayTokenResponse parses an HTTP response from a PutRelayTokenWithResponse call
 func ParsePutRelayTokenResponse(rsp *http.Response) (*PutRelayTokenResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -57189,6 +60054,22 @@ func ParseGetRouteSecretResponse(rsp *http.Response) (*GetRouteSecretResponse, e
 	return response, nil
 }
 
+// ParseCancelSubscriptionCheckoutResponse parses an HTTP response from a CancelSubscriptionCheckoutWithResponse call
+func ParseCancelSubscriptionCheckoutResponse(rsp *http.Response) (*CancelSubscriptionCheckoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CancelSubscriptionCheckoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseStartSubscriptionCheckoutResponse parses an HTTP response from a StartSubscriptionCheckoutWithResponse call
 func ParseStartSubscriptionCheckoutResponse(rsp *http.Response) (*StartSubscriptionCheckoutResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -57214,6 +60095,22 @@ func ParseManageSubscriptionResponse(rsp *http.Response) (*ManageSubscriptionRes
 	}
 
 	response := &ManageSubscriptionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseMoveSubscriptionResponse parses an HTTP response from a MoveSubscriptionWithResponse call
+func ParseMoveSubscriptionResponse(rsp *http.Response) (*MoveSubscriptionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MoveSubscriptionResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -57548,6 +60445,98 @@ func ParseReadAloudResponse(rsp *http.Response) (*ReadAloudResponse, error) {
 	return response, nil
 }
 
+// ParseRemoveKittenResponse parses an HTTP response from a RemoveKittenWithResponse call
+func ParseRemoveKittenResponse(rsp *http.Response) (*RemoveKittenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveKittenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VoiceSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseInstallKittenResponse parses an HTTP response from a InstallKittenWithResponse call
+func ParseInstallKittenResponse(rsp *http.Response) (*InstallKittenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &InstallKittenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VoiceSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSpeechSayResponse parses an HTTP response from a SpeechSayWithResponse call
+func ParseSpeechSayResponse(rsp *http.Response) (*SpeechSayResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SpeechSayResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseTranscribeRecordingResponse parses an HTTP response from a TranscribeRecordingWithResponse call
 func ParseTranscribeRecordingResponse(rsp *http.Response) (*TranscribeRecordingResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -57578,6 +60567,72 @@ func ParseTranscribeRecordingResponse(rsp *http.Response) (*TranscribeRecordingR
 			return nil, err
 		}
 		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSpeechVoicesResponse parses an HTTP response from a SpeechVoicesWithResponse call
+func ParseSpeechVoicesResponse(rsp *http.Response) (*SpeechVoicesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SpeechVoicesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VoiceSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetSpeechVoiceResponse parses an HTTP response from a SetSpeechVoiceWithResponse call
+func ParseSetSpeechVoiceResponse(rsp *http.Response) (*SetSpeechVoiceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetSpeechVoiceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VoiceSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	}
 
@@ -57874,6 +60929,32 @@ func ParseGetApiTLSResponse(rsp *http.Response) (*GetApiTLSResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest TLSInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNextApiTLSResponse parses an HTTP response from a GetNextApiTLSWithResponse call
+func ParseGetNextApiTLSResponse(rsp *http.Response) (*GetNextApiTLSResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNextApiTLSResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NextTLSInfo
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -59312,6 +62393,42 @@ func ParseUseVideoBuildResponse(rsp *http.Response) (*UseVideoBuildResponse, err
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseVoiceRealtimeResponse parses an HTTP response from a VoiceRealtimeWithResponse call
+func ParseVoiceRealtimeResponse(rsp *http.Response) (*VoiceRealtimeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VoiceRealtimeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 101:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 426:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON426 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 

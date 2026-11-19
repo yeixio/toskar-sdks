@@ -3,7 +3,7 @@
 package toskar
 
 // ContractVersion is the client contract this SDK was built for.
-const ContractVersion = "1.98"
+const ContractVersion = "1.114"
 
 // The codes Toskar Core answers errors with, as APIError.Code. A newer
 // Core may answer with one this list doesn't have yet.
@@ -50,16 +50,32 @@ const (
 	ErrorCodeBrowseFailed = "BROWSE_FAILED"
 	// ErrorCodeCacheNotFound: No cache has that name.
 	ErrorCodeCacheNotFound = "CACHE_NOT_FOUND"
+	// ErrorCodeCameraAddress: Enter the camera's address, such as 192.168.1.50.
+	ErrorCodeCameraAddress = "CAMERA_ADDRESS"
+	// ErrorCodeCameraSpeakerUnreachable: Toskar couldn't reach the camera's speaker, so the visitor wasn't answered. Check that the camera is on and on the same network as this computer.
+	ErrorCodeCameraSpeakerUnreachable = "CAMERA_SPEAKER_UNREACHABLE"
+	// ErrorCodeCameraUnreachable: Toskar couldn't reach a camera at that address. Check the address, and that the camera's HTTP or HTTPS server is on.
+	ErrorCodeCameraUnreachable = "CAMERA_UNREACHABLE"
 	// ErrorCodeCapabilityOff: This is turned off for your account. Ask {{admin}} or another Admin to turn it on.
 	ErrorCodeCapabilityOff = "CAPABILITY_OFF"
 	// ErrorCodeCapabilityUnknown: Toskar doesn't know that capability.
 	ErrorCodeCapabilityUnknown = "CAPABILITY_UNKNOWN"
 	// ErrorCodeChatFailed: {{detail}}
 	ErrorCodeChatFailed = "CHAT_FAILED"
+	// ErrorCodeCheckoutNone: There's no checkout open to cancel.
+	ErrorCodeCheckoutNone = "CHECKOUT_NONE"
 	// ErrorCodeClaimFailed: {{detail}}
 	ErrorCodeClaimFailed = "CLAIM_FAILED"
+	// ErrorCodeComfyuiBadUrl: The ComfyUI address must start with http:// or https://, such as http://127.0.0.1:8188.
+	ErrorCodeComfyuiBadUrl = "COMFYUI_BAD_URL"
+	// ErrorCodeComfyuiBadWorkflow: {{detail}}
+	ErrorCodeComfyuiBadWorkflow = "COMFYUI_BAD_WORKFLOW"
+	// ErrorCodeComfyuiFailed: {{detail}}
+	ErrorCodeComfyuiFailed = "COMFYUI_FAILED"
 	// ErrorCodeCompactFailed: The chat couldn't be compacted: {{detail}}
 	ErrorCodeCompactFailed = "COMPACT_FAILED"
+	// ErrorCodeCompanionLimit: A device connected through another can't connect more. Connect it from the phone.
+	ErrorCodeCompanionLimit = "COMPANION_LIMIT"
 	// ErrorCodeComputerOffline: The computer running this model is offline.
 	ErrorCodeComputerOffline = "COMPUTER_OFFLINE"
 	// ErrorCodeConfirmName: To remove {{name}}, type their name to confirm.
@@ -106,6 +122,8 @@ const (
 	ErrorCodeDeviceNotFound = "DEVICE_NOT_FOUND"
 	// ErrorCodeDiagnosticsFailed: Couldn't create a diagnostics bundle.
 	ErrorCodeDiagnosticsFailed = "DIAGNOSTICS_FAILED"
+	// ErrorCodeDoorNotAnswered: Someone came to the door, and Toskar couldn't answer: {{detail}}
+	ErrorCodeDoorNotAnswered = "DOOR_NOT_ANSWERED"
 	// ErrorCodeEgressFailed: {{detail}}
 	ErrorCodeEgressFailed = "EGRESS_FAILED"
 	// ErrorCodeEmailInvalid: That isn't an email address.
@@ -164,6 +182,8 @@ const (
 	ErrorCodeInvalidRetention = "INVALID_RETENTION"
 	// ErrorCodeInvalidSetting: “{{value}}” isn't a valid value for {{setting}}.
 	ErrorCodeInvalidSetting = "INVALID_SETTING"
+	// ErrorCodeInvalidVoice: That voice isn't one {{language}} can be read in here.
+	ErrorCodeInvalidVoice = "INVALID_VOICE"
 	// ErrorCodeInviteInvalid: This link has expired or was already used. Ask for a new one.
 	ErrorCodeInviteInvalid = "INVITE_INVALID"
 	// ErrorCodeJoinBadRequest: {{detail}}
@@ -262,6 +282,12 @@ const (
 	ErrorCodeModelUnhealthy = "MODEL_UNHEALTHY"
 	// ErrorCodeModelUpdateFailed: {{detail}}
 	ErrorCodeModelUpdateFailed = "MODEL_UPDATE_FAILED"
+	// ErrorCodeMoveFailed: Toskar's relay didn't move the subscription ({{relay_code}}).
+	ErrorCodeMoveFailed = "MOVE_FAILED"
+	// ErrorCodeMoveNeedsComputer: To move it, Toskar's relay needs to hear from the computer it's on now: turn that computer on once, or wait until it has been off for 3 days.
+	ErrorCodeMoveNeedsComputer = "MOVE_NEEDS_COMPUTER"
+	// ErrorCodeMoveTooSoon: The subscription moved less than a day ago. It can move again tomorrow.
+	ErrorCodeMoveTooSoon = "MOVE_TOO_SOON"
 	// ErrorCodeNameInvalid: A name is 1 to 80 characters.
 	ErrorCodeNameInvalid = "NAME_INVALID"
 	// ErrorCodeNeedsApproval: This needs your approval before the automation can go on.
@@ -424,6 +450,10 @@ const (
 	ErrorCodeRelayTokenInvalid = "RELAY_TOKEN_INVALID"
 	// ErrorCodeRelayTokenNotNeeded: This computer uses your organization's relay, so it doesn't need a subscription.
 	ErrorCodeRelayTokenNotNeeded = "RELAY_TOKEN_NOT_NEEDED"
+	// ErrorCodeRelayTokenShorter: This computer already has a relay token that lasts longer, so it keeps that one.
+	ErrorCodeRelayTokenShorter = "RELAY_TOKEN_SHORTER"
+	// ErrorCodeRelayUnreachable: Toskar's relay couldn't be reached. Try again in a minute.
+	ErrorCodeRelayUnreachable = "RELAY_UNREACHABLE"
 	// ErrorCodeRemoteAccessOff: Access from anywhere is off, so there's nothing to check. Turn it on first.
 	ErrorCodeRemoteAccessOff = "REMOTE_ACCESS_OFF"
 	// ErrorCodeRemoteAddressInvalid: Enter a host name or IP, with a port when it differs, such as home.example.com or 203.0.113.7:7333.
@@ -520,6 +550,8 @@ const (
 	ErrorCodeStopFailed = "STOP_FAILED"
 	// ErrorCodeSubscriptionActive: This computer already has access from anywhere.
 	ErrorCodeSubscriptionActive = "SUBSCRIPTION_ACTIVE"
+	// ErrorCodeSubscriptionCovered: Another device's subscription already covers this computer, so there's nothing to buy here.
+	ErrorCodeSubscriptionCovered = "SUBSCRIPTION_COVERED"
 	// ErrorCodeSubscriptionFailed: Couldn't start the subscription.
 	ErrorCodeSubscriptionFailed = "SUBSCRIPTION_FAILED"
 	// ErrorCodeSubscriptionInAppOnly: This copy of Toskar is from the App Store, so access from anywhere is sold in the Toskar app on your phone or tablet.
@@ -578,6 +610,10 @@ const (
 	ErrorCodeUsernameInvalid = "USERNAME_INVALID"
 	// ErrorCodeUsernameTaken: That username is taken.
 	ErrorCodeUsernameTaken = "USERNAME_TAKEN"
+	// ErrorCodeVoiceUnavailable: Live voice isn't available on this computer.
+	ErrorCodeVoiceUnavailable = "VOICE_UNAVAILABLE"
 	// ErrorCodeWarmFailed: {{detail}}
 	ErrorCodeWarmFailed = "WARM_FAILED"
+	// ErrorCodeWebsocketRequired: Live voice needs a WebSocket connection.
+	ErrorCodeWebsocketRequired = "WEBSOCKET_REQUIRED"
 )

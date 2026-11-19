@@ -27,11 +27,19 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.billingUnavailable` | `BILLING_UNAVAILABLE` | Billing couldn't be reached. Try again in a minute. |
 | `.browseFailed` | `BROWSE_FAILED` | {{detail}} |
 | `.cacheNotFound` | `CACHE_NOT_FOUND` | No cache has that name. |
+| `.cameraAddress` | `CAMERA_ADDRESS` | Enter the camera's address, such as 192.168.1.50. |
+| `.cameraSpeakerUnreachable` | `CAMERA_SPEAKER_UNREACHABLE` | Toskar couldn't reach the camera's speaker, so the visitor wasn't answered. Check that the camera is on and on the same network as this computer. |
+| `.cameraUnreachable` | `CAMERA_UNREACHABLE` | Toskar couldn't reach a camera at that address. Check the address, and that the camera's HTTP or HTTPS server is on. |
 | `.capabilityOff` | `CAPABILITY_OFF` | This is turned off for your account. Ask {{admin}} or another Admin to turn it on. |
 | `.capabilityUnknown` | `CAPABILITY_UNKNOWN` | Toskar doesn't know that capability. |
 | `.chatFailed` | `CHAT_FAILED` | {{detail}} |
+| `.checkoutNone` | `CHECKOUT_NONE` | There's no checkout open to cancel. |
 | `.claimFailed` | `CLAIM_FAILED` | {{detail}} |
+| `.comfyuiBadUrl` | `COMFYUI_BAD_URL` | The ComfyUI address must start with http:// or https://, such as http://127.0.0.1:8188. |
+| `.comfyuiBadWorkflow` | `COMFYUI_BAD_WORKFLOW` | {{detail}} |
+| `.comfyuiFailed` | `COMFYUI_FAILED` | {{detail}} |
 | `.compactFailed` | `COMPACT_FAILED` | The chat couldn't be compacted: {{detail}} |
+| `.companionLimit` | `COMPANION_LIMIT` | A device connected through another can't connect more. Connect it from the phone. |
 | `.computerOffline` | `COMPUTER_OFFLINE` | The computer running this model is offline. |
 | `.confirmName` | `CONFIRM_NAME` | To remove {{name}}, type their name to confirm. |
 | `.conflict` | `CONFLICT` | {{detail}} |
@@ -55,6 +63,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.deviceNotFound` | `DEVICE_NOT_FOUND` | No device of yours has that id. |
 | `.devicesFailed` | `DEVICES_FAILED` | Couldn't read or change your devices. |
 | `.diagnosticsFailed` | `DIAGNOSTICS_FAILED` | Couldn't create a diagnostics bundle. |
+| `.doorNotAnswered` | `DOOR_NOT_ANSWERED` | Someone came to the door, and Toskar couldn't answer: {{detail}} |
 | `.egressFailed` | `EGRESS_FAILED` | {{detail}} |
 | `.emailInvalid` | `EMAIL_INVALID` | That isn't an email address. |
 | `.emailTaken` | `EMAIL_TAKEN` | Someone else has that email address. |
@@ -84,6 +93,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.invalidRating` | `INVALID_RATING` | A rating is 1 to 5 stars, with reasons from the list. |
 | `.invalidRetention` | `INVALID_RETENTION` | {{detail}} |
 | `.invalidSetting` | `INVALID_SETTING` | “{{value}}” isn't a valid value for {{setting}}. |
+| `.invalidVoice` | `INVALID_VOICE` | That voice isn't one {{language}} can be read in here. |
 | `.inviteInvalid` | `INVITE_INVALID` | This link has expired or was already used. Ask for a new one. |
 | `.joinBadRequest` | `JOIN_BAD_REQUEST` | {{detail}} |
 | `.joinFailed` | `JOIN_FAILED` | {{detail}} |
@@ -133,6 +143,9 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.modelUnhealthy` | `MODEL_UNHEALTHY` | The model stopped working. |
 | `.modelUpdateFailed` | `MODEL_UPDATE_FAILED` | {{detail}} |
 | `.modelsListFailed` | `MODELS_LIST_FAILED` | Couldn't list models. |
+| `.moveFailed` | `MOVE_FAILED` | Toskar's relay didn't move the subscription ({{relay_code}}). |
+| `.moveNeedsComputer` | `MOVE_NEEDS_COMPUTER` | To move it, Toskar's relay needs to hear from the computer it's on now: turn that computer on once, or wait until it has been off for 3 days. |
+| `.moveTooSoon` | `MOVE_TOO_SOON` | The subscription moved less than a day ago. It can move again tomorrow. |
 | `.nameInvalid` | `NAME_INVALID` | A name is 1 to 80 characters. |
 | `.needsApproval` | `NEEDS_APPROVAL` | This needs your approval before the automation can go on. |
 | `.newsUnavailable` | `NEWS_UNAVAILABLE` | The AI news couldn't be read from toskar.ai. Check the internet connection and try again. |
@@ -220,6 +233,8 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.relayTokenFailed` | `RELAY_TOKEN_FAILED` | Couldn't save the relay token on this computer. |
 | `.relayTokenInvalid` | `RELAY_TOKEN_INVALID` | That relay token isn't for this computer, or it has run out. Subscribe again from this device. |
 | `.relayTokenNotNeeded` | `RELAY_TOKEN_NOT_NEEDED` | This computer uses your organization's relay, so it doesn't need a subscription. |
+| `.relayTokenShorter` | `RELAY_TOKEN_SHORTER` | This computer already has a relay token that lasts longer, so it keeps that one. |
+| `.relayUnreachable` | `RELAY_UNREACHABLE` | Toskar's relay couldn't be reached. Try again in a minute. |
 | `.remoteAccessOff` | `REMOTE_ACCESS_OFF` | Access from anywhere is off, so there's nothing to check. Turn it on first. |
 | `.remoteAddressInvalid` | `REMOTE_ADDRESS_INVALID` | Enter a host name or IP, with a port when it differs, such as home.example.com or 203.0.113.7:7333. |
 | `.remoteDevicesOnly` | `REMOTE_DEVICES_ONLY` | From outside the home network, only paired devices can connect. |
@@ -268,6 +283,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.startFailed` | `START_FAILED` | {{detail}} |
 | `.stopFailed` | `STOP_FAILED` | {{detail}} |
 | `.subscriptionActive` | `SUBSCRIPTION_ACTIVE` | This computer already has access from anywhere. |
+| `.subscriptionCovered` | `SUBSCRIPTION_COVERED` | Another device's subscription already covers this computer, so there's nothing to buy here. |
 | `.subscriptionFailed` | `SUBSCRIPTION_FAILED` | Couldn't start the subscription. |
 | `.subscriptionInAppOnly` | `SUBSCRIPTION_IN_APP_ONLY` | This copy of Toskar is from the App Store, so access from anywhere is sold in the Toskar app on your phone or tablet. |
 | `.subscriptionNone` | `SUBSCRIPTION_NONE` | This computer has no subscription bought in its settings. One bought in the Toskar app is managed in your phone's or tablet's store. |
@@ -298,4 +314,6 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.unsupportedFile` | `UNSUPPORTED_FILE` | Toskar can't read {{name}} yet. Attach a document, spreadsheet, PDF, code file, audio, video, or a PNG or JPEG image. |
 | `.usernameInvalid` | `USERNAME_INVALID` | A username is 3 to 32 letters, digits, dots, dashes, or underscores. |
 | `.usernameTaken` | `USERNAME_TAKEN` | That username is taken. |
+| `.voiceUnavailable` | `VOICE_UNAVAILABLE` | Live voice isn't available on this computer. |
 | `.warmFailed` | `WARM_FAILED` | {{detail}} |
+| `.websocketRequired` | `WEBSOCKET_REQUIRED` | Live voice needs a WebSocket connection. |

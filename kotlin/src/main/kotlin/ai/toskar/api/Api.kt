@@ -179,6 +179,42 @@ public class Api internal constructor(private val toskar: Toskar) {
     public fun stopChat(body: StopChatRequest): ChatStopped =
         toskar.call("POST", "/api/v1/chat/stop", listOf(), body = toskar.json(body))
 
+    /**
+     * The connected ComfyUI and what a check finds on it (Admin)
+     *
+     * The check reads ComfyUI's /system_stats and /object_info. When it fails, error says why and info is left out.
+     */
+    public fun getComfyUI(): ComfyUIStatus =
+        toskar.call("GET", "/api/v1/comfyui", listOf())
+
+    /**
+     * Connect a ComfyUI, change its token, or disconnect it (Admin)
+     *
+     * The token is stored in the secrets folder, sent as a Bearer token, and never returned. An empty token keeps the stored one; clear_token removes it; an empty base_url disconnects.
+     */
+    public fun setComfyUI(body: SetComfyUIRequest): ComfyUIStatus =
+        toskar.call("PUT", "/api/v1/comfyui", listOf(), body = toskar.json(body))
+
+    /** Saved ComfyUI workflows, without their graphs (Admin) */
+    public fun listComfyWorkflows(): ComfyWorkflows =
+        toskar.call("GET", "/api/v1/comfyui/workflows", listOf())
+
+    /**
+     * Save a ComfyUI workflow, or replace the one with its name (Admin)
+     *
+     * graph is the workflow exported from ComfyUI with Workflow › Export (API). Without inputs, they are detected. The name is made lowercase with dashes. A workflow needs a prompt or an image input.
+     */
+    public fun saveComfyWorkflow(body: SaveComfyWorkflowRequest): ComfyWorkflow =
+        toskar.call("POST", "/api/v1/comfyui/workflows", listOf(), body = toskar.json(body))
+
+    /** Find a workflow's prompt, negative prompt, seed, picture, and size inputs (Admin) */
+    public fun detectComfyWorkflow(body: DetectComfyWorkflowRequest): ComfyWorkflowInputs =
+        toskar.call("POST", "/api/v1/comfyui/workflows/detect", listOf(), body = toskar.json(body))
+
+    /** Remove a saved ComfyUI workflow (Admin) */
+    public fun deleteComfyWorkflow(name: String): Unit =
+        toskar.call("DELETE", "/api/v1/comfyui/workflows/{name}", listOf(name))
+
     /** List connected services and their status. Secret values are never returned. */
     public fun listConnectors(): List<ConnectorStatus> =
         toskar.call("GET", "/api/v1/connectors", listOf())
@@ -703,6 +739,14 @@ public class Api internal constructor(private val toskar: Toskar) {
      */
     public fun previewModelFromURL(body: InstallFromURLRequest): URLPreview =
         toskar.call("POST", "/api/v1/models/install-from-url/preview", listOf(), body = toskar.json(body))
+
+    /**
+     * Who accepted which model's license terms, and when
+     *
+     * Every time someone accepted a catalog model's license terms in Toskar, newest first, kept after the model is removed (#593, contract 1.103). For Admins.
+     */
+    public fun listModelLicenseAcceptances(): List<LicenseAcceptance> =
+        toskar.call("GET", "/api/v1/models/license-acceptances", listOf())
 
     /**
      * Recommended models for this computer
@@ -1315,7 +1359,7 @@ public class Api internal constructor(private val toskar: Toskar) {
     /**
      * Access from anywhere's setting and its listener (#456)
      *
-     * enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
+     * enabled, port, address (a forwarded address, when set), listening (the address it listens on) or error, port_mapping, mapped and mapped_by (pcp, nat-pmp, or upnp) for the router port it opened, map_error, ipv6, reachable (direct, ipv6, manual, relay, or none) with reason (off, not_listening, carrier_nat, or no_port), relay (name, state: no_token, ended (contract 1.41: the token ran out with nothing to renew it, so it isn't sent; a new one takes over within a minute), connecting, connected, or error, and error, its code) while the relay client runs, and check, the last outside check (#546, contract 1.28): at, relay and direct (each way in with address, ok, reason, and ms), tried, and error when the last attempt didn't reach the relay (CHECK_UNSUPPORTED, CHECK_TOO_SOON, NO_TOKEN, RELAY_UNREACHABLE). With Toskar's relay, subscription (#639, contract 1.38): state (none, pending, active, or ended; contract 1.41: ended also when the token from the app's store or a subscription ran out, with expires the day it did), store (stripe when bought here in Settings, app when bought in the Toskar app), expires, open (whether Toskar's relay takes new subscriptions now, when known), checkout (the open checkout's page while pending), error (the last exchange's code when it didn't reach the relay), and in_app_only (contract 1.39: this copy is the Mac App Store's, which neither sells nor manages it; the Toskar app on a phone or tablet does), relay, the relay it's for when that isn't Toskar's own, such as a developer's (#1266), and prices, what the checkout charges for monthly and yearly (amount in the currency's major unit, and currency), from billing once it has answered (#1257). Set it with PATCH /api/v1/settings: remote_access_enabled, remote_access_port, remote_access_address, remote_access_port_mapping, remote_access_relay (an organization's relay, empty for Toskar's), and remote_access_relay_secret (its enrollment secret; write-only, empty clears it).
      */
     public fun getRemoteAccess(): Unit =
         toskar.call("GET", "/api/v1/remote-access", listOf())
@@ -1329,9 +1373,17 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("POST", "/api/v1/remote-access/check", listOf())
 
     /**
+     * This computer's device token for Toskar's relay, from anywhere (yeixio/toskar-apps#451)
+     *
+     * Answers {token}: the device token GET /remote-access/route also gives, so a paired device away from home gets the newer one after the computer renews, without coming home (contract 1.99). A paired device's key may ask through the remote listener too; the route secret stays home-only. The device token only looks the route's record up and can't open the computer's tunnel. Empty with an organization's relay, or before the relay has made one.
+     */
+    public fun getDeviceToken(): DeviceToken =
+        toskar.call("GET", "/api/v1/remote-access/device-token", listOf())
+
+    /**
      * Hand over a subscription's relay token (#456)
      *
-     * Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route or has expired, RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
+     * Body {token, enable}. token is the route token the app got for this computer by exchanging a store receipt with Toskar's relay; the computer keeps it and registers and keeps its tunnel there. A paired device may send it, from home or through the remote listener. enable also turns access from anywhere on, and needs an Admin (403 ROLE_REQUIRED). Answers state: the relay client's state, or off. 400 RELAY_TOKEN_INVALID for a token that isn't for this computer's route, has expired, or the relay doesn't take (the computer asks it first; RELAY_UNREACHABLE when it can't), RELAY_TOKEN_SHORTER for one that ends before the token in use while that one still works (#1258), RELAY_TOKEN_NOT_NEEDED when an organization's relay is set.
      */
     public fun putRelayToken(): Unit =
         toskar.call("PUT", "/api/v1/remote-access/relay-token", listOf())
@@ -1353,12 +1405,28 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("POST", "/api/v1/remote-access/subscription/checkout", listOf())
 
     /**
+     * Close the checkout opened here before it's paid (#1257)
+     *
+     * Forgets the open Stripe checkout, so Toskar stops asking the relay about it and Settings offers the plans again. Admins only. 404 CHECKOUT_NONE when no checkout is open.
+     */
+    public fun cancelSubscriptionCheckout(): Unit =
+        toskar.call("DELETE", "/api/v1/remote-access/subscription/checkout", listOf())
+
+    /**
      * The billing page for the subscription bought here (#639)
      *
      * Answers {url}, Stripe's billing page for the subscription bought in Settings: change the card, download receipts, cancel. Admins only. 409 SUBSCRIPTION_IN_APP_ONLY in the Mac App Store's copy; 404 SUBSCRIPTION_NONE when none was bought here (one bought in the Toskar app is managed in the device's store); 502 BILLING_UNAVAILABLE.
      */
     public fun manageSubscription(): Unit =
         toskar.call("POST", "/api/v1/remote-access/subscription/manage", listOf())
+
+    /**
+     * Move the subscription bought here onto this computer (#1257)
+     *
+     * When the relay says the Stripe subscription bought here is tied to another route (subscription.error SUBSCRIPTION_IN_USE), as after restoring this computer's data on a new one, this moves it here. Toskar sends the relay the token it kept, which may be the old route's; without one, the relay moves it only once the old route has been quiet for 3 days. Turns access from anywhere on. Admins only. 404 SUBSCRIPTION_NONE; 409 SUBSCRIPTION_OWN_RELAY; 403 MOVE_NEEDS_COMPUTER; 429 MOVE_TOO_SOON; 502 MOVE_FAILED or RELAY_UNREACHABLE.
+     */
+    public fun moveSubscription(): Unit =
+        toskar.call("POST", "/api/v1/remote-access/subscription/move", listOf())
 
     /**
      * What each role may use (#589)
@@ -1431,12 +1499,54 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("POST", "/api/v1/speech", listOf(), body = toskar.json(body))
 
     /**
+     * Install Kitten TTS 2 mini (#1304)
+     *
+     * Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
+     */
+    public fun installKitten(): VoiceSettings =
+        toskar.call("POST", "/api/v1/speech/kitten", listOf())
+
+    /**
+     * Remove Kitten TTS 2 mini (#1304)
+     *
+     * Deletes its program and voices; the languages it read go back to their automatic voices. Admins only (contract 1.112).
+     */
+    public fun removeKitten(): VoiceSettings =
+        toskar.call("DELETE", "/api/v1/speech/kitten", listOf())
+
+    /**
+     * Read a little text aloud in the computer's voice (#795)
+     *
+     * Answers a WAV file (16-bit PCM, mono, 24 kHz) of the text, read in live voice mode's voice: Kokoro where it speaks the language (English, Spanish, French, Italian, Portuguese), Piper elsewhere. Nothing is kept. Meant for a client that speaks an answer as it arrives, a sentence or a few at a time (at most 1000 characters). voice is a Kokoro voice such as af_heart or a Piper voice; empty is the language's own. language is the text's, such as en or pt-BR; empty detects it. Visitors and paired devices may use it, with the voice capability (contract 1.101).
+     */
+    public fun speechSay(body: SpeechSayRequest): ByteArray =
+        toskar.call("POST", "/api/v1/speech/say", listOf(), body = toskar.json(body))
+
+    /**
      * A recording's text, for speaking a message instead of typing it (yeixio/toskar-apps#155)
      *
      * The recording is attached first with POST /api/v1/artifacts (audio). Runs speech.transcribe (Whisper) on this computer or a paired one that has it, and answers the text for the person to check before sending. Visitors and paired devices may use it.
      */
     public fun transcribeRecording(body: TranscribeRecordingRequest): Transcription =
         toskar.call("POST", "/api/v1/speech/transcribe", listOf(), body = toskar.json(body))
+
+    /**
+     * The Voice settings (#1304)
+     *
+     * Kitten TTS 2 mini's install, and each language read-aloud speaks with the voices it can be read in and the one chosen. Admins only (contract 1.112).
+     */
+    public fun speechVoices(): VoiceSettings =
+        toskar.call("GET", "/api/v1/speech/voices", listOf())
+
+    /**
+     * Choose the voice a language is read aloud in (#1304)
+     *
+     * Used by live voice mode, POST /api/v1/speech/say, and the doorbell. An empty voice goes back to automatic: Kokoro where it speaks the language, then Kitten when it's installed, then Piper. Admins only (contract 1.112).
+     *
+     * @param language A language code, such as de
+     */
+    public fun setSpeechVoice(language: String, body: SetSpeechVoiceRequest): VoiceSettings =
+        toskar.call("PUT", "/api/v1/speech/voices/{language}", listOf(language), body = toskar.json(body))
 
     /**
      * The caller's swarms
@@ -1496,6 +1606,14 @@ public class Api internal constructor(private val toskar: Toskar) {
     /** How the API speaks HTTPS on the local network (#213) */
     public fun getApiTLS(): TLSInfo =
         toskar.call("GET", "/api/v1/tls", listOf())
+
+    /**
+     * The certificate that replaces one naming the computer (#1263)
+     *
+     * Certificates made before #1263 carry the computer's name, which the remote listener and the relay show anyone. Toskar replaces such a certificate once every phone used in the last 30 days has asked for this one (or after 30 days). A phone saves the fingerprint and accepts the switch instead of warning that the computer changed. The fingerprint is empty when no switch is coming.
+     */
+    public fun getNextApiTLS(): NextTLSInfo =
+        toskar.call("GET", "/api/v1/tls/next", listOf())
 
     /** Every tool's descriptor, with whether it is on, its health, and the profiles that allow it */
     public fun listTools(): List<ToolDescriptor> =
@@ -1778,6 +1896,14 @@ public class Api internal constructor(private val toskar: Toskar) {
      */
     public fun useVideoBuild(body: UseVideoBuildRequest): ImageSetup =
         toskar.call("POST", "/api/v1/video/setup/build", listOf(), body = toskar.json(body))
+
+    /**
+     * Live voice mode, over a WebSocket (#795)
+     *
+     * Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
+     */
+    public fun voiceRealtime(): Unit =
+        toskar.call("GET", "/api/v1/voice/realtime", listOf())
 
     /**
      * Start the automation a webhook link belongs to
