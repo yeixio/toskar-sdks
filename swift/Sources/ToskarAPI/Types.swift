@@ -5913,6 +5913,10 @@ public enum Components {
                     ///
                     /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/VoicesPayload/engine`.
                     public var engine: Swift.String
+                    /// A voice named only for the recordings it was made from: name is then Standard, which the apps say in their language (#1342, contract 1.116)
+                    ///
+                    /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/VoicesPayload/standard`.
+                    public var standard: Swift.Bool?
                     /// Creates a new `VoicesPayloadPayload`.
                     ///
                     /// - Parameters:
@@ -5920,22 +5924,26 @@ public enum Components {
                     ///   - name:
                     ///   - description:
                     ///   - engine: Known values: `kitten`, `kokoro`, `piper`; others may be added.
+                    ///   - standard: A voice named only for the recordings it was made from: name is then Standard, which the apps say in their language (#1342, contract 1.116)
                     public init(
                         id: Swift.String,
                         name: Swift.String,
                         description: Swift.String? = nil,
-                        engine: Swift.String
+                        engine: Swift.String,
+                        standard: Swift.Bool? = nil
                     ) {
                         self.id = id
                         self.name = name
                         self.description = description
                         self.engine = engine
+                        self.standard = standard
                     }
                     public enum CodingKeys: String, CodingKey {
                         case id
                         case name
                         case description
                         case engine
+                        case standard
                     }
                 }
                 /// - Remark: Generated from `#/components/schemas/VoiceSettings/LanguagesPayload/voices`.
@@ -5973,7 +5981,7 @@ public enum Components {
             public var languages: Components.Schemas.VoiceSettings.LanguagesPayload
             /// - Remark: Generated from `#/components/schemas/VoiceSettings/NeedsPayload`.
             public struct NeedsPayloadPayload: Codable, Hashable, Sendable {
-                /// chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+                /// chat answers in voice mode; vision looks at a camera; both is one model that does both (#1343) Known values: `chat`, `vision`, `both`; others may be added.
                 ///
                 /// - Remark: Generated from `#/components/schemas/VoiceSettings/NeedsPayload/ability`.
                 public var ability: Swift.String
@@ -5988,7 +5996,7 @@ public enum Components {
                 /// Creates a new `NeedsPayloadPayload`.
                 ///
                 /// - Parameters:
-                ///   - ability: chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+                ///   - ability: chat answers in voice mode; vision looks at a camera; both is one model that does both (#1343) Known values: `chat`, `vision`, `both`; others may be added.
                 ///   - model: The catalog model to install; absent when none fits this computer
                 ///   - name:
                 ///   - sizeBytes:
@@ -7735,6 +7743,10 @@ public enum Components {
             public var sizeBytes: Swift.Int64?
             /// - Remark: Generated from `#/components/schemas/Model/memory_needed_bytes`.
             public var memoryNeededBytes: Swift.Int64?
+            /// Everything an install downloads: the model file and its vision projector (#1343, contract 1.117).
+            ///
+            /// - Remark: Generated from `#/components/schemas/Model/download_bytes`.
+            public var downloadBytes: Swift.Int64?
             /// - Remark: Generated from `#/components/schemas/Model/context`.
             public var context: Swift.Int?
             /// Describes model features.
@@ -8114,6 +8126,7 @@ public enum Components {
             ///   - parameters: e.g. "14B"
             ///   - sizeBytes:
             ///   - memoryNeededBytes:
+            ///   - downloadBytes: Everything an install downloads: the model file and its vision projector (#1343, contract 1.117).
             ///   - context:
             ///   - capabilities: Describes model features.
             ///   - source: Describes where a model artifact comes from.
@@ -8151,6 +8164,7 @@ public enum Components {
                 parameters: Swift.String? = nil,
                 sizeBytes: Swift.Int64? = nil,
                 memoryNeededBytes: Swift.Int64? = nil,
+                downloadBytes: Swift.Int64? = nil,
                 context: Swift.Int? = nil,
                 capabilities: Components.Schemas.Model.CapabilitiesPayload,
                 source: Components.Schemas.Model.SourcePayload? = nil,
@@ -8188,6 +8202,7 @@ public enum Components {
                 self.parameters = parameters
                 self.sizeBytes = sizeBytes
                 self.memoryNeededBytes = memoryNeededBytes
+                self.downloadBytes = downloadBytes
                 self.context = context
                 self.capabilities = capabilities
                 self.source = source
@@ -8226,6 +8241,7 @@ public enum Components {
                 case parameters
                 case sizeBytes = "size_bytes"
                 case memoryNeededBytes = "memory_needed_bytes"
+                case downloadBytes = "download_bytes"
                 case context
                 case capabilities
                 case source
@@ -17976,6 +17992,165 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/AutomationRequest/notes`.
             public var notes: [Swift.String]
+            /// For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger`.
+            public struct TriggerPayload: Codable, Hashable, Sendable {
+                /// Known values: `device`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger/kind`.
+                public var kind: Swift.String
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger/url`.
+                public var url: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger/path`.
+                public var path: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger/automation_id`.
+                public var automationId: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger/when`.
+                public var when: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger/connector`.
+                public var connector: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger/device`.
+                public var device: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger/to`.
+                public var to: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger/cooldown_seconds`.
+                public var cooldownSeconds: Swift.Int?
+                /// Creates a new `TriggerPayload`.
+                ///
+                /// - Parameters:
+                ///   - kind: Known values: `device`; others may be added.
+                ///   - url:
+                ///   - path:
+                ///   - automationId:
+                ///   - when:
+                ///   - connector:
+                ///   - device:
+                ///   - to:
+                ///   - cooldownSeconds:
+                public init(
+                    kind: Swift.String,
+                    url: Swift.String? = nil,
+                    path: Swift.String? = nil,
+                    automationId: Swift.String? = nil,
+                    when: Swift.String? = nil,
+                    connector: Swift.String? = nil,
+                    device: Swift.String? = nil,
+                    to: Swift.String? = nil,
+                    cooldownSeconds: Swift.Int? = nil
+                ) {
+                    self.kind = kind
+                    self.url = url
+                    self.path = path
+                    self.automationId = automationId
+                    self.when = when
+                    self.connector = connector
+                    self.device = device
+                    self.to = to
+                    self.cooldownSeconds = cooldownSeconds
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case kind
+                    case url
+                    case path
+                    case automationId = "automation_id"
+                    case when
+                    case connector
+                    case device
+                    case to
+                    case cooldownSeconds = "cooldown_seconds"
+                }
+            }
+            /// For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationRequest/trigger`.
+            public var trigger: Components.Schemas.AutomationRequest.TriggerPayload?
+            /// - Remark: Generated from `#/components/schemas/AutomationRequest/CamerasPayload`.
+            public struct CamerasPayloadPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/CamerasPayload/connector`.
+                public var connector: Swift.String
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/CamerasPayload/device`.
+                public var device: Swift.String
+                /// Creates a new `CamerasPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - connector:
+                ///   - device:
+                public init(
+                    connector: Swift.String,
+                    device: Swift.String
+                ) {
+                    self.connector = connector
+                    self.device = device
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case connector
+                    case device
+                }
+            }
+            /// The cameras it looks at as each run starts, read from the request (#1341)
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationRequest/cameras`.
+            public typealias CamerasPayload = [Components.Schemas.AutomationRequest.CamerasPayloadPayload]
+            /// The cameras it looks at as each run starts, read from the request (#1341)
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationRequest/cameras`.
+            public var cameras: Components.Schemas.AutomationRequest.CamerasPayload?
+            /// Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationRequest/say`.
+            public struct SayPayload: Codable, Hashable, Sendable {
+                /// Known values: `reolink`; others may be added.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/say/connector`.
+                public var connector: Swift.String
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/say/device`.
+                public var device: Swift.String
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/say/quiet_from`.
+                public var quietFrom: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/say/quiet_to`.
+                public var quietTo: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/say/voice`.
+                public var voice: Swift.String?
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/say/listen`.
+                public var listen: Swift.Bool?
+                /// Creates a new `SayPayload`.
+                ///
+                /// - Parameters:
+                ///   - connector: Known values: `reolink`; others may be added.
+                ///   - device:
+                ///   - quietFrom:
+                ///   - quietTo:
+                ///   - voice:
+                ///   - listen:
+                public init(
+                    connector: Swift.String,
+                    device: Swift.String,
+                    quietFrom: Swift.String? = nil,
+                    quietTo: Swift.String? = nil,
+                    voice: Swift.String? = nil,
+                    listen: Swift.Bool? = nil
+                ) {
+                    self.connector = connector
+                    self.device = device
+                    self.quietFrom = quietFrom
+                    self.quietTo = quietTo
+                    self.voice = voice
+                    self.listen = listen
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case connector
+                    case device
+                    case quietFrom = "quiet_from"
+                    case quietTo = "quiet_to"
+                    case voice
+                    case listen
+                }
+            }
+            /// Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
+            ///
+            /// - Remark: Generated from `#/components/schemas/AutomationRequest/say`.
+            public var say: Components.Schemas.AutomationRequest.SayPayload?
             /// Creates a new `AutomationRequest`.
             ///
             /// - Parameters:
@@ -17984,18 +18159,27 @@ public enum Components {
             ///   - schedule:
             ///   - notification:
             ///   - notes: `notes` say what was assumed, such as a time of day when none was given.
+            ///   - trigger: For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+            ///   - cameras: The cameras it looks at as each run starts, read from the request (#1341)
+            ///   - say: Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
             public init(
                 name: Swift.String,
                 prompt: Swift.String,
                 schedule: Components.Schemas.Schedule,
                 notification: Components.Schemas.AutomationNotification,
-                notes: [Swift.String]
+                notes: [Swift.String],
+                trigger: Components.Schemas.AutomationRequest.TriggerPayload? = nil,
+                cameras: Components.Schemas.AutomationRequest.CamerasPayload? = nil,
+                say: Components.Schemas.AutomationRequest.SayPayload? = nil
             ) {
                 self.name = name
                 self.prompt = prompt
                 self.schedule = schedule
                 self.notification = notification
                 self.notes = notes
+                self.trigger = trigger
+                self.cameras = cameras
+                self.say = say
             }
             public enum CodingKeys: String, CodingKey {
                 case name
@@ -18003,6 +18187,9 @@ public enum Components {
                 case schedule
                 case notification
                 case notes
+                case trigger
+                case cameras
+                case say
             }
         }
         /// The durable record for one occurrence of an automation.

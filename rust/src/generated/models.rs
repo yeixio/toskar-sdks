@@ -484,6 +484,9 @@ pub struct Model {
     pub size_bytes: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory_needed_bytes: Option<i64>,
+    /// Everything an install downloads: the model file and its vision projector (#1343, contract 1.117).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub download_bytes: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context: Option<i64>,
     /// Describes model features.
@@ -3083,6 +3086,15 @@ pub struct AutomationRequest {
     /// `notes` say what was assumed, such as a time of day when none was given.
     #[serde(default)]
     pub notes: Vec<String>,
+    /// For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<AutomationRequestTrigger>,
+    /// The cameras it looks at as each run starts, read from the request (#1341)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cameras: Option<Vec<AutomationRequestCameras>>,
+    /// Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub say: Option<AutomationRequestSay>,
 }
 
 /// The durable record for one occurrence of an automation.
@@ -5235,7 +5247,7 @@ pub struct VoiceSettingsLanguages {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct VoiceSettingsNeeds {
-    /// chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+    /// chat answers in voice mode; vision looks at a camera; both is one model that does both (#1343) Known values: `chat`, `vision`, `both`; others may be added.
     pub ability: String,
     /// The catalog model to install; absent when none fits this computer
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6005,6 +6017,51 @@ pub struct AutomationDetailActions {
     pub args: Option<BTreeMap<String, String>>,
 }
 
+/// For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AutomationRequestTrigger {
+    /// Known values: `device`; others may be added.
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub automation_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub when: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connector: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cooldown_seconds: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AutomationRequestCameras {
+    pub connector: String,
+    pub device: String,
+}
+
+/// Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AutomationRequestSay {
+    /// Known values: `reolink`; others may be added.
+    pub connector: String,
+    pub device: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quiet_from: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quiet_to: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub listen: Option<bool>,
+}
+
 /// One value a service needs to connect, such as a token.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ConnectorStatusFields {
@@ -6770,6 +6827,9 @@ pub struct VoiceSettingsLanguagesVoices {
     pub description: Option<String>,
     /// Known values: `kitten`, `kokoro`, `piper`; others may be added.
     pub engine: String,
+    /// A voice named only for the recordings it was made from: name is then Standard, which the apps say in their language (#1342, contract 1.116)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub standard: Option<bool>,
 }
 
 /// Which model a rating is about. Ratings of different formats, quantizations, runtimes, or backends are never combined.

@@ -354,6 +354,8 @@ const (
     ErrorCodeNewsUnavailable = "NEWS_UNAVAILABLE"
     // ErrorCodeNodesListFailed: Couldn't list computers.
     ErrorCodeNodesListFailed = "NODES_LIST_FAILED"
+    // ErrorCodeNodeNotFound: No paired computer has that ID.
+    ErrorCodeNodeNotFound = "NODE_NOT_FOUND"
     // ErrorCodeNothingToCompact: This chat is too short to compact.
     ErrorCodeNothingToCompact = "NOTHING_TO_COMPACT"
     // ErrorCodeNotificationsDisabled: Notifications are turned off.
@@ -680,7 +682,7 @@ const (
 <a name="ContractVersion"></a>ContractVersion is the client contract this SDK was built for.
 
 ```go
-const ContractVersion = "1.114"
+const ContractVersion = "1.117"
 ```
 
 <a name="DefaultURL"></a>DefaultURL is this computer's Toskar Core, which needs no key.

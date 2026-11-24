@@ -293,6 +293,8 @@ export const ErrorCodes = {
   NEWS_UNAVAILABLE: 'NEWS_UNAVAILABLE',
   /** Couldn't list computers. */
   NODES_LIST_FAILED: 'NODES_LIST_FAILED',
+  /** No paired computer has that ID. */
+  NODE_NOT_FOUND: 'NODE_NOT_FOUND',
   /** This chat is too short to compact. */
   NOTHING_TO_COMPACT: 'NOTHING_TO_COMPACT',
   /** Notifications are turned off. */

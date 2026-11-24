@@ -4,7 +4,7 @@
 package ai.toskar
 
 /** The client contract this SDK was built for. */
-public const val CONTRACT_VERSION: String = "1.114"
+public const val CONTRACT_VERSION: String = "1.117"
 
 /**
  * The codes Toskar Core answers errors with, for [ToskarException.code]. A
@@ -442,6 +442,9 @@ public object ErrorCodes {
 
     /** Couldn't list computers. */
     public const val NODES_LIST_FAILED: String = "NODES_LIST_FAILED"
+
+    /** No paired computer has that ID. */
+    public const val NODE_NOT_FOUND: String = "NODE_NOT_FOUND"
 
     /** This chat is too short to compact. */
     public const val NOTHING_TO_COMPACT: String = "NOTHING_TO_COMPACT"

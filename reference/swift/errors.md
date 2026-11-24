@@ -154,6 +154,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.noPassword` | `NO_PASSWORD` | You don't sign in with a password here. |
 | `.noRecord` | `NO_RECORD` | No address record to find the computer away from home: it may be off or asleep, or have no access from anywhere. |
 | `.noTextFound` | `NO_TEXT_FOUND` | No text found. Scanned PDFs need text recognition (OCR) before Toskar can read them. |
+| `.nodeNotFound` | `NODE_NOT_FOUND` | No paired computer has that ID. |
 | `.nodesListFailed` | `NODES_LIST_FAILED` | Couldn't list computers. |
 | `.notADevice` | `NOT_A_DEVICE` | Only a connected device can disconnect itself. |
 | `.notAFolder` | `NOT_A_FOLDER` | There's no folder at that path on this computer. Use its full path. |

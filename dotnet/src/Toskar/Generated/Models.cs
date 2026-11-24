@@ -781,6 +781,12 @@ public sealed record Model
     [JsonPropertyName("memory_needed_bytes")]
     public long? MemoryNeededBytes { get; init; }
 
+    /// <summary>
+    /// Everything an install downloads: the model file and its vision projector (#1343, contract 1.117).
+    /// </summary>
+    [JsonPropertyName("download_bytes")]
+    public long? DownloadBytes { get; init; }
+
     [JsonPropertyName("context")]
     public long? Context { get; init; }
 
@@ -4773,6 +4779,24 @@ public sealed record AutomationRequest
     /// </summary>
     [JsonPropertyName("notes")]
     public required List<string> Notes { get; init; }
+
+    /// <summary>
+    /// For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+    /// </summary>
+    [JsonPropertyName("trigger")]
+    public AutomationRequestTrigger? Trigger { get; init; }
+
+    /// <summary>
+    /// The cameras it looks at as each run starts, read from the request (#1341)
+    /// </summary>
+    [JsonPropertyName("cameras")]
+    public List<AutomationRequestCameras>? Cameras { get; init; }
+
+    /// <summary>
+    /// Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
+    /// </summary>
+    [JsonPropertyName("say")]
+    public AutomationRequestSay? Say { get; init; }
 }
 
 /// <summary>
@@ -7934,7 +7958,7 @@ public sealed record VoiceSettingsLanguages
 public sealed record VoiceSettingsNeeds
 {
     /// <summary>
-    /// chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+    /// chat answers in voice mode; vision looks at a camera; both is one model that does both (#1343) Known values: `chat`, `vision`, `both`; others may be added.
     /// </summary>
     [JsonPropertyName("ability")]
     public required string Ability { get; init; }
@@ -9333,6 +9357,78 @@ public sealed record AutomationDetailActions
 }
 
 /// <summary>
+/// For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+/// </summary>
+public sealed record AutomationRequestTrigger
+{
+    /// <summary>
+    /// Known values: `device`; others may be added.
+    /// </summary>
+    [JsonPropertyName("kind")]
+    public required string Kind { get; init; }
+
+    [JsonPropertyName("url")]
+    public string? Url { get; init; }
+
+    [JsonPropertyName("path")]
+    public string? Path { get; init; }
+
+    [JsonPropertyName("automation_id")]
+    public string? AutomationId { get; init; }
+
+    [JsonPropertyName("when")]
+    public string? When { get; init; }
+
+    [JsonPropertyName("connector")]
+    public string? Connector { get; init; }
+
+    [JsonPropertyName("device")]
+    public string? Device { get; init; }
+
+    [JsonPropertyName("to")]
+    public string? To { get; init; }
+
+    [JsonPropertyName("cooldown_seconds")]
+    public long? CooldownSeconds { get; init; }
+}
+
+public sealed record AutomationRequestCameras
+{
+    [JsonPropertyName("connector")]
+    public required string Connector { get; init; }
+
+    [JsonPropertyName("device")]
+    public required string Device { get; init; }
+}
+
+/// <summary>
+/// Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
+/// </summary>
+public sealed record AutomationRequestSay
+{
+    /// <summary>
+    /// Known values: `reolink`; others may be added.
+    /// </summary>
+    [JsonPropertyName("connector")]
+    public required string Connector { get; init; }
+
+    [JsonPropertyName("device")]
+    public required string Device { get; init; }
+
+    [JsonPropertyName("quiet_from")]
+    public string? QuietFrom { get; init; }
+
+    [JsonPropertyName("quiet_to")]
+    public string? QuietTo { get; init; }
+
+    [JsonPropertyName("voice")]
+    public string? Voice { get; init; }
+
+    [JsonPropertyName("listen")]
+    public bool? Listen { get; init; }
+}
+
+/// <summary>
 /// One value a service needs to connect, such as a token.
 /// </summary>
 public sealed record ConnectorStatusFields
@@ -10668,6 +10764,12 @@ public sealed record VoiceSettingsLanguagesVoices
     /// </summary>
     [JsonPropertyName("engine")]
     public required string Engine { get; init; }
+
+    /// <summary>
+    /// A voice named only for the recordings it was made from: name is then Standard, which the apps say in their language (#1342, contract 1.116)
+    /// </summary>
+    [JsonPropertyName("standard")]
+    public bool? Standard { get; init; }
 }
 
 /// <summary>

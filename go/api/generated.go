@@ -574,6 +574,11 @@ type AutomationPreview struct {
 
 // AutomationRequest An automation read from a request.
 type AutomationRequest struct {
+	// Cameras The cameras it looks at as each run starts, read from the request (#1341)
+	Cameras *[]struct {
+		Connector string `json:"connector"`
+		Device    string `json:"device"`
+	} `json:"cameras,omitempty"`
 	Name string `json:"name"`
 
 	// Notes `notes` say what was assumed, such as a time of day when none was given.
@@ -583,8 +588,34 @@ type AutomationRequest struct {
 	Notification AutomationNotification `json:"notification"`
 	Prompt       string                 `json:"prompt"`
 
+	// Say Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
+	Say *struct {
+		// Connector Known values: `reolink`; others may be added.
+		Connector string  `json:"connector"`
+		Device    string  `json:"device"`
+		Listen    *bool   `json:"listen,omitempty"`
+		QuietFrom *string `json:"quiet_from,omitempty"`
+		QuietTo   *string `json:"quiet_to,omitempty"`
+		Voice     *string `json:"voice,omitempty"`
+	} `json:"say,omitempty"`
+
 	// Schedule The time rule for an automation. Clock fields are civil time in TimeZone. At and Anchor are absolute instants.
 	Schedule Schedule `json:"schedule"`
+
+	// Trigger For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+	Trigger *struct {
+		AutomationId    *string `json:"automation_id,omitempty"`
+		Connector       *string `json:"connector,omitempty"`
+		CooldownSeconds *int    `json:"cooldown_seconds,omitempty"`
+		Device          *string `json:"device,omitempty"`
+
+		// Kind Known values: `device`; others may be added.
+		Kind string  `json:"kind"`
+		Path *string `json:"path,omitempty"`
+		To   *string `json:"to,omitempty"`
+		Url  *string `json:"url,omitempty"`
+		When *string `json:"when,omitempty"`
+	} `json:"trigger,omitempty"`
 }
 
 // AutomationRun The automation run a chat message came from.
@@ -2088,6 +2119,9 @@ type Model struct {
 	// ContextWindow The context window, in tokens, a chat model installed on this computer starts with (#962, contract 1.69).
 	ContextWindow *int   `json:"context_window,omitempty"`
 	DisplayName   string `json:"display_name"`
+
+	// DownloadBytes Everything an install downloads: the model file and its vision projector (#1343, contract 1.117).
+	DownloadBytes *int64 `json:"download_bytes,omitempty"`
 
 	// Dynamic installed from browse-all / URL
 	Dynamic *bool   `json:"dynamic,omitempty"`
@@ -4304,12 +4338,15 @@ type VoiceSettings struct {
 			Engine string `json:"engine"`
 			Id     string `json:"id"`
 			Name   string `json:"name"`
+
+			// Standard A voice named only for the recordings it was made from: name is then Standard, which the apps say in their language (#1342, contract 1.116)
+			Standard *bool `json:"standard,omitempty"`
 		} `json:"voices"`
 	} `json:"languages"`
 
 	// Needs The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113)
 	Needs *[]struct {
-		// Ability chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+		// Ability chat answers in voice mode; vision looks at a camera; both is one model that does both (#1343) Known values: `chat`, `vision`, `both`; others may be added.
 		Ability string `json:"ability"`
 
 		// Model The catalog model to install; absent when none fits this computer

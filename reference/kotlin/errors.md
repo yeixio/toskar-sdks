@@ -150,6 +150,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarException.code`,
 | `ErrorCodes.NEEDS_APPROVAL` | This needs your approval before the automation can go on. |
 | `ErrorCodes.NEWS_UNAVAILABLE` | The AI news couldn't be read from toskar.ai. Check the internet connection and try again. |
 | `ErrorCodes.NODES_LIST_FAILED` | Couldn't list computers. |
+| `ErrorCodes.NODE_NOT_FOUND` | No paired computer has that ID. |
 | `ErrorCodes.NOTHING_TO_COMPACT` | This chat is too short to compact. |
 | `ErrorCodes.NOTIFICATIONS_DISABLED` | Notifications are turned off. |
 | `ErrorCodes.NOTIFICATIONS_FAILED` | {{detail}} |

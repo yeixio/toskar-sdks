@@ -6,8 +6,8 @@ namespace Toskar;
 /// <summary>The client contract this SDK was built for.</summary>
 public static class Contract
 {
-    /// <summary>The contract version, such as 1.114.</summary>
-    public const string Version = "1.114";
+    /// <summary>The contract version, such as 1.117.</summary>
+    public const string Version = "1.117";
 }
 
 /// <summary>
@@ -735,6 +735,11 @@ public static class ErrorCodes
     /// Couldn't list computers.
     /// </summary>
     public const string NODES_LIST_FAILED = "NODES_LIST_FAILED";
+
+    /// <summary>
+    /// No paired computer has that ID.
+    /// </summary>
+    public const string NODE_NOT_FOUND = "NODE_NOT_FOUND";
 
     /// <summary>
     /// This chat is too short to compact.

@@ -354,6 +354,8 @@ public data class Model @JvmOverloads constructor(
     @SerialName("parameters") public val parameters: String? = null,
     @SerialName("size_bytes") public val sizeBytes: Long? = null,
     @SerialName("memory_needed_bytes") public val memoryNeededBytes: Long? = null,
+    /** Everything an install downloads: the model file and its vision projector (#1343, contract 1.117). */
+    @SerialName("download_bytes") public val downloadBytes: Long? = null,
     @SerialName("context") public val context: Long? = null,
     /** Describes where a model artifact comes from. */
     @SerialName("source") public val source: ModelSource? = null,
@@ -2003,6 +2005,12 @@ public data class AutomationRequest @JvmOverloads constructor(
     @SerialName("notification") public val notification: AutomationNotification,
     /** `notes` say what was assumed, such as a time of day when none was given. */
     @SerialName("notes") public val notes: List<String>,
+    /** For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it */
+    @SerialName("trigger") public val trigger: AutomationRequestTrigger? = null,
+    /** The cameras it looks at as each run starts, read from the request (#1341) */
+    @SerialName("cameras") public val cameras: List<AutomationRequestCameras>? = null,
+    /** Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them */
+    @SerialName("say") public val say: AutomationRequestSay? = null,
 )
 
 /** The durable record for one occurrence of an automation. */
@@ -3521,7 +3529,7 @@ public data class VoiceSettingsLanguages @JvmOverloads constructor(
 
 @Serializable
 public data class VoiceSettingsNeeds @JvmOverloads constructor(
-    /** chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added. */
+    /** chat answers in voice mode; vision looks at a camera; both is one model that does both (#1343) Known values: `chat`, `vision`, `both`; others may be added. */
     @SerialName("ability") public val ability: String,
     /** The catalog model to install; absent when none fits this computer */
     @SerialName("model") public val model: String? = null,
@@ -4148,6 +4156,39 @@ public data class AutomationDetailActions @JvmOverloads constructor(
     @SerialName("args") public val args: Map<String, String>? = null,
 )
 
+/** For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it */
+@Serializable
+public data class AutomationRequestTrigger @JvmOverloads constructor(
+    /** Known values: `device`; others may be added. */
+    @SerialName("kind") public val kind: String,
+    @SerialName("url") public val url: String? = null,
+    @SerialName("path") public val path: String? = null,
+    @SerialName("automation_id") public val automationId: String? = null,
+    @SerialName("when") public val `when`: String? = null,
+    @SerialName("connector") public val connector: String? = null,
+    @SerialName("device") public val device: String? = null,
+    @SerialName("to") public val to: String? = null,
+    @SerialName("cooldown_seconds") public val cooldownSeconds: Long? = null,
+)
+
+@Serializable
+public data class AutomationRequestCameras @JvmOverloads constructor(
+    @SerialName("connector") public val connector: String,
+    @SerialName("device") public val device: String,
+)
+
+/** Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them */
+@Serializable
+public data class AutomationRequestSay @JvmOverloads constructor(
+    /** Known values: `reolink`; others may be added. */
+    @SerialName("connector") public val connector: String,
+    @SerialName("device") public val device: String,
+    @SerialName("quiet_from") public val quietFrom: String? = null,
+    @SerialName("quiet_to") public val quietTo: String? = null,
+    @SerialName("voice") public val voice: String? = null,
+    @SerialName("listen") public val listen: Boolean? = null,
+)
+
 /** One value a service needs to connect, such as a token. */
 @Serializable
 public data class ConnectorStatusFields @JvmOverloads constructor(
@@ -4739,6 +4780,8 @@ public data class VoiceSettingsLanguagesVoices @JvmOverloads constructor(
     /** Known values: `kitten`, `kokoro`, `piper`; others may be added. */
     @SerialName("engine") public val engine: String,
     @SerialName("description") public val description: String? = null,
+    /** A voice named only for the recordings it was made from: name is then Standard, which the apps say in their language (#1342, contract 1.116) */
+    @SerialName("standard") public val standard: Boolean? = null,
 )
 
 /** Which model a rating is about. Ratings of different formats, quantizations, runtimes, or backends are never combined. */

@@ -4842,11 +4842,13 @@ export interface components {
                     description?: string;
                     /** @description Known values: `kitten`, `kokoro`, `piper`; others may be added. */
                     engine: string;
+                    /** @description A voice named only for the recordings it was made from: name is then Standard, which the apps say in their language (#1342, contract 1.116) */
+                    standard?: boolean;
                 }[];
             }[];
             /** @description The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113) */
             needs?: {
-                /** @description chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added. */
+                /** @description chat answers in voice mode; vision looks at a camera; both is one model that does both (#1343) Known values: `chat`, `vision`, `both`; others may be added. */
                 ability: string;
                 /** @description The catalog model to install; absent when none fits this computer */
                 model?: string;
@@ -5214,6 +5216,11 @@ export interface components {
             size_bytes?: number;
             /** Format: int64 */
             memory_needed_bytes?: number;
+            /**
+             * Format: int64
+             * @description Everything an install downloads: the model file and its vision projector (#1343, contract 1.117).
+             */
+            download_bytes?: number;
             context?: number;
             /** @description Describes model features. */
             capabilities: {
@@ -7270,6 +7277,34 @@ export interface components {
             notification: components["schemas"]["AutomationNotification"];
             /** @description `notes` say what was assumed, such as a time of day when none was given. */
             notes: string[];
+            /** @description For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it */
+            trigger?: {
+                /** @description Known values: `device`; others may be added. */
+                kind: string;
+                url?: string;
+                path?: string;
+                automation_id?: string;
+                when?: string;
+                connector?: string;
+                device?: string;
+                to?: string;
+                cooldown_seconds?: number;
+            };
+            /** @description The cameras it looks at as each run starts, read from the request (#1341) */
+            cameras?: {
+                connector: string;
+                device: string;
+            }[];
+            /** @description Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them */
+            say?: {
+                /** @description Known values: `reolink`; others may be added. */
+                connector: string;
+                device: string;
+                quiet_from?: string;
+                quiet_to?: string;
+                voice?: string;
+                listen?: boolean;
+            };
         };
         /** @description The durable record for one occurrence of an automation. */
         AutomationRunInfo: {

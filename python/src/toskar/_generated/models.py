@@ -47,6 +47,10 @@ class VoiceSettingsLanguageVoice(BaseModel):
     """
     Known values: `kitten`, `kokoro`, `piper`; others may be added.
     """
+    standard: bool | None = None
+    """
+    A voice named only for the recordings it was made from: name is then Standard, which the apps say in their language (#1342, contract 1.116)
+    """
 
 
 class VoiceSettingsLanguage(BaseModel):
@@ -73,7 +77,7 @@ class VoiceSettingsNeed(BaseModel):
     )
     ability: str
     """
-    chat answers in voice mode; vision looks at a camera Known values: `chat`, `vision`; others may be added.
+    chat answers in voice mode; vision looks at a camera; both is one model that does both (#1343) Known values: `chat`, `vision`, `both`; others may be added.
     """
     model: str | None = None
     """
@@ -3946,6 +3950,58 @@ class AutomationPreview(BaseModel):
     reason: str
 
 
+class AutomationRequestTrigger(BaseModel):
+    """
+    For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    kind: str
+    """
+    Known values: `device`; others may be added.
+    """
+    url: str | None = None
+    path: str | None = None
+    automation_id: str | None = None
+    when: str | None = None
+    connector: str | None = None
+    device: str | None = None
+    to: str | None = None
+    cooldown_seconds: int | None = None
+
+
+class AutomationRequestCamera(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    connector: str
+    device: str
+
+
+class AutomationRequestSay(BaseModel):
+    """
+    Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    connector: str
+    """
+    Known values: `reolink`; others may be added.
+    """
+    device: str
+    quiet_from: str | None = None
+    quiet_to: str | None = None
+    voice: str | None = None
+    listen: bool | None = None
+
+
 class AutomationRequest(BaseModel):
     """
     An automation read from a request.
@@ -3962,6 +4018,18 @@ class AutomationRequest(BaseModel):
     notes: list[str]
     """
     `notes` say what was assumed, such as a time of day when none was given.
+    """
+    trigger: AutomationRequestTrigger | None = None
+    """
+    For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it
+    """
+    cameras: list[AutomationRequestCamera] | None = None
+    """
+    The cameras it looks at as each run starts, read from the request (#1341)
+    """
+    say: AutomationRequestSay | None = None
+    """
+    Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
     """
 
 
@@ -6373,6 +6441,10 @@ class Model(BaseModel):
     """
     size_bytes: int | None = None
     memory_needed_bytes: int | None = None
+    download_bytes: int | None = None
+    """
+    Everything an install downloads: the model file and its vision projector (#1343, contract 1.117).
+    """
     context: int | None = None
     capabilities: ModelCapabilities
     """

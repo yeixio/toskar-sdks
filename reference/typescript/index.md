@@ -470,7 +470,7 @@ Milliseconds to wait for an answer to start. Default 60000; 0 waits as long as i
 ### CONTRACT\_VERSION
 
 ```ts
-const CONTRACT_VERSION: "1.114" = '1.114';
+const CONTRACT_VERSION: "1.117" = '1.117';
 ```
 
 The client contract this SDK was built for.
@@ -1663,6 +1663,14 @@ readonly NO_TEXT_FOUND: "NO_TEXT_FOUND" = 'NO_TEXT_FOUND';
 ```
 
 No text found. Scanned PDFs need text recognition (OCR) before Toskar can read them.
+
+##### NODE\_NOT\_FOUND
+
+```ts
+readonly NODE_NOT_FOUND: "NODE_NOT_FOUND" = 'NODE_NOT_FOUND';
+```
+
+No paired computer has that ID.
 
 ##### NODES\_LIST\_FAILED
 

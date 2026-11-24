@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Toskar Control Plane API
-  version: "1.114"
+  version: "1.117"
   description: >-
     Local AI control plane API for Toskar, its OpenAI-compatible routes, and its MCP server.
     On the default loopback bind no key is needed. When the daemon listens on any other address,
@@ -8036,6 +8036,7 @@ components:
                     name: {type: string}
                     description: {type: string}
                     engine: {type: string, enum: [kitten, kokoro, piper]}
+                    standard: {type: boolean, description: 'A voice named only for the recordings it was made from: name is then Standard, which the apps say in their language (#1342, contract 1.116)'}
         needs:
           type: array
           description: "The models voice mode and the doorbell still need on this computer, each with the one that fits to install with POST /api/v1/models/{id}/install (#667, contract 1.113)"
@@ -8043,7 +8044,7 @@ components:
             type: object
             required: [ability]
             properties:
-              ability: {type: string, enum: [chat, vision], description: 'chat answers in voice mode; vision looks at a camera'}
+              ability: {type: string, enum: [chat, vision, both], description: 'chat answers in voice mode; vision looks at a camera; both is one model that does both (#1343)'}
               model: {type: string, description: The catalog model to install; absent when none fits this computer}
               name: {type: string}
               size_bytes: {type: integer, format: int64}
@@ -8450,6 +8451,7 @@ components:
         parameters: {type: string, description: e.g. "14B"}
         size_bytes: {type: integer, format: int64}
         memory_needed_bytes: {type: integer, format: int64}
+        download_bytes: {type: integer, format: int64, description: 'Everything an install downloads: the model file and its vision projector (#1343, contract 1.117).'}
         context: {type: integer}
         capabilities:
           type: object
@@ -10543,6 +10545,40 @@ components:
           type: array
           description: '`notes` say what was assumed, such as a time of day when none was given.'
           items: {type: string}
+        trigger:
+          type: object
+          description: 'For a request that says it runs when something happens, such as the doorbell ringing (#1341, contract 1.115): the device that starts it'
+          required: [kind]
+          properties:
+            kind: {type: string, enum: [device]}
+            url: {type: string}
+            path: {type: string}
+            automation_id: {type: string}
+            when: {type: string}
+            connector: {type: string}
+            device: {type: string}
+            to: {type: string}
+            cooldown_seconds: {type: integer}
+        cameras:
+          type: array
+          description: The cameras it looks at as each run starts, read from the request (#1341)
+          items:
+            type: object
+            required: [connector, device]
+            properties:
+              connector: {type: string}
+              device: {type: string}
+        say:
+          type: object
+          description: 'Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them'
+          required: [connector, device]
+          properties:
+            connector: {type: string, enum: [reolink]}
+            device: {type: string}
+            quiet_from: {type: string}
+            quiet_to: {type: string}
+            voice: {type: string}
+            listen: {type: boolean}
     AutomationRunInfo:
       type: object
       description: The durable record for one occurrence of an automation.

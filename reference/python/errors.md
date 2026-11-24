@@ -156,6 +156,7 @@ except ToskarError as err:
 | `NEEDS_APPROVAL` | This needs your approval before the automation can go on. |
 | `NEWS_UNAVAILABLE` | The AI news couldn't be read from toskar.ai. Check the internet connection and try again. |
 | `NODES_LIST_FAILED` | Couldn't list computers. |
+| `NODE_NOT_FOUND` | No paired computer has that ID. |
 | `NOTHING_TO_COMPACT` | This chat is too short to compact. |
 | `NOTIFICATIONS_DISABLED` | Notifications are turned off. |
 | `NOTIFICATIONS_FAILED` |  |
