@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "openapi-fetch": "0.17.0",
-    "undici": "6.29.0"
+    "undici": "6.29.1"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
