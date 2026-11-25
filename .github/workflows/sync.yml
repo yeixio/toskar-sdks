@@ -33,8 +33,8 @@ jobs:
       sha: ${{ steps.push.outputs.sha }}
       base: ${{ steps.push.outputs.base }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Which core to sync
@@ -51,11 +51,11 @@ jobs:
           fi
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - if: steps.which.outputs.ref != ''
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - if: steps.which.outputs.ref != ''
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: stable
       - if: steps.which.outputs.ref != ''
@@ -119,7 +119,7 @@ jobs:
       SHA: ${{ needs.sync.outputs.sha }}
       BASE: ${{ needs.sync.outputs.base }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.sync.outputs.sha }}
           # The commit and its parent, main as it was, for the push.

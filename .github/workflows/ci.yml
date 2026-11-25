@@ -54,10 +54,10 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: npm ci
@@ -85,10 +85,10 @@ jobs:
       matrix:
         python: ["3.10", "3.14"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - run: pip install -e ".[dev]"
@@ -114,17 +114,17 @@ jobs:
       run:
         working-directory: go
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
       # The generator needs a newer Go than the module's minimum.
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - name: The generated code and reference docs match
         run: go generate ./... && git diff --exit-code api codes.go ../reference/go
       # Then vet and test with the oldest Go the module supports.
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go/go.mod
       - run: go vet ./...
@@ -137,7 +137,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.MAC_RUNS_ON || '"macos-latest"') }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
       - name: The generated code matches the spec
@@ -155,14 +155,14 @@ jobs:
       run:
         working-directory: kotlin
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@v6
       - name: The generated code matches the spec
         run: python3 scripts/generate.py && git diff --exit-code src/main && test -z "$(git status --porcelain src/main)"
       - name: The reference docs match the code
@@ -177,10 +177,10 @@ jobs:
       run:
         working-directory: dotnet
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         # Not /usr/share/dotnet, which a home runner's user can't write.
         env:
           DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}/dotnet
@@ -202,7 +202,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
       - uses: dtolnay/rust-toolchain@stable
@@ -222,7 +222,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
       - run: docker build -f conformance/Dockerfile -t toskar-conformance .
