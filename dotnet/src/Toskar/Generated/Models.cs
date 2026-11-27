@@ -9,6 +9,150 @@ using System.Text.Json.Serialization;
 namespace Toskar.Models;
 
 /// <summary>
+/// A feature and whether it works here now (#1355)
+/// </summary>
+public sealed record Feature
+{
+    /// <summary>
+    /// Known values: `voice`, `door`, `pictures`, `clips`, `see`, `meaning`, `automationTools`, `train`; others may be added.
+    /// </summary>
+    [JsonPropertyName("id")]
+    public required string Id { get; init; }
+
+    [JsonPropertyName("ready")]
+    public required bool Ready { get; init; }
+
+    [JsonPropertyName("needs")]
+    public required List<FeatureNeed> Needs { get; init; }
+
+    /// <summary>
+    /// What setting up its missing needs downloads
+    /// </summary>
+    [JsonPropertyName("setup_bytes")]
+    public required long SetupBytes { get; init; }
+
+    [JsonPropertyName("installing")]
+    public required bool Installing { get; init; }
+}
+
+/// <summary>
+/// One thing a feature needs, and what would set it up
+/// </summary>
+public sealed record FeatureNeed
+{
+    /// <summary>
+    /// Known values: `chat`, `tools`, `vision`, `embedding`, `voice`, `images`, `video`, `trainer`, `camera`; others may be added.
+    /// </summary>
+    [JsonPropertyName("need")]
+    public required string Need { get; init; }
+
+    [JsonPropertyName("ready")]
+    public required bool Ready { get; init; }
+
+    /// <summary>
+    /// How setup installs it; absent when nothing here can Known values: `model`, `voice`, `images`, `video`; others may be added.
+    /// </summary>
+    [JsonPropertyName("install")]
+    public string? Install { get; init; }
+
+    /// <summary>
+    /// The model it installs
+    /// </summary>
+    [JsonPropertyName("option")]
+    public string? Option { get; init; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("size_bytes")]
+    public long? SizeBytes { get; init; }
+
+    /// <summary>
+    /// The paired computer it is set up on
+    /// </summary>
+    [JsonPropertyName("node_id")]
+    public string? NodeId { get; init; }
+
+    [JsonPropertyName("node_name")]
+    public string? NodeName { get; init; }
+
+    [JsonPropertyName("installing")]
+    public bool? Installing { get; init; }
+
+    [JsonPropertyName("percent")]
+    public long? Percent { get; init; }
+
+    /// <summary>
+    /// Why it can't be set up here, when this computer says
+    /// </summary>
+    [JsonPropertyName("detail")]
+    public string? Detail { get; init; }
+}
+
+/// <summary>
+/// What clearing an automation's history removed
+/// </summary>
+public sealed record ClearedRuns
+{
+    /// <summary>
+    /// Finished runs removed
+    /// </summary>
+    [JsonPropertyName("runs")]
+    public required long Runs { get; init; }
+
+    /// <summary>
+    /// Camera pictures removed with them
+    /// </summary>
+    [JsonPropertyName("files")]
+    public required long Files { get; init; }
+}
+
+public sealed record VoicePersona
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    /// <summary>
+    /// A language code
+    /// </summary>
+    [JsonPropertyName("language")]
+    public string? Language { get; init; }
+
+    [JsonPropertyName("voice")]
+    public string? Voice { get; init; }
+
+    [JsonPropertyName("speed")]
+    public double? Speed { get; init; }
+
+    /// <summary>
+    /// Whether its voice can read here now; only in answers
+    /// </summary>
+    [JsonPropertyName("reads")]
+    public bool? Reads { get; init; }
+
+    /// <summary>
+    /// The voice that reads in its place when reads is false
+    /// </summary>
+    [JsonPropertyName("reads_with")]
+    public string? ReadsWith { get; init; }
+}
+
+public sealed record VoicePersonas
+{
+    [JsonPropertyName("personas")]
+    public required List<VoicePersona> Personas { get; init; }
+
+    /// <summary>
+    /// The persona you picked
+    /// </summary>
+    [JsonPropertyName("picked")]
+    public required string Picked { get; init; }
+}
+
+/// <summary>
 /// The Voice settings (#1304, contract 1.112)
 /// </summary>
 public sealed record VoiceSettings
@@ -3994,6 +4138,12 @@ public sealed record QualityResults
     [JsonPropertyName("live")]
     public required bool Live { get; init; }
 
+    /// <summary>
+    /// The quality_results setting is off, so nothing was read (#1415, contract 1.124)
+    /// </summary>
+    [JsonPropertyName("off")]
+    public bool? Off { get; init; }
+
     [JsonPropertyName("note")]
     public string? Note { get; init; }
 
@@ -6680,6 +6830,12 @@ public sealed record ChatRequest
     public string? TimeZone { get; init; }
 
     /// <summary>
+    /// Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
+    /// </summary>
+    [JsonPropertyName("device_location")]
+    public ChatRequestDeviceLocation? DeviceLocation { get; init; }
+
+    /// <summary>
     /// Answer from this message in the chat, as a new version of the point after it (#447)
     /// </summary>
     [JsonPropertyName("parent_id")]
@@ -7092,6 +7248,30 @@ public sealed record SetMyPreferencesRequest
 
     [JsonPropertyName("assistant_language")]
     public string? AssistantLanguage { get; init; }
+
+    /// <summary>
+    /// Answers may offer a better-fitting model to install (#707)
+    /// </summary>
+    [JsonPropertyName("suggest_models")]
+    public bool? SuggestModels { get; init; }
+
+    /// <summary>
+    /// Voice chat plays a soft chime while a spoken answer takes a while (#1334, contract 1.121); on by default
+    /// </summary>
+    [JsonPropertyName("thinking_sound")]
+    public bool? ThinkingSound { get; init; }
+
+    /// <summary>
+    /// The character you see in voice chat, whose mouth moves with the spoken answer (#1369, contract 1.130); "" for none, the default Known values: ``, `ratatoskr`, `pebble`, `lumen`; others may be added.
+    /// </summary>
+    [JsonPropertyName("voice_avatar")]
+    public string? VoiceAvatar { get; init; }
+
+    /// <summary>
+    /// Your finished automations notify you, with a push to your own phones and, for the Owner, a desktop notice (#1391, contract 1.128); until you choose, the Owner's choice. On by default
+    /// </summary>
+    [JsonPropertyName("notify_task_finish")]
+    public bool? NotifyTaskFinish { get; init; }
 }
 
 public sealed record RegisterPushRequest
@@ -7497,6 +7677,12 @@ public sealed record SpeechSayRequest
 
     [JsonPropertyName("language")]
     public string? Language { get; init; }
+
+    /// <summary>
+    /// How fast to read, such as to preview a voice persona; omitted or 0 is the caller's persona's speed, or normal (#1319, contract 1.129)
+    /// </summary>
+    [JsonPropertyName("speed")]
+    public double? Speed { get; init; }
 }
 
 public sealed record TranscribeRecordingRequest
@@ -7733,6 +7919,51 @@ public sealed record UseVideoBuildRequest
     public required string Build { get; init; }
 }
 
+public sealed record PickVoicePersonaRequest
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+}
+
+public sealed record OpenaiSpeechRequest
+{
+    [JsonPropertyName("model")]
+    public string? Model { get; init; }
+
+    [JsonPropertyName("input")]
+    public required string Input { get; init; }
+
+    [JsonPropertyName("voice")]
+    public string? Voice { get; init; }
+
+    /// <summary>
+    /// Known values: `wav`, `pcm`, `mp3`, `opus`, `aac`, `flac`; others may be added.
+    /// </summary>
+    [JsonPropertyName("response_format")]
+    public string? ResponseFormat { get; init; }
+
+    [JsonPropertyName("speed")]
+    public double? Speed { get; init; }
+}
+
+public sealed record OpenaiTranscriptionsRequest
+{
+    [JsonPropertyName("file")]
+    public required byte[] File { get; init; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; init; }
+
+    [JsonPropertyName("language")]
+    public string? Language { get; init; }
+
+    /// <summary>
+    /// Known values: `json`, `text`, `verbose_json`, `srt`, `vtt`; others may be added.
+    /// </summary>
+    [JsonPropertyName("response_format")]
+    public string? ResponseFormat { get; init; }
+}
+
 public sealed record OpenaiChatCompletionsRequest
 {
     /// <summary>
@@ -7815,6 +8046,27 @@ public sealed record OpenaiChatCompletionsRequest
 
     [JsonPropertyName("yggdrasil")]
     public AssistantOptions? Yggdrasil { get; init; }
+}
+
+public sealed record OpenaiEmbeddingsRequest
+{
+    [JsonPropertyName("model")]
+    public string? Model { get; init; }
+
+    /// <summary>
+    /// A string or a list of strings
+    /// </summary>
+    [JsonPropertyName("input")]
+    public JsonNode? Input { get; init; }
+
+    /// <summary>
+    /// Known values: `float`, `base64`; others may be added.
+    /// </summary>
+    [JsonPropertyName("encoding_format")]
+    public string? EncodingFormat { get; init; }
+
+    [JsonPropertyName("dimensions")]
+    public long? Dimensions { get; init; }
 }
 
 public sealed record AnthropicMessagesRequest
@@ -8498,7 +8750,7 @@ public sealed record AutomationInputCameras
     public required string Connector { get; init; }
 
     /// <summary>
-    /// The camera as that service names it, such as Home Assistant's camera.driveway
+    /// The camera as that service names it, such as Home Assistant's camera.driveway, or Reolink's camera, and camera@4 for the one on its hub's channel 4 (#1333)
     /// </summary>
     [JsonPropertyName("device")]
     public required string Device { get; init; }
@@ -8516,7 +8768,7 @@ public sealed record AutomationInputSay
     public required string Connector { get; init; }
 
     /// <summary>
-    /// Always camera: one Reolink connection is one camera
+    /// camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
     /// </summary>
     [JsonPropertyName("device")]
     public required string Device { get; init; }
@@ -8541,6 +8793,12 @@ public sealed record AutomationInputSay
     /// </summary>
     [JsonPropertyName("listen")]
     public bool? Listen { get; init; }
+
+    /// <summary>
+    /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+    /// </summary>
+    [JsonPropertyName("no_thinking_sound")]
+    public bool? NoThinkingSound { get; init; }
 }
 
 public sealed record AutomationInputActions
@@ -8642,7 +8900,7 @@ public sealed record AutomationSay
     public required string Connector { get; init; }
 
     /// <summary>
-    /// Always camera: one Reolink connection is one camera
+    /// camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
     /// </summary>
     [JsonPropertyName("device")]
     public required string Device { get; init; }
@@ -8667,6 +8925,12 @@ public sealed record AutomationSay
     /// </summary>
     [JsonPropertyName("listen")]
     public bool? Listen { get; init; }
+
+    /// <summary>
+    /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+    /// </summary>
+    [JsonPropertyName("no_thinking_sound")]
+    public bool? NoThinkingSound { get; init; }
 }
 
 public sealed record AutomationActions
@@ -9314,7 +9578,7 @@ public sealed record AutomationDetailSay
     public required string Connector { get; init; }
 
     /// <summary>
-    /// Always camera: one Reolink connection is one camera
+    /// camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
     /// </summary>
     [JsonPropertyName("device")]
     public required string Device { get; init; }
@@ -9339,6 +9603,12 @@ public sealed record AutomationDetailSay
     /// </summary>
     [JsonPropertyName("listen")]
     public bool? Listen { get; init; }
+
+    /// <summary>
+    /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+    /// </summary>
+    [JsonPropertyName("no_thinking_sound")]
+    public bool? NoThinkingSound { get; init; }
 }
 
 public sealed record AutomationDetailActions
@@ -9426,6 +9696,12 @@ public sealed record AutomationRequestSay
 
     [JsonPropertyName("listen")]
     public bool? Listen { get; init; }
+
+    /// <summary>
+    /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+    /// </summary>
+    [JsonPropertyName("no_thinking_sound")]
+    public bool? NoThinkingSound { get; init; }
 }
 
 /// <summary>
@@ -10497,6 +10773,24 @@ public sealed record OpenAIErrorError
 
     [JsonPropertyName("code")]
     public required string Code { get; init; }
+}
+
+/// <summary>
+/// Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
+/// </summary>
+public sealed record ChatRequestDeviceLocation
+{
+    [JsonPropertyName("latitude")]
+    public double? Latitude { get; init; }
+
+    [JsonPropertyName("longitude")]
+    public double? Longitude { get; init; }
+
+    /// <summary>
+    /// How far off it may be
+    /// </summary>
+    [JsonPropertyName("accuracy_m")]
+    public double? AccuracyM { get; init; }
 }
 
 public sealed record CreateKnowledgeSourceRequestRemote

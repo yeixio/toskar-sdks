@@ -3291,7 +3291,7 @@ public struct Client: APIProtocol {
     }
     /// Save your own languages (#206)
     ///
-    /// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+    /// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
     ///
     /// - Remark: HTTP `PATCH /api/v1/me/preferences`.
     /// - Remark: Generated from `#/paths//api/v1/me/preferences/patch(setMyPreferences)`.
@@ -8442,7 +8442,7 @@ public struct Client: APIProtocol {
     }
     /// Send a problem report to Toskar (#588)
     ///
-    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
     ///
     /// - Remark: HTTP `POST /api/v1/diagnostics/report`.
     /// - Remark: Generated from `#/paths//api/v1/diagnostics/report/post(sendReport)`.
@@ -8686,6 +8686,812 @@ public struct Client: APIProtocol {
             }
         )
     }
+    /// Ollama-compatible model list
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+    ///
+    /// - Remark: HTTP `GET /api/tags`.
+    /// - Remark: Generated from `#/paths//api/tags/get(ollamaTags)`.
+    public func ollamaTags(_ input: Operations.OllamaTags.Input) async throws -> Operations.OllamaTags.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaTags.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/tags",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaTags.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama-compatible chat
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+    ///
+    /// - Remark: HTTP `POST /api/chat`.
+    /// - Remark: Generated from `#/paths//api/chat/post(ollamaChat)`.
+    public func ollamaChat(_ input: Operations.OllamaChat.Input) async throws -> Operations.OllamaChat.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaChat.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/chat",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaChat.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/x-ndjson"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/x-ndjson":
+                        body = try converter.getResponseBodyAsBinary(
+                            OpenAPIRuntime.HTTPBody.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .applicationXNdjson(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama-compatible completion
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+    ///
+    /// - Remark: HTTP `POST /api/generate`.
+    /// - Remark: Generated from `#/paths//api/generate/post(ollamaGenerate)`.
+    public func ollamaGenerate(_ input: Operations.OllamaGenerate.Input) async throws -> Operations.OllamaGenerate.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaGenerate.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/generate",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaGenerate.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/x-ndjson"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/x-ndjson":
+                        body = try converter.getResponseBodyAsBinary(
+                            OpenAPIRuntime.HTTPBody.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .applicationXNdjson(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama-compatible model details
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+    ///
+    /// - Remark: HTTP `POST /api/show`.
+    /// - Remark: Generated from `#/paths//api/show/post(ollamaShow)`.
+    public func ollamaShow(_ input: Operations.OllamaShow.Input) async throws -> Operations.OllamaShow.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaShow.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/show",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaShow.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama-compatible running models
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+    ///
+    /// - Remark: HTTP `GET /api/ps`.
+    /// - Remark: Generated from `#/paths//api/ps/get(ollamaPs)`.
+    public func ollamaPs(_ input: Operations.OllamaPs.Input) async throws -> Operations.OllamaPs.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaPs.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/ps",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaPs.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama API version
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+    ///
+    /// - Remark: HTTP `GET /api/version`.
+    /// - Remark: Generated from `#/paths//api/version/get(ollamaVersion)`.
+    public func ollamaVersion(_ input: Operations.OllamaVersion.Input) async throws -> Operations.OllamaVersion.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaVersion.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/version",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaVersion.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama-compatible embeddings
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+    ///
+    /// - Remark: HTTP `POST /api/embed`.
+    /// - Remark: Generated from `#/paths//api/embed/post(ollamaEmbed)`.
+    public func ollamaEmbed(_ input: Operations.OllamaEmbed.Input) async throws -> Operations.OllamaEmbed.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaEmbed.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/embed",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaEmbed.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/pull`.
+    /// - Remark: Generated from `#/paths//api/pull/post(ollamaPull)`.
+    public func ollamaPull(_ input: Operations.OllamaPull.Input) async throws -> Operations.OllamaPull.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaPull.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/pull",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaPull.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama-compatible embeddings, older form
+    ///
+    /// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+    ///
+    /// - Remark: HTTP `POST /api/embeddings`.
+    /// - Remark: Generated from `#/paths//api/embeddings/post(ollamaEmbeddings)`.
+    public func ollamaEmbeddings(_ input: Operations.OllamaEmbeddings.Input) async throws -> Operations.OllamaEmbeddings.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaEmbeddings.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/embeddings",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaEmbeddings.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/push`.
+    /// - Remark: Generated from `#/paths//api/push/post(ollamaPush)`.
+    public func ollamaPush(_ input: Operations.OllamaPush.Input) async throws -> Operations.OllamaPush.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaPush.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/push",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaPush.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/create`.
+    /// - Remark: Generated from `#/paths//api/create/post(ollamaCreate)`.
+    public func ollamaCreate(_ input: Operations.OllamaCreate.Input) async throws -> Operations.OllamaCreate.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaCreate.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/create",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaCreate.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/copy`.
+    /// - Remark: Generated from `#/paths//api/copy/post(ollamaCopy)`.
+    public func ollamaCopy(_ input: Operations.OllamaCopy.Input) async throws -> Operations.OllamaCopy.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaCopy.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/copy",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaCopy.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `DELETE /api/delete`.
+    /// - Remark: Generated from `#/paths//api/delete/delete(ollamaDelete)`.
+    public func ollamaDelete(_ input: Operations.OllamaDelete.Input) async throws -> Operations.OllamaDelete.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OllamaDelete.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/delete",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .delete
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OllamaDelete.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OllamaAnswer.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
     /// Anthropic-compatible messages, for coding agents
     ///
     /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
@@ -8818,6 +9624,267 @@ public struct Client: APIProtocol {
                     return .forbidden(.init())
                 case 404:
                     return .notFound(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// OpenAI Embeddings
+    ///
+    /// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+    ///
+    /// - Remark: HTTP `POST /v1/embeddings`.
+    /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)`.
+    public func openaiEmbeddings(_ input: Operations.OpenaiEmbeddings.Input) async throws -> Operations.OpenaiEmbeddings.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OpenaiEmbeddings.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/embeddings",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .json(value):
+                    body = try converter.setRequiredRequestBodyAsJSON(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "application/json; charset=utf-8"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    return .ok(.init())
+                case 400:
+                    return .badRequest(.init())
+                case 503:
+                    return .serviceUnavailable(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// OpenAI audio transcriptions
+    ///
+    /// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+    ///
+    /// - Remark: HTTP `POST /v1/audio/transcriptions`.
+    /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)`.
+    public func openaiTranscriptions(_ input: Operations.OpenaiTranscriptions.Input) async throws -> Operations.OpenaiTranscriptions.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OpenaiTranscriptions.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/audio/transcriptions",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .multipartForm(value):
+                    body = try converter.setRequiredRequestBodyAsMultipart(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "multipart/form-data",
+                        allowsUnknownParts: true,
+                        requiredExactlyOncePartNames: [
+                            "file"
+                        ],
+                        requiredAtLeastOncePartNames: [],
+                        atMostOncePartNames: [
+                            "language",
+                            "model",
+                            "response_format"
+                        ],
+                        zeroOrMoreTimesPartNames: [],
+                        encoding: { part in
+                            switch part {
+                            case let .file(wrapped):
+                                var headerFields: HTTPTypes.HTTPFields = .init()
+                                let value = wrapped.payload
+                                let body = try converter.setRequiredRequestBodyAsBinary(
+                                    value.body,
+                                    headerFields: &headerFields,
+                                    contentType: "application/octet-stream"
+                                )
+                                return .init(
+                                    name: "file",
+                                    filename: wrapped.filename,
+                                    headerFields: headerFields,
+                                    body: body
+                                )
+                            case let .model(wrapped):
+                                var headerFields: HTTPTypes.HTTPFields = .init()
+                                let value = wrapped.payload
+                                let body = try converter.setRequiredRequestBodyAsBinary(
+                                    value.body,
+                                    headerFields: &headerFields,
+                                    contentType: "text/plain"
+                                )
+                                return .init(
+                                    name: "model",
+                                    filename: wrapped.filename,
+                                    headerFields: headerFields,
+                                    body: body
+                                )
+                            case let .language(wrapped):
+                                var headerFields: HTTPTypes.HTTPFields = .init()
+                                let value = wrapped.payload
+                                let body = try converter.setRequiredRequestBodyAsBinary(
+                                    value.body,
+                                    headerFields: &headerFields,
+                                    contentType: "text/plain"
+                                )
+                                return .init(
+                                    name: "language",
+                                    filename: wrapped.filename,
+                                    headerFields: headerFields,
+                                    body: body
+                                )
+                            case let .responseFormat(wrapped):
+                                var headerFields: HTTPTypes.HTTPFields = .init()
+                                let value = wrapped.payload
+                                let body = try converter.setRequiredRequestBodyAsBinary(
+                                    value.body,
+                                    headerFields: &headerFields,
+                                    contentType: "text/plain"
+                                )
+                                return .init(
+                                    name: "response_format",
+                                    filename: wrapped.filename,
+                                    headerFields: headerFields,
+                                    body: body
+                                )
+                            case let .undocumented(value):
+                                return value
+                            }
+                        }
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    return .ok(.init())
+                case 400:
+                    return .badRequest(.init())
+                case 413:
+                    return .contentTooLarge(.init())
+                case 503:
+                    return .serviceUnavailable(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// OpenAI audio speech
+    ///
+    /// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+    ///
+    /// - Remark: HTTP `POST /v1/audio/speech`.
+    /// - Remark: Generated from `#/paths//v1/audio/speech/post(openaiSpeech)`.
+    public func openaiSpeech(_ input: Operations.OpenaiSpeech.Input) async throws -> Operations.OpenaiSpeech.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.OpenaiSpeech.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/audio/speech",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .json(value):
+                    body = try converter.setRequiredRequestBodyAsJSON(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "application/json; charset=utf-8"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.OpenaiSpeech.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "audio/wav",
+                            "audio/pcm"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "audio/wav":
+                        body = try converter.getResponseBodyAsBinary(
+                            OpenAPIRuntime.HTTPBody.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .audioWav(value)
+                            }
+                        )
+                    case "audio/pcm":
+                        body = try converter.getResponseBodyAsBinary(
+                            OpenAPIRuntime.HTTPBody.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .audioPcm(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 400:
+                    return .badRequest(.init())
+                case 503:
+                    return .serviceUnavailable(.init())
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -13424,6 +14491,479 @@ public struct Client: APIProtocol {
             }
         )
     }
+    /// The voice personas, and the one you picked (#1319)
+    ///
+    /// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+    ///
+    /// - Remark: HTTP `GET /api/v1/voice/personas`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/get(voicePersonas)`.
+    public func voicePersonas(_ input: Operations.VoicePersonas.Input) async throws -> Operations.VoicePersonas.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.VoicePersonas.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/v1/voice/personas",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.VoicePersonas.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.VoicePersonas.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Make a voice persona (#1319)
+    ///
+    /// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `POST /api/v1/voice/personas`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/post(createVoicePersona)`.
+    public func createVoicePersona(_ input: Operations.CreateVoicePersona.Input) async throws -> Operations.CreateVoicePersona.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.CreateVoicePersona.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/v1/voice/personas",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .json(value):
+                    body = try converter.setRequiredRequestBodyAsJSON(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "application/json; charset=utf-8"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.CreateVoicePersona.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.VoicePersonas.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 400:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.CreateVoicePersona.Output.BadRequest.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .badRequest(.init(body: body))
+                case 403:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.CreateVoicePersona.Output.Forbidden.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .forbidden(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Change a voice persona (#1319)
+    ///
+    /// Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/voice/personas/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/put(updateVoicePersona)`.
+    public func updateVoicePersona(_ input: Operations.UpdateVoicePersona.Input) async throws -> Operations.UpdateVoicePersona.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.UpdateVoicePersona.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/v1/voice/personas/{}",
+                    parameters: [
+                        input.path.id
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .put
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .json(value):
+                    body = try converter.setRequiredRequestBodyAsJSON(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "application/json; charset=utf-8"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.UpdateVoicePersona.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.VoicePersonas.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 400:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.UpdateVoicePersona.Output.BadRequest.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .badRequest(.init(body: body))
+                case 404:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.UpdateVoicePersona.Output.NotFound.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .notFound(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Delete a voice persona (#1319)
+    ///
+    /// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/voice/personas/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/delete(deleteVoicePersona)`.
+    public func deleteVoicePersona(_ input: Operations.DeleteVoicePersona.Input) async throws -> Operations.DeleteVoicePersona.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.DeleteVoicePersona.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/v1/voice/personas/{}",
+                    parameters: [
+                        input.path.id
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .delete
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.DeleteVoicePersona.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.VoicePersonas.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 404:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.DeleteVoicePersona.Output.NotFound.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .notFound(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Pick the voice persona you're read aloud in (#1319)
+    ///
+    /// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/voice/persona`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/persona/put(pickVoicePersona)`.
+    public func pickVoicePersona(_ input: Operations.PickVoicePersona.Input) async throws -> Operations.PickVoicePersona.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.PickVoicePersona.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/v1/voice/persona",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .put
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .json(value):
+                    body = try converter.setRequiredRequestBodyAsJSON(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "application/json; charset=utf-8"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.PickVoicePersona.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.VoicePersonas.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 404:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.PickVoicePersona.Output.NotFound.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .notFound(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
     /// Live voice mode, over a WebSocket (#795)
     ///
     /// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
@@ -13792,6 +15332,176 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .badRequest(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Each feature and what it still needs (#1355)
+    ///
+    /// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+    ///
+    /// - Remark: HTTP `GET /api/v1/features`.
+    /// - Remark: Generated from `#/paths//api/v1/features/get(listFeatures)`.
+    public func listFeatures(_ input: Operations.ListFeatures.Input) async throws -> Operations.ListFeatures.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ListFeatures.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/v1/features",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ListFeatures.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            [Components.Schemas.Feature].self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Set up everything a feature still needs (#1355)
+    ///
+    /// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+    ///
+    /// - Remark: HTTP `POST /api/v1/features/{id}/setup`.
+    /// - Remark: Generated from `#/paths//api/v1/features/{id}/setup/post(setUpFeature)`.
+    public func setUpFeature(_ input: Operations.SetUpFeature.Input) async throws -> Operations.SetUpFeature.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.SetUpFeature.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/v1/features/{}/setup",
+                    parameters: [
+                        input.path.id
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 202:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.SetUpFeature.Output.Accepted.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.Feature.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .accepted(.init(body: body))
+                case 404:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.SetUpFeature.Output.NotFound.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .notFound(.init(body: body))
+                case 409:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.SetUpFeature.Output.Conflict.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .conflict(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -21307,6 +23017,188 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .notFound(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Clear an automation's history
+    ///
+    /// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/automations/{id}/runs`.
+    /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/delete(clearAutomationRuns)`.
+    public func clearAutomationRuns(_ input: Operations.ClearAutomationRuns.Input) async throws -> Operations.ClearAutomationRuns.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ClearAutomationRuns.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/v1/automations/{}/runs",
+                    parameters: [
+                        input.path.id
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .delete
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "files",
+                    value: input.query.files
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ClearAutomationRuns.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ClearedRuns.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 404:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ClearAutomationRuns.Output.NotFound.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .notFound(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Delete one finished run
+    ///
+    /// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/automations/{id}/runs/{run_id}`.
+    /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/{run_id}/delete(deleteAutomationRun)`.
+    public func deleteAutomationRun(_ input: Operations.DeleteAutomationRun.Input) async throws -> Operations.DeleteAutomationRun.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.DeleteAutomationRun.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/api/v1/automations/{}/runs/{}",
+                    parameters: [
+                        input.path.id,
+                        input.path.runId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .delete
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 204:
+                    return .noContent(.init())
+                case 404:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.DeleteAutomationRun.Output.NotFound.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .notFound(.init(body: body))
+                case 409:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.DeleteAutomationRun.Output.Conflict.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas._Error.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .conflict(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,

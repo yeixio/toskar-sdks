@@ -21,6 +21,94 @@ class Api:
         """AGPL corresponding-source offer"""
         return self._client._request("GET", f"/about", query={}, body=None, answer=models.SourceOffer, read="json")
 
+    def ollama_chat(self) -> bytes:
+        """Ollama-compatible chat
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+        """
+        return self._client._request("POST", f"/api/chat", query={}, body=None, answer=None, read="bytes")
+
+    def ollama_copy(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page."""
+        return self._client._request("POST", f"/api/copy", query={}, body=None, answer=models.OllamaAnswer, read="json")
+
+    def ollama_create(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page."""
+        return self._client._request(
+            "POST", f"/api/create", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    def ollama_delete(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page."""
+        return self._client._request(
+            "DELETE", f"/api/delete", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    def ollama_embed(self) -> models.OllamaAnswer:
+        """Ollama-compatible embeddings
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+        """
+        return self._client._request(
+            "POST", f"/api/embed", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    def ollama_embeddings(self) -> models.OllamaAnswer:
+        """Ollama-compatible embeddings, older form
+
+        Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+        """
+        return self._client._request(
+            "POST", f"/api/embeddings", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    def ollama_generate(self) -> bytes:
+        """Ollama-compatible completion
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+        """
+        return self._client._request("POST", f"/api/generate", query={}, body=None, answer=None, read="bytes")
+
+    def ollama_ps(self) -> models.OllamaAnswer:
+        """Ollama-compatible running models
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+        """
+        return self._client._request("GET", f"/api/ps", query={}, body=None, answer=models.OllamaAnswer, read="json")
+
+    def ollama_pull(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+        """
+        return self._client._request("POST", f"/api/pull", query={}, body=None, answer=models.OllamaAnswer, read="json")
+
+    def ollama_push(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page."""
+        return self._client._request("POST", f"/api/push", query={}, body=None, answer=models.OllamaAnswer, read="json")
+
+    def ollama_show(self) -> models.OllamaAnswer:
+        """Ollama-compatible model details
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+        """
+        return self._client._request("POST", f"/api/show", query={}, body=None, answer=models.OllamaAnswer, read="json")
+
+    def ollama_tags(self) -> models.OllamaAnswer:
+        """Ollama-compatible model list
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+        """
+        return self._client._request("GET", f"/api/tags", query={}, body=None, answer=models.OllamaAnswer, read="json")
+
     def list_apikeys(self) -> list[models.APIKey]:
         """API keys, without their secrets"""
         return self._client._request(
@@ -178,6 +266,28 @@ class Api:
             read="json",
         )
 
+    def clear_automation_runs(self, id: str, *, files: bool | None = None) -> models.ClearedRuns:
+        """Clear an automation's history
+
+        Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+        """
+        return self._client._request(
+            "DELETE",
+            f"/api/v1/automations/{id}/runs",
+            query={"files": files},
+            body=None,
+            answer=models.ClearedRuns,
+            read="json",
+        )
+
+    def delete_automation_run(self, id: str, run_id: str) -> None:
+        """Delete one finished run
+
+        A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118)."""
+        return self._client._request(
+            "DELETE", f"/api/v1/automations/{id}/runs/{run_id}", query={}, body=None, answer=None, read="none"
+        )
+
     def continue_automation_run(self, id: str, run_id: str) -> models.ContinuedRun:
         """Open a run's result in a chat to reply to
 
@@ -274,6 +384,7 @@ class Api:
             min_p
             thinking: off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
             time_zone: The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
+            device_location: Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
             parent_id: Answer from this message in the chat, as a new version of the point after it (#447)
             retry_of: Ask this answer's question again, as a new version of the answer; message may be empty
             edit_of: Send message in place of this one, as a new version of it
@@ -643,7 +754,7 @@ class Api:
     def send_report(self) -> None:
         """Send a problem report to Toskar (#588)
 
-        Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+        Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
         """
         return self._client._request(
             "POST", f"/api/v1/diagnostics/report", query={}, body=None, answer=None, read="none"
@@ -686,6 +797,24 @@ class Api:
             clear_key"""
         return self._client._request(
             "PUT", f"/api/v1/external-server", query={}, body=body, answer=models.ExternalServer, read="json"
+        )
+
+    def list_features(self) -> list[models.Feature]:
+        """Each feature and what it still needs (#1355)
+
+        One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+        """
+        return self._client._request(
+            "GET", f"/api/v1/features", query={}, body=None, answer=list[models.Feature], read="json"
+        )
+
+    def set_up_feature(self, id: str) -> models.Feature:
+        """Set up everything a feature still needs (#1355)
+
+        Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+        """
+        return self._client._request(
+            "POST", f"/api/v1/features/{id}/setup", query={}, body=None, answer=models.Feature, read="json"
         )
 
     def get_hardware(self) -> models.HardwareInventory:
@@ -1050,12 +1179,17 @@ class Api:
     def set_my_preferences(self, *, body: dict[str, Any]) -> models.SettingsView:
         """Save your own languages (#206)
 
-        The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+        The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 
         Body fields:
             ui_locale
             assistant_language_mode: Known values: `auto`, `app`, `language`; others may be added.
-            assistant_language"""
+            assistant_language
+            suggest_models: Answers may offer a better-fitting model to install (#707)
+            thinking_sound: Voice chat plays a soft chime while a spoken answer takes a while (#1334, contract 1.121); on by default
+            voice_avatar: The character you see in voice chat, whose mouth moves with the spoken answer (#1369, contract 1.130); "" for none, the default Known values: ``, `ratatoskr`, `pebble`, `lumen`; others may be added.
+            notify_task_finish: Your finished automations notify you, with a push to your own phones and, for the Owner, a desktop notice (#1391, contract 1.128); until you choose, the Owner's choice. On by default
+        """
         return self._client._request(
             "PATCH", f"/api/v1/me/preferences", query={}, body=body, answer=models.SettingsView, read="json"
         )
@@ -2327,7 +2461,9 @@ class Api:
         Body fields:
             text (required)
             voice
-            language"""
+            language
+            speed: How fast to read, such as to preview a voice persona; omitted or 0 is the caller's persona's speed, or normal (#1319, contract 1.129)
+        """
         return self._client._request("POST", f"/api/v1/speech/say", query={}, body=body, answer=None, read="bytes")
 
     def transcribe_recording(self, *, body: dict[str, Any]) -> models.Transcription:
@@ -2851,12 +2987,66 @@ class Api:
             "POST", f"/api/v1/video/setup/build", query={}, body=body, answer=models.ImageSetup, read="json"
         )
 
+    def pick_voice_persona(self, *, body: dict[str, Any]) -> models.VoicePersonas:
+        """Pick the voice persona you're read aloud in (#1319)
+
+        Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+
+        Body fields:
+            id"""
+        return self._client._request(
+            "PUT", f"/api/v1/voice/persona", query={}, body=body, answer=models.VoicePersonas, read="json"
+        )
+
+    def voice_personas(self) -> models.VoicePersonas:
+        """The voice personas, and the one you picked (#1319)
+
+        Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+        """
+        return self._client._request(
+            "GET", f"/api/v1/voice/personas", query={}, body=None, answer=models.VoicePersonas, read="json"
+        )
+
+    def create_voice_persona(self, *, body: models.VoicePersona | dict[str, Any]) -> models.VoicePersonas:
+        """Make a voice persona (#1319)
+
+        voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+        """
+        return self._client._request(
+            "POST", f"/api/v1/voice/personas", query={}, body=body, answer=models.VoicePersonas, read="json"
+        )
+
+    def update_voice_persona(self, id: str, *, body: models.VoicePersona | dict[str, Any]) -> models.VoicePersonas:
+        """Change a voice persona (#1319)
+
+        Admins only (contract 1.129)."""
+        return self._client._request(
+            "PUT", f"/api/v1/voice/personas/{id}", query={}, body=body, answer=models.VoicePersonas, read="json"
+        )
+
+    def delete_voice_persona(self, id: str) -> models.VoicePersonas:
+        """Delete a voice persona (#1319)
+
+        Whoever picked it goes back to each language's own voice. Admins only (contract 1.129)."""
+        return self._client._request(
+            "DELETE", f"/api/v1/voice/personas/{id}", query={}, body=None, answer=models.VoicePersonas, read="json"
+        )
+
     def voice_realtime(self) -> None:
         """Live voice mode, over a WebSocket (#795)
 
         Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
         """
         return self._client._request("GET", f"/api/v1/voice/realtime", query={}, body=None, answer=None, read="none")
+
+    def ollama_version(self) -> models.OllamaAnswer:
+        """Ollama API version
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+        """
+        return self._client._request(
+            "GET", f"/api/version", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
 
     def run_hook(self, token: str) -> models.HookRun:
         """Start the automation a webhook link belongs to
@@ -2888,6 +3078,26 @@ class Api:
         """AGPL corresponding-source offer"""
         return self._client._request("GET", f"/source", query={}, body=None, answer=models.SourceOffer, read="json")
 
+    def openai_speech(self, *, body: dict[str, Any]) -> bytes:
+        """OpenAI audio speech
+
+        Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+
+        Body fields:
+            model
+            input (required)
+            voice
+            response_format: Known values: `wav`, `pcm`, `mp3`, `opus`, `aac`, `flac`; others may be added.
+            speed"""
+        return self._client._request("POST", f"/v1/audio/speech", query={}, body=body, answer=None, read="bytes")
+
+    def openai_transcriptions(self) -> None:
+        """OpenAI audio transcriptions
+
+        Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+        """
+        return self._client._request("POST", f"/v1/audio/transcriptions", query={}, body=None, answer=None, read="none")
+
     def openai_chat_completions(self, *, body: dict[str, Any]) -> models.OpenAIChatCompletion:
         """OpenAI-compatible chat completions
 
@@ -2913,6 +3123,18 @@ class Api:
         return self._client._request(
             "POST", f"/v1/chat/completions", query={}, body=body, answer=models.OpenAIChatCompletion, read="json"
         )
+
+    def openai_embeddings(self, *, body: dict[str, Any]) -> None:
+        """OpenAI Embeddings
+
+        Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+
+        Body fields:
+            model
+            input (required): A string or a list of strings
+            encoding_format: Known values: `float`, `base64`; others may be added.
+            dimensions"""
+        return self._client._request("POST", f"/v1/embeddings", query={}, body=body, answer=None, read="none")
 
     def anthropic_messages(self, *, body: dict[str, Any]) -> None:
         """Anthropic-compatible messages, for coding agents
@@ -2979,6 +3201,106 @@ class AsyncApi:
         """AGPL corresponding-source offer"""
         return await self._client._request(
             "GET", f"/about", query={}, body=None, answer=models.SourceOffer, read="json"
+        )
+
+    async def ollama_chat(self) -> bytes:
+        """Ollama-compatible chat
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+        """
+        return await self._client._request("POST", f"/api/chat", query={}, body=None, answer=None, read="bytes")
+
+    async def ollama_copy(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page."""
+        return await self._client._request(
+            "POST", f"/api/copy", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    async def ollama_create(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page."""
+        return await self._client._request(
+            "POST", f"/api/create", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    async def ollama_delete(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page."""
+        return await self._client._request(
+            "DELETE", f"/api/delete", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    async def ollama_embed(self) -> models.OllamaAnswer:
+        """Ollama-compatible embeddings
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+        """
+        return await self._client._request(
+            "POST", f"/api/embed", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    async def ollama_embeddings(self) -> models.OllamaAnswer:
+        """Ollama-compatible embeddings, older form
+
+        Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+        """
+        return await self._client._request(
+            "POST", f"/api/embeddings", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    async def ollama_generate(self) -> bytes:
+        """Ollama-compatible completion
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+        """
+        return await self._client._request("POST", f"/api/generate", query={}, body=None, answer=None, read="bytes")
+
+    async def ollama_ps(self) -> models.OllamaAnswer:
+        """Ollama-compatible running models
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+        """
+        return await self._client._request(
+            "GET", f"/api/ps", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    async def ollama_pull(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+        """
+        return await self._client._request(
+            "POST", f"/api/pull", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    async def ollama_push(self) -> models.OllamaAnswer:
+        """Ollama model management
+
+        Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page."""
+        return await self._client._request(
+            "POST", f"/api/push", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    async def ollama_show(self) -> models.OllamaAnswer:
+        """Ollama-compatible model details
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+        """
+        return await self._client._request(
+            "POST", f"/api/show", query={}, body=None, answer=models.OllamaAnswer, read="json"
+        )
+
+    async def ollama_tags(self) -> models.OllamaAnswer:
+        """Ollama-compatible model list
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+        """
+        return await self._client._request(
+            "GET", f"/api/tags", query={}, body=None, answer=models.OllamaAnswer, read="json"
         )
 
     async def list_apikeys(self) -> list[models.APIKey]:
@@ -3142,6 +3464,28 @@ class AsyncApi:
             read="json",
         )
 
+    async def clear_automation_runs(self, id: str, *, files: bool | None = None) -> models.ClearedRuns:
+        """Clear an automation's history
+
+        Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+        """
+        return await self._client._request(
+            "DELETE",
+            f"/api/v1/automations/{id}/runs",
+            query={"files": files},
+            body=None,
+            answer=models.ClearedRuns,
+            read="json",
+        )
+
+    async def delete_automation_run(self, id: str, run_id: str) -> None:
+        """Delete one finished run
+
+        A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118)."""
+        return await self._client._request(
+            "DELETE", f"/api/v1/automations/{id}/runs/{run_id}", query={}, body=None, answer=None, read="none"
+        )
+
     async def continue_automation_run(self, id: str, run_id: str) -> models.ContinuedRun:
         """Open a run's result in a chat to reply to
 
@@ -3238,6 +3582,7 @@ class AsyncApi:
             min_p
             thinking: off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
             time_zone: The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
+            device_location: Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
             parent_id: Answer from this message in the chat, as a new version of the point after it (#447)
             retry_of: Ask this answer's question again, as a new version of the answer; message may be empty
             edit_of: Send message in place of this one, as a new version of it
@@ -3609,7 +3954,7 @@ class AsyncApi:
     async def send_report(self) -> None:
         """Send a problem report to Toskar (#588)
 
-        Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+        Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
         """
         return await self._client._request(
             "POST", f"/api/v1/diagnostics/report", query={}, body=None, answer=None, read="none"
@@ -3654,6 +3999,24 @@ class AsyncApi:
             clear_key"""
         return await self._client._request(
             "PUT", f"/api/v1/external-server", query={}, body=body, answer=models.ExternalServer, read="json"
+        )
+
+    async def list_features(self) -> list[models.Feature]:
+        """Each feature and what it still needs (#1355)
+
+        One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/features", query={}, body=None, answer=list[models.Feature], read="json"
+        )
+
+    async def set_up_feature(self, id: str) -> models.Feature:
+        """Set up everything a feature still needs (#1355)
+
+        Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+        """
+        return await self._client._request(
+            "POST", f"/api/v1/features/{id}/setup", query={}, body=None, answer=models.Feature, read="json"
         )
 
     async def get_hardware(self) -> models.HardwareInventory:
@@ -4030,12 +4393,17 @@ class AsyncApi:
     async def set_my_preferences(self, *, body: dict[str, Any]) -> models.SettingsView:
         """Save your own languages (#206)
 
-        The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+        The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 
         Body fields:
             ui_locale
             assistant_language_mode: Known values: `auto`, `app`, `language`; others may be added.
-            assistant_language"""
+            assistant_language
+            suggest_models: Answers may offer a better-fitting model to install (#707)
+            thinking_sound: Voice chat plays a soft chime while a spoken answer takes a while (#1334, contract 1.121); on by default
+            voice_avatar: The character you see in voice chat, whose mouth moves with the spoken answer (#1369, contract 1.130); "" for none, the default Known values: ``, `ratatoskr`, `pebble`, `lumen`; others may be added.
+            notify_task_finish: Your finished automations notify you, with a push to your own phones and, for the Owner, a desktop notice (#1391, contract 1.128); until you choose, the Owner's choice. On by default
+        """
         return await self._client._request(
             "PATCH", f"/api/v1/me/preferences", query={}, body=body, answer=models.SettingsView, read="json"
         )
@@ -5327,7 +5695,9 @@ class AsyncApi:
         Body fields:
             text (required)
             voice
-            language"""
+            language
+            speed: How fast to read, such as to preview a voice persona; omitted or 0 is the caller's persona's speed, or normal (#1319, contract 1.129)
+        """
         return await self._client._request(
             "POST", f"/api/v1/speech/say", query={}, body=body, answer=None, read="bytes"
         )
@@ -5863,6 +6233,53 @@ class AsyncApi:
             "POST", f"/api/v1/video/setup/build", query={}, body=body, answer=models.ImageSetup, read="json"
         )
 
+    async def pick_voice_persona(self, *, body: dict[str, Any]) -> models.VoicePersonas:
+        """Pick the voice persona you're read aloud in (#1319)
+
+        Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+
+        Body fields:
+            id"""
+        return await self._client._request(
+            "PUT", f"/api/v1/voice/persona", query={}, body=body, answer=models.VoicePersonas, read="json"
+        )
+
+    async def voice_personas(self) -> models.VoicePersonas:
+        """The voice personas, and the one you picked (#1319)
+
+        Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+        """
+        return await self._client._request(
+            "GET", f"/api/v1/voice/personas", query={}, body=None, answer=models.VoicePersonas, read="json"
+        )
+
+    async def create_voice_persona(self, *, body: models.VoicePersona | dict[str, Any]) -> models.VoicePersonas:
+        """Make a voice persona (#1319)
+
+        voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+        """
+        return await self._client._request(
+            "POST", f"/api/v1/voice/personas", query={}, body=body, answer=models.VoicePersonas, read="json"
+        )
+
+    async def update_voice_persona(
+        self, id: str, *, body: models.VoicePersona | dict[str, Any]
+    ) -> models.VoicePersonas:
+        """Change a voice persona (#1319)
+
+        Admins only (contract 1.129)."""
+        return await self._client._request(
+            "PUT", f"/api/v1/voice/personas/{id}", query={}, body=body, answer=models.VoicePersonas, read="json"
+        )
+
+    async def delete_voice_persona(self, id: str) -> models.VoicePersonas:
+        """Delete a voice persona (#1319)
+
+        Whoever picked it goes back to each language's own voice. Admins only (contract 1.129)."""
+        return await self._client._request(
+            "DELETE", f"/api/v1/voice/personas/{id}", query={}, body=None, answer=models.VoicePersonas, read="json"
+        )
+
     async def voice_realtime(self) -> None:
         """Live voice mode, over a WebSocket (#795)
 
@@ -5870,6 +6287,15 @@ class AsyncApi:
         """
         return await self._client._request(
             "GET", f"/api/v1/voice/realtime", query={}, body=None, answer=None, read="none"
+        )
+
+    async def ollama_version(self) -> models.OllamaAnswer:
+        """Ollama API version
+
+        Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+        """
+        return await self._client._request(
+            "GET", f"/api/version", query={}, body=None, answer=models.OllamaAnswer, read="json"
         )
 
     async def run_hook(self, token: str) -> models.HookRun:
@@ -5906,6 +6332,28 @@ class AsyncApi:
             "GET", f"/source", query={}, body=None, answer=models.SourceOffer, read="json"
         )
 
+    async def openai_speech(self, *, body: dict[str, Any]) -> bytes:
+        """OpenAI audio speech
+
+        Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+
+        Body fields:
+            model
+            input (required)
+            voice
+            response_format: Known values: `wav`, `pcm`, `mp3`, `opus`, `aac`, `flac`; others may be added.
+            speed"""
+        return await self._client._request("POST", f"/v1/audio/speech", query={}, body=body, answer=None, read="bytes")
+
+    async def openai_transcriptions(self) -> None:
+        """OpenAI audio transcriptions
+
+        Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+        """
+        return await self._client._request(
+            "POST", f"/v1/audio/transcriptions", query={}, body=None, answer=None, read="none"
+        )
+
     async def openai_chat_completions(self, *, body: dict[str, Any]) -> models.OpenAIChatCompletion:
         """OpenAI-compatible chat completions
 
@@ -5931,6 +6379,18 @@ class AsyncApi:
         return await self._client._request(
             "POST", f"/v1/chat/completions", query={}, body=body, answer=models.OpenAIChatCompletion, read="json"
         )
+
+    async def openai_embeddings(self, *, body: dict[str, Any]) -> None:
+        """OpenAI Embeddings
+
+        Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+
+        Body fields:
+            model
+            input (required): A string or a list of strings
+            encoding_format: Known values: `float`, `base64`; others may be added.
+            dimensions"""
+        return await self._client._request("POST", f"/v1/embeddings", query={}, body=body, answer=None, read="none")
 
     async def anthropic_messages(self, *, body: dict[str, Any]) -> None:
         """Anthropic-compatible messages, for coding agents

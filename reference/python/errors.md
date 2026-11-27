@@ -24,6 +24,7 @@ except ToskarError as err:
 | `AUTOMATION_NO_RESULT` | This run has no result to continue in chat. |
 | `AUTOMATION_PAUSED` | This automation is paused. |
 | `AUTOMATION_RUNNING` | This automation is already running. Its result will appear here when it finishes. |
+| `AUTOMATION_RUN_IN_PROGRESS` | This run is still going. Remove it once it finishes. |
 | `AUTOMATION_TIMEOUT` | The run took longer than {{minutes}} minutes and was stopped. Try a faster model or a shorter prompt. |
 | `BAD_REQUEST` |  |
 | `BAD_RESPONSE` | The Toskar service sent an answer the app couldn't read (HTTP {{status}}). Try again; if it keeps happening, report it. |
@@ -66,7 +67,7 @@ except ToskarError as err:
 | `DESTINATION_NOT_FOUND` | That notification destination was removed. |
 | `DEVICES_FAILED` | Couldn't read or change your devices. |
 | `DEVICE_LIMIT` | You have {{limit}} connected devices, the most you can. Disconnect one first. |
-| `DEVICE_NOT_ALLOWED` | A device's key can't do this. Use a key from API Access. |
+| `DEVICE_NOT_ALLOWED` | A device's key can't do this. Use a key from Settings › API keys. |
 | `DEVICE_NOT_FOUND` | No device of yours has that id. |
 | `DIAGNOSTICS_FAILED` | Couldn't create a diagnostics bundle. |
 | `DOOR_NOT_ANSWERED` | Someone came to the door, and Toskar couldn't answer: {{detail}} |
@@ -79,6 +80,8 @@ except ToskarError as err:
 | `EXTERNAL_FAILED` |  |
 | `EXTERNAL_LOCAL_ONLY` | This chat uses memories or knowledge marked This computer only, so it can't go to the external server. Choose a model on this computer. |
 | `EXTERNAL_OFFLINE_PROFILE` | This profile keeps work on this computer, so it doesn't use the external server. Choose a model on this computer or another profile. |
+| `FEATURE_SETUP_FAILED` | Part of the setup couldn't start: {{detail}} |
+| `FEATURE_UNKNOWN` | Toskar doesn't know that feature. |
 | `FILE_NOT_FOUND` | That file isn't here anymore. |
 | `FIT_FAILED` |  |
 | `GPU_SETUP_FAILED` | Couldn't check this computer's GPU setup. |
@@ -116,7 +119,7 @@ except ToskarError as err:
 | `JOIN_UNREACHABLE` | Couldn't reach Toskar at {{server}}. Check the address, the firewall, and that Toskar is running there. |
 | `JOIN_WRONG_SERVER` | The computer at that address isn't the one the join command was made on. Nothing that proves the token was sent. |
 | `KEYS_FAILED` | Their keys couldn't be read: {{detail}} |
-| `KEY_CHAT_ONLY` | This key is for chat only, so it can't do this. Use another key from API Access. |
+| `KEY_CHAT_ONLY` | This key is for chat only, so it can't do this. Use another key from Settings › API keys. |
 | `KEY_NOT_FOUND` | They have no key with that id. |
 | `KNOWLEDGE_SOURCE_NOT_FOUND` | That knowledge source was removed. |
 | `KNOWLEDGE_SYNC_FAILED` |  |
@@ -171,6 +174,8 @@ except ToskarError as err:
 | `NO_TEXT_FOUND` | No text found. Scanned PDFs need text recognition (OCR) before Toskar can read them. |
 | `OFFER_FAILED` |  |
 | `OFFLINE` | This computer isn't connected to the internet. Check the connection, then try again. |
+| `OLLAMA_PORT_FAILED` | Toskar can't listen on port {{port}}. |
+| `OLLAMA_PORT_IN_USE` | Another program, probably Ollama, is using port {{port}}. Quit it, then try again. |
 | `ORIGIN_NOT_ALLOWED` | Websites cannot use Toskar without an API key. |
 | `OUT_OF_MEMORY` | The model ran out of memory. |
 | `OWNER_FIXED` | The Owner's role can't change, and nobody changes their own role or disables themselves. |
@@ -193,6 +198,10 @@ except ToskarError as err:
 | `PERFORMANCE_LIST_FAILED` | Couldn't list performance measurements. |
 | `PERMISSIONS_FAILED` |  |
 | `PERSONALIZATION_FAILED` |  |
+| `PERSONA_LIMIT` | There can be at most {{limit}} voice personas. |
+| `PERSONA_NAME_INVALID` | A persona's name is 1 to 40 characters. |
+| `PERSONA_NOT_FOUND` | That voice persona isn't here anymore. |
+| `PERSONA_SPEED_INVALID` | A persona reads from half to twice as fast. |
 | `PERSON_NOT_FOUND` | That person isn't here. |
 | `PINS_FAILED` | Couldn't read which profiles people are pinned to. |
 | `PIN_INVALID` | That pin can't be saved. Only Members and Visitors are pinned, and only to profiles that exist. |

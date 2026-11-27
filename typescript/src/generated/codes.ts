@@ -29,6 +29,8 @@ export const ErrorCodes = {
   AUTOMATION_PAUSED: 'AUTOMATION_PAUSED',
   /** This automation is already running. Its result will appear here when it finishes. */
   AUTOMATION_RUNNING: 'AUTOMATION_RUNNING',
+  /** This run is still going. Remove it once it finishes. */
+  AUTOMATION_RUN_IN_PROGRESS: 'AUTOMATION_RUN_IN_PROGRESS',
   /** The run took longer than {{minutes}} minutes and was stopped. Try a faster model or a shorter prompt. */
   AUTOMATION_TIMEOUT: 'AUTOMATION_TIMEOUT',
   /** {{detail}} */
@@ -113,7 +115,7 @@ export const ErrorCodes = {
   DEVICES_FAILED: 'DEVICES_FAILED',
   /** You have {{limit}} connected devices, the most you can. Disconnect one first. */
   DEVICE_LIMIT: 'DEVICE_LIMIT',
-  /** A device's key can't do this. Use a key from API Access. */
+  /** A device's key can't do this. Use a key from Settings › API keys. */
   DEVICE_NOT_ALLOWED: 'DEVICE_NOT_ALLOWED',
   /** No device of yours has that id. */
   DEVICE_NOT_FOUND: 'DEVICE_NOT_FOUND',
@@ -139,6 +141,10 @@ export const ErrorCodes = {
   EXTERNAL_LOCAL_ONLY: 'EXTERNAL_LOCAL_ONLY',
   /** This profile keeps work on this computer, so it doesn't use the external server. Choose a model on this computer or another profile. */
   EXTERNAL_OFFLINE_PROFILE: 'EXTERNAL_OFFLINE_PROFILE',
+  /** Part of the setup couldn't start: {{detail}} */
+  FEATURE_SETUP_FAILED: 'FEATURE_SETUP_FAILED',
+  /** Toskar doesn't know that feature. */
+  FEATURE_UNKNOWN: 'FEATURE_UNKNOWN',
   /** That file isn't here anymore. */
   FILE_NOT_FOUND: 'FILE_NOT_FOUND',
   /** {{detail}} */
@@ -213,7 +219,7 @@ export const ErrorCodes = {
   JOIN_WRONG_SERVER: 'JOIN_WRONG_SERVER',
   /** Their keys couldn't be read: {{detail}} */
   KEYS_FAILED: 'KEYS_FAILED',
-  /** This key is for chat only, so it can't do this. Use another key from API Access. */
+  /** This key is for chat only, so it can't do this. Use another key from Settings › API keys. */
   KEY_CHAT_ONLY: 'KEY_CHAT_ONLY',
   /** They have no key with that id. */
   KEY_NOT_FOUND: 'KEY_NOT_FOUND',
@@ -323,6 +329,10 @@ export const ErrorCodes = {
   OFFER_FAILED: 'OFFER_FAILED',
   /** This computer isn't connected to the internet. Check the connection, then try again. */
   OFFLINE: 'OFFLINE',
+  /** Toskar can't listen on port {{port}}. */
+  OLLAMA_PORT_FAILED: 'OLLAMA_PORT_FAILED',
+  /** Another program, probably Ollama, is using port {{port}}. Quit it, then try again. */
+  OLLAMA_PORT_IN_USE: 'OLLAMA_PORT_IN_USE',
   /** Websites cannot use Toskar without an API key. */
   ORIGIN_NOT_ALLOWED: 'ORIGIN_NOT_ALLOWED',
   /** The model ran out of memory. */
@@ -367,6 +377,14 @@ export const ErrorCodes = {
   PERMISSIONS_FAILED: 'PERMISSIONS_FAILED',
   /** {{detail}} */
   PERSONALIZATION_FAILED: 'PERSONALIZATION_FAILED',
+  /** There can be at most {{limit}} voice personas. */
+  PERSONA_LIMIT: 'PERSONA_LIMIT',
+  /** A persona's name is 1 to 40 characters. */
+  PERSONA_NAME_INVALID: 'PERSONA_NAME_INVALID',
+  /** That voice persona isn't here anymore. */
+  PERSONA_NOT_FOUND: 'PERSONA_NOT_FOUND',
+  /** A persona reads from half to twice as fast. */
+  PERSONA_SPEED_INVALID: 'PERSONA_SPEED_INVALID',
   /** That person isn't here. */
   PERSON_NOT_FOUND: 'PERSON_NOT_FOUND',
   /** Couldn't read which profiles people are pinned to. */

@@ -18,6 +18,7 @@ The codes Toskar Core and the SDK answer errors with, as `Error::code`, with eac
 | `error_codes::AUTOMATION_NO_RESULT` | This run has no result to continue in chat. |
 | `error_codes::AUTOMATION_PAUSED` | This automation is paused. |
 | `error_codes::AUTOMATION_RUNNING` | This automation is already running. Its result will appear here when it finishes. |
+| `error_codes::AUTOMATION_RUN_IN_PROGRESS` | This run is still going. Remove it once it finishes. |
 | `error_codes::AUTOMATION_TIMEOUT` | The run took longer than {{minutes}} minutes and was stopped. Try a faster model or a shorter prompt. |
 | `error_codes::BAD_REQUEST` | {{detail}} |
 | `error_codes::BAD_RESPONSE` | The Toskar service sent an answer the app couldn't read (HTTP {{status}}). Try again; if it keeps happening, report it. |
@@ -60,7 +61,7 @@ The codes Toskar Core and the SDK answer errors with, as `Error::code`, with eac
 | `error_codes::DESTINATION_NOT_FOUND` | That notification destination was removed. |
 | `error_codes::DEVICES_FAILED` | Couldn't read or change your devices. |
 | `error_codes::DEVICE_LIMIT` | You have {{limit}} connected devices, the most you can. Disconnect one first. |
-| `error_codes::DEVICE_NOT_ALLOWED` | A device's key can't do this. Use a key from API Access. |
+| `error_codes::DEVICE_NOT_ALLOWED` | A device's key can't do this. Use a key from Settings › API keys. |
 | `error_codes::DEVICE_NOT_FOUND` | No device of yours has that id. |
 | `error_codes::DIAGNOSTICS_FAILED` | Couldn't create a diagnostics bundle. |
 | `error_codes::DOOR_NOT_ANSWERED` | Someone came to the door, and Toskar couldn't answer: {{detail}} |
@@ -73,6 +74,8 @@ The codes Toskar Core and the SDK answer errors with, as `Error::code`, with eac
 | `error_codes::EXTERNAL_FAILED` | {{detail}} |
 | `error_codes::EXTERNAL_LOCAL_ONLY` | This chat uses memories or knowledge marked This computer only, so it can't go to the external server. Choose a model on this computer. |
 | `error_codes::EXTERNAL_OFFLINE_PROFILE` | This profile keeps work on this computer, so it doesn't use the external server. Choose a model on this computer or another profile. |
+| `error_codes::FEATURE_SETUP_FAILED` | Part of the setup couldn't start: {{detail}} |
+| `error_codes::FEATURE_UNKNOWN` | Toskar doesn't know that feature. |
 | `error_codes::FILE_NOT_FOUND` | That file isn't here anymore. |
 | `error_codes::FIT_FAILED` | {{detail}} |
 | `error_codes::GPU_SETUP_FAILED` | Couldn't check this computer's GPU setup. |
@@ -110,7 +113,7 @@ The codes Toskar Core and the SDK answer errors with, as `Error::code`, with eac
 | `error_codes::JOIN_UNREACHABLE` | Couldn't reach Toskar at {{server}}. Check the address, the firewall, and that Toskar is running there. |
 | `error_codes::JOIN_WRONG_SERVER` | The computer at that address isn't the one the join command was made on. Nothing that proves the token was sent. |
 | `error_codes::KEYS_FAILED` | Their keys couldn't be read: {{detail}} |
-| `error_codes::KEY_CHAT_ONLY` | This key is for chat only, so it can't do this. Use another key from API Access. |
+| `error_codes::KEY_CHAT_ONLY` | This key is for chat only, so it can't do this. Use another key from Settings › API keys. |
 | `error_codes::KEY_NOT_FOUND` | They have no key with that id. |
 | `error_codes::KNOWLEDGE_SOURCE_NOT_FOUND` | That knowledge source was removed. |
 | `error_codes::KNOWLEDGE_SYNC_FAILED` | {{detail}} |
@@ -165,6 +168,8 @@ The codes Toskar Core and the SDK answer errors with, as `Error::code`, with eac
 | `error_codes::NO_TEXT_FOUND` | No text found. Scanned PDFs need text recognition (OCR) before Toskar can read them. |
 | `error_codes::OFFER_FAILED` | {{detail}} |
 | `error_codes::OFFLINE` | This computer isn't connected to the internet. Check the connection, then try again. |
+| `error_codes::OLLAMA_PORT_FAILED` | Toskar can't listen on port {{port}}. |
+| `error_codes::OLLAMA_PORT_IN_USE` | Another program, probably Ollama, is using port {{port}}. Quit it, then try again. |
 | `error_codes::ORIGIN_NOT_ALLOWED` | Websites cannot use Toskar without an API key. |
 | `error_codes::OUT_OF_MEMORY` | The model ran out of memory. |
 | `error_codes::OWNER_FIXED` | The Owner's role can't change, and nobody changes their own role or disables themselves. |
@@ -187,6 +192,10 @@ The codes Toskar Core and the SDK answer errors with, as `Error::code`, with eac
 | `error_codes::PERFORMANCE_LIST_FAILED` | Couldn't list performance measurements. |
 | `error_codes::PERMISSIONS_FAILED` | {{detail}} |
 | `error_codes::PERSONALIZATION_FAILED` | {{detail}} |
+| `error_codes::PERSONA_LIMIT` | There can be at most {{limit}} voice personas. |
+| `error_codes::PERSONA_NAME_INVALID` | A persona's name is 1 to 40 characters. |
+| `error_codes::PERSONA_NOT_FOUND` | That voice persona isn't here anymore. |
+| `error_codes::PERSONA_SPEED_INVALID` | A persona reads from half to twice as fast. |
 | `error_codes::PERSON_NOT_FOUND` | That person isn't here. |
 | `error_codes::PINS_FAILED` | Couldn't read which profiles people are pinned to. |
 | `error_codes::PIN_INVALID` | That pin can't be saved. Only Members and Visitors are pinned, and only to profiles that exist. |

@@ -8,6 +8,108 @@ from typing import Annotated, Any
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
 
 
+class FeatureNeed(BaseModel):
+    """
+    One thing a feature needs, and what would set it up
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    need: str
+    """
+    Known values: `chat`, `tools`, `vision`, `embedding`, `voice`, `images`, `video`, `trainer`, `camera`; others may be added.
+    """
+    ready: bool
+    install: str | None = None
+    """
+    How setup installs it; absent when nothing here can Known values: `model`, `voice`, `images`, `video`; others may be added.
+    """
+    option: str | None = None
+    """
+    The model it installs
+    """
+    name: str | None = None
+    size_bytes: int | None = None
+    node_id: str | None = None
+    """
+    The paired computer it is set up on
+    """
+    node_name: str | None = None
+    installing: bool | None = None
+    percent: int | None = None
+    detail: str | None = None
+    """
+    Why it can't be set up here, when this computer says
+    """
+
+
+class OllamaAnswer(BaseModel):
+    """
+    An Ollama API answer, in the shape Ollama gives for the endpoint (#1356)
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+
+
+class ClearedRuns(BaseModel):
+    """
+    What clearing an automation's history removed
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    runs: int
+    """
+    Finished runs removed
+    """
+    files: int
+    """
+    Camera pictures removed with them
+    """
+
+
+class VoicePersona(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    id: str | None = None
+    name: Annotated[str | None, Field(max_length=40)] = None
+    language: str | None = None
+    """
+    A language code
+    """
+    voice: str | None = None
+    speed: Annotated[float | None, Field(ge=0.5, le=2.0)] = None
+    reads: bool | None = None
+    """
+    Whether its voice can read here now; only in answers
+    """
+    reads_with: str | None = None
+    """
+    The voice that reads in its place when reads is false
+    """
+
+
+class VoicePersonas(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    personas: list[VoicePersona]
+    picked: str
+    """
+    The persona you picked
+    """
+
+
 class VoiceSettingsKitten(BaseModel):
     model_config = ConfigDict(
         extra='allow',
@@ -1601,7 +1703,7 @@ class AutomationInputCamera(BaseModel):
     """
     device: str
     """
-    The camera as that service names it, such as Home Assistant's camera.driveway
+    The camera as that service names it, such as Home Assistant's camera.driveway, or Reolink's camera, and camera@4 for the one on its hub's channel 4 (#1333)
     """
 
 
@@ -1620,7 +1722,7 @@ class AutomationInputSay(BaseModel):
     """
     device: str
     """
-    Always camera: one Reolink connection is one camera
+    camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
     """
     quiet_from: str | None = None
     """
@@ -1634,6 +1736,10 @@ class AutomationInputSay(BaseModel):
     listen: bool | None = None
     """
     Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+    """
+    no_thinking_sound: bool | None = None
+    """
+    Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
     """
 
 
@@ -1784,7 +1890,7 @@ class AutomationSay(BaseModel):
     """
     device: str
     """
-    Always camera: one Reolink connection is one camera
+    camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
     """
     quiet_from: str | None = None
     """
@@ -1798,6 +1904,10 @@ class AutomationSay(BaseModel):
     listen: bool | None = None
     """
     Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+    """
+    no_thinking_sound: bool | None = None
+    """
+    Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
     """
 
 
@@ -3896,7 +4006,7 @@ class AutomationDetailSay(BaseModel):
     """
     device: str
     """
-    Always camera: one Reolink connection is one camera
+    camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
     """
     quiet_from: str | None = None
     """
@@ -3910,6 +4020,10 @@ class AutomationDetailSay(BaseModel):
     listen: bool | None = None
     """
     Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+    """
+    no_thinking_sound: bool | None = None
+    """
+    Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
     """
 
 
@@ -4000,6 +4114,10 @@ class AutomationRequestSay(BaseModel):
     quiet_to: str | None = None
     voice: str | None = None
     listen: bool | None = None
+    no_thinking_sound: bool | None = None
+    """
+    Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+    """
 
 
 class AutomationRequest(BaseModel):
@@ -6324,6 +6442,28 @@ class CategoryWinner(BaseModel):
     """
 
 
+class Feature(BaseModel):
+    """
+    A feature and whether it works here now (#1355)
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+        populate_by_name=True,
+    )
+    id: str
+    """
+    Known values: `voice`, `door`, `pictures`, `clips`, `see`, `meaning`, `automationTools`, `train`; others may be added.
+    """
+    ready: bool
+    needs: list[FeatureNeed]
+    setup_bytes: int
+    """
+    What setting up its missing needs downloads
+    """
+    installing: bool
+
+
 class ComfyUIStatus(BaseModel):
     model_config = ConfigDict(
         extra='allow',
@@ -7046,6 +7186,10 @@ class QualityResults(BaseModel):
         populate_by_name=True,
     )
     live: bool
+    off: bool | None = None
+    """
+    The quality_results setting is off, so nothing was read (#1415, contract 1.124)
+    """
     note: str | None = None
     method: str | None = None
     """

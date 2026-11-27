@@ -15,6 +15,102 @@ public class Api internal constructor(private val toskar: Toskar) {
     public fun getAbout(): SourceOffer =
         toskar.call("GET", "/about", listOf())
 
+    /**
+     * Ollama-compatible chat
+     *
+     * Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+     */
+    public fun ollamaChat(): ByteArray =
+        toskar.call("POST", "/api/chat", listOf())
+
+    /**
+     * Ollama model management
+     *
+     * Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+     */
+    public fun ollamaCopy(): JsonObject =
+        toskar.call("POST", "/api/copy", listOf())
+
+    /**
+     * Ollama model management
+     *
+     * Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+     */
+    public fun ollamaCreate(): JsonObject =
+        toskar.call("POST", "/api/create", listOf())
+
+    /**
+     * Ollama model management
+     *
+     * Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+     */
+    public fun ollamaDelete(): JsonObject =
+        toskar.call("DELETE", "/api/delete", listOf())
+
+    /**
+     * Ollama-compatible embeddings
+     *
+     * Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+     */
+    public fun ollamaEmbed(): JsonObject =
+        toskar.call("POST", "/api/embed", listOf())
+
+    /**
+     * Ollama-compatible embeddings, older form
+     *
+     * Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+     */
+    public fun ollamaEmbeddings(): JsonObject =
+        toskar.call("POST", "/api/embeddings", listOf())
+
+    /**
+     * Ollama-compatible completion
+     *
+     * Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+     */
+    public fun ollamaGenerate(): ByteArray =
+        toskar.call("POST", "/api/generate", listOf())
+
+    /**
+     * Ollama-compatible running models
+     *
+     * Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+     */
+    public fun ollamaPs(): JsonObject =
+        toskar.call("GET", "/api/ps", listOf())
+
+    /**
+     * Ollama model management
+     *
+     * Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+     */
+    public fun ollamaPull(): JsonObject =
+        toskar.call("POST", "/api/pull", listOf())
+
+    /**
+     * Ollama model management
+     *
+     * Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+     */
+    public fun ollamaPush(): JsonObject =
+        toskar.call("POST", "/api/push", listOf())
+
+    /**
+     * Ollama-compatible model details
+     *
+     * Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+     */
+    public fun ollamaShow(): JsonObject =
+        toskar.call("POST", "/api/show", listOf())
+
+    /**
+     * Ollama-compatible model list
+     *
+     * Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+     */
+    public fun ollamaTags(): JsonObject =
+        toskar.call("GET", "/api/tags", listOf())
+
     /** API keys, without their secrets */
     public fun listAPIKeys(): List<APIKey> =
         toskar.call("GET", "/api/v1/api-keys", listOf())
@@ -114,6 +210,25 @@ public class Api internal constructor(private val toskar: Toskar) {
     @JvmOverloads
     public fun listAutomationRuns(id: String, before: String? = null, limit: Long? = null): AutomationRunsPage =
         toskar.call("GET", "/api/v1/automations/{id}/runs", listOf(id), query = listOf("before" to before, "limit" to limit))
+
+    /**
+     * Clear an automation's history
+     *
+     * Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+     *
+     * @param files Also delete the camera pictures the automation's runs took
+     */
+    @JvmOverloads
+    public fun clearAutomationRuns(id: String, files: Boolean? = null): ClearedRuns =
+        toskar.call("DELETE", "/api/v1/automations/{id}/runs", listOf(id), query = listOf("files" to files))
+
+    /**
+     * Delete one finished run
+     *
+     * A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+     */
+    public fun deleteAutomationRun(id: String, runId: String): Unit =
+        toskar.call("DELETE", "/api/v1/automations/{id}/runs/{run_id}", listOf(id, runId))
 
     /**
      * Open a run's result in a chat to reply to
@@ -381,7 +496,7 @@ public class Api internal constructor(private val toskar: Toskar) {
     /**
      * Send a problem report to Toskar (#588)
      *
-     * Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+     * Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
      */
     public fun sendReport(): Unit =
         toskar.call("POST", "/api/v1/diagnostics/report", listOf())
@@ -410,6 +525,22 @@ public class Api internal constructor(private val toskar: Toskar) {
      */
     public fun setExternalServer(body: SetExternalServerRequest): ExternalServer =
         toskar.call("PUT", "/api/v1/external-server", listOf(), body = toskar.json(body))
+
+    /**
+     * Each feature and what it still needs (#1355)
+     *
+     * One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+     */
+    public fun listFeatures(): List<Feature> =
+        toskar.call("GET", "/api/v1/features", listOf())
+
+    /**
+     * Set up everything a feature still needs (#1355)
+     *
+     * Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+     */
+    public fun setUpFeature(id: String): Feature =
+        toskar.call("POST", "/api/v1/features/{id}/setup", listOf(id))
 
     /** Local hardware inventory */
     public fun getHardware(): JsonObject =
@@ -650,7 +781,7 @@ public class Api internal constructor(private val toskar: Toskar) {
     /**
      * Save your own languages (#206)
      *
-     * The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+     * The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
      */
     public fun setMyPreferences(body: SetMyPreferencesRequest): JsonObject =
         toskar.call("PATCH", "/api/v1/me/preferences", listOf(), body = toskar.json(body))
@@ -1898,12 +2029,60 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("POST", "/api/v1/video/setup/build", listOf(), body = toskar.json(body))
 
     /**
+     * Pick the voice persona you're read aloud in (#1319)
+     *
+     * Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+     */
+    public fun pickVoicePersona(body: PickVoicePersonaRequest): VoicePersonas =
+        toskar.call("PUT", "/api/v1/voice/persona", listOf(), body = toskar.json(body))
+
+    /**
+     * The voice personas, and the one you picked (#1319)
+     *
+     * Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+     */
+    public fun voicePersonas(): VoicePersonas =
+        toskar.call("GET", "/api/v1/voice/personas", listOf())
+
+    /**
+     * Make a voice persona (#1319)
+     *
+     * voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+     */
+    public fun createVoicePersona(body: VoicePersona): VoicePersonas =
+        toskar.call("POST", "/api/v1/voice/personas", listOf(), body = toskar.json(body))
+
+    /**
+     * Change a voice persona (#1319)
+     *
+     * Admins only (contract 1.129).
+     */
+    public fun updateVoicePersona(id: String, body: VoicePersona): VoicePersonas =
+        toskar.call("PUT", "/api/v1/voice/personas/{id}", listOf(id), body = toskar.json(body))
+
+    /**
+     * Delete a voice persona (#1319)
+     *
+     * Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+     */
+    public fun deleteVoicePersona(id: String): VoicePersonas =
+        toskar.call("DELETE", "/api/v1/voice/personas/{id}", listOf(id))
+
+    /**
      * Live voice mode, over a WebSocket (#795)
      *
      * Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
      */
     public fun voiceRealtime(): Unit =
         toskar.call("GET", "/api/v1/voice/realtime", listOf())
+
+    /**
+     * Ollama API version
+     *
+     * Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+     */
+    public fun ollamaVersion(): JsonObject =
+        toskar.call("GET", "/api/version", listOf())
 
     /**
      * Start the automation a webhook link belongs to
@@ -1940,12 +2119,36 @@ public class Api internal constructor(private val toskar: Toskar) {
         toskar.call("GET", "/source", listOf())
 
     /**
+     * OpenAI audio speech
+     *
+     * Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+     */
+    public fun openaiSpeech(body: OpenaiSpeechRequest): ByteArray =
+        toskar.call("POST", "/v1/audio/speech", listOf(), body = toskar.json(body))
+
+    /**
+     * OpenAI audio transcriptions
+     *
+     * Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+     */
+    public fun openaiTranscriptions(body: OpenaiTranscriptionsRequest): Unit =
+        toskar.call("POST", "/v1/audio/transcriptions", listOf(), body = toskar.raw(body, "multipart/form-data"))
+
+    /**
      * OpenAI-compatible chat completions
      *
      * temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
      */
     public fun openaiChatCompletions(body: OpenaiChatCompletionsRequest): OpenAIChatCompletion =
         toskar.call("POST", "/v1/chat/completions", listOf(), body = toskar.json(body))
+
+    /**
+     * OpenAI Embeddings
+     *
+     * Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+     */
+    public fun openaiEmbeddings(body: OpenaiEmbeddingsRequest): Unit =
+        toskar.call("POST", "/v1/embeddings", listOf(), body = toskar.json(body))
 
     /**
      * Anthropic-compatible messages, for coding agents

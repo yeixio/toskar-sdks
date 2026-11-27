@@ -23,6 +23,114 @@ public sealed partial class ToskarApi
         client.CallAsync<M.SourceOffer>("GET", "/about", NoParams, NoPairs, NoPairs, null, cancellationToken);
 
     /// <summary>
+    /// Ollama-compatible chat
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:&lt;model&gt;. A model name's :latest is ignored.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<byte[]> OllamaChatAsync(CancellationToken cancellationToken = default) =>
+        client.BytesAsync("POST", "/api/chat", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaCopyAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("POST", "/api/copy", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaCreateAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("POST", "/api/create", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaDeleteAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("DELETE", "/api/delete", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama-compatible embeddings
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaEmbedAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("POST", "/api/embed", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama-compatible embeddings, older form
+    ///
+    /// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaEmbeddingsAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("POST", "/api/embeddings", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama-compatible completion
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<byte[]> OllamaGenerateAsync(CancellationToken cancellationToken = default) =>
+        client.BytesAsync("POST", "/api/generate", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama-compatible running models
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaPsAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("GET", "/api/ps", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama model management
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaPullAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("POST", "/api/pull", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaPushAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("POST", "/api/push", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama-compatible model details
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaShowAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("POST", "/api/show", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama-compatible model list
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaTagsAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("GET", "/api/tags", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
     /// API keys, without their secrets
     /// </summary>
     /// <param name="cancellationToken">Cancels the request.</param>
@@ -194,6 +302,28 @@ public sealed partial class ToskarApi
     /// <param name="cancellationToken">Cancels the request.</param>
     public System.Threading.Tasks.Task<M.AutomationRunsPage> ListAutomationRunsAsync(string id, string? before = null, long? limit = null, CancellationToken cancellationToken = default) =>
         client.CallAsync<M.AutomationRunsPage>("GET", "/api/v1/automations/{id}/runs", new[] { id }, new (string, object?)[] { ("before", before), ("limit", limit) }, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Clear an automation's history
+    ///
+    /// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="files">Also delete the camera pictures the automation's runs took</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.ClearedRuns> ClearAutomationRunsAsync(string id, bool? files = null, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.ClearedRuns>("DELETE", "/api/v1/automations/{id}/runs", new[] { id }, new (string, object?)[] { ("files", files) }, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Delete one finished run
+    ///
+    /// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="runId">The runId.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public Task DeleteAutomationRunAsync(string id, string runId, CancellationToken cancellationToken = default) =>
+        client.SendAsync("DELETE", "/api/v1/automations/{id}/runs/{run_id}", new[] { id, runId }, NoPairs, NoPairs, null, cancellationToken);
 
     /// <summary>
     /// Open a run's result in a chat to reply to
@@ -589,7 +719,7 @@ public sealed partial class ToskarApi
     /// <summary>
     /// Send a problem report to Toskar (#588)
     ///
-    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
     /// </summary>
     /// <param name="cancellationToken">Cancels the request.</param>
     public Task SendReportAsync(CancellationToken cancellationToken = default) =>
@@ -629,6 +759,25 @@ public sealed partial class ToskarApi
     /// <param name="cancellationToken">Cancels the request.</param>
     public System.Threading.Tasks.Task<M.ExternalServer> SetExternalServerAsync(M.SetExternalServerRequest body, CancellationToken cancellationToken = default) =>
         client.CallAsync<M.ExternalServer>("PUT", "/api/v1/external-server", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// Each feature and what it still needs (#1355)
+    ///
+    /// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<List<M.Feature>> ListFeaturesAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<List<M.Feature>>("GET", "/api/v1/features", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Set up everything a feature still needs (#1355)
+    ///
+    /// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.Feature> SetUpFeatureAsync(string id, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.Feature>("POST", "/api/v1/features/{id}/setup", new[] { id }, NoPairs, NoPairs, null, cancellationToken);
 
     /// <summary>
     /// Local hardware inventory
@@ -1023,7 +1172,7 @@ public sealed partial class ToskarApi
     /// <summary>
     /// Save your own languages (#206)
     ///
-    /// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+    /// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
     /// </summary>
     /// <param name="body">The request.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
@@ -2800,6 +2949,56 @@ public sealed partial class ToskarApi
         client.CallAsync<M.ImageSetup>("POST", "/api/v1/video/setup/build", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
 
     /// <summary>
+    /// Pick the voice persona you're read aloud in (#1319)
+    ///
+    /// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+    /// </summary>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.VoicePersonas> PickVoicePersonaAsync(M.PickVoicePersonaRequest body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.VoicePersonas>("PUT", "/api/v1/voice/persona", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// The voice personas, and the one you picked (#1319)
+    ///
+    /// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.VoicePersonas> VoicePersonasAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.VoicePersonas>("GET", "/api/v1/voice/personas", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Make a voice persona (#1319)
+    ///
+    /// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+    /// </summary>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.VoicePersonas> CreateVoicePersonaAsync(M.VoicePersona body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.VoicePersonas>("POST", "/api/v1/voice/personas", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// Change a voice persona (#1319)
+    ///
+    /// Admins only (contract 1.129).
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.VoicePersonas> UpdateVoicePersonaAsync(string id, M.VoicePersona body, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.VoicePersonas>("PUT", "/api/v1/voice/personas/{id}", new[] { id }, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// Delete a voice persona (#1319)
+    ///
+    /// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<M.VoicePersonas> DeleteVoicePersonaAsync(string id, CancellationToken cancellationToken = default) =>
+        client.CallAsync<M.VoicePersonas>("DELETE", "/api/v1/voice/personas/{id}", new[] { id }, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
     /// Live voice mode, over a WebSocket (#795)
     ///
     /// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
@@ -2807,6 +3006,15 @@ public sealed partial class ToskarApi
     /// <param name="cancellationToken">Cancels the request.</param>
     public Task VoiceRealtimeAsync(CancellationToken cancellationToken = default) =>
         client.SendAsync("GET", "/api/v1/voice/realtime", NoParams, NoPairs, NoPairs, null, cancellationToken);
+
+    /// <summary>
+    /// Ollama API version
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<JsonObject> OllamaVersionAsync(CancellationToken cancellationToken = default) =>
+        client.CallAsync<JsonObject>("GET", "/api/version", NoParams, NoPairs, NoPairs, null, cancellationToken);
 
     /// <summary>
     /// Start the automation a webhook link belongs to
@@ -2858,6 +3066,26 @@ public sealed partial class ToskarApi
         client.CallAsync<M.SourceOffer>("GET", "/source", NoParams, NoPairs, NoPairs, null, cancellationToken);
 
     /// <summary>
+    /// OpenAI audio speech
+    ///
+    /// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+    /// </summary>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public System.Threading.Tasks.Task<byte[]> OpenaiSpeechAsync(M.OpenaiSpeechRequest body, CancellationToken cancellationToken = default) =>
+        client.BytesAsync("POST", "/v1/audio/speech", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// OpenAI audio transcriptions
+    ///
+    /// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+    /// </summary>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public Task OpenaiTranscriptionsAsync(M.OpenaiTranscriptionsRequest body, CancellationToken cancellationToken = default) =>
+        client.SendAsync("POST", "/v1/audio/transcriptions", NoParams, NoPairs, NoPairs, Raw(body, "multipart/form-data"), cancellationToken);
+
+    /// <summary>
     /// OpenAI-compatible chat completions
     ///
     /// temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
@@ -2866,6 +3094,16 @@ public sealed partial class ToskarApi
     /// <param name="cancellationToken">Cancels the request.</param>
     public System.Threading.Tasks.Task<M.OpenAIChatCompletion> OpenaiChatCompletionsAsync(M.OpenaiChatCompletionsRequest body, CancellationToken cancellationToken = default) =>
         client.CallAsync<M.OpenAIChatCompletion>("POST", "/v1/chat/completions", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
+
+    /// <summary>
+    /// OpenAI Embeddings
+    ///
+    /// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+    /// </summary>
+    /// <param name="body">The request.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    public Task OpenaiEmbeddingsAsync(M.OpenaiEmbeddingsRequest body, CancellationToken cancellationToken = default) =>
+        client.SendAsync("POST", "/v1/embeddings", NoParams, NoPairs, NoPairs, Json(body), cancellationToken);
 
     /// <summary>
     /// Anthropic-compatible messages, for coding agents
