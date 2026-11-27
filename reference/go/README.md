@@ -90,6 +90,8 @@ const (
     ErrorCodeAutomationPaused = "AUTOMATION_PAUSED"
     // ErrorCodeAutomationRunning: This automation is already running. Its result will appear here when it finishes.
     ErrorCodeAutomationRunning = "AUTOMATION_RUNNING"
+    // ErrorCodeAutomationRunInProgress: This run is still going. Remove it once it finishes.
+    ErrorCodeAutomationRunInProgress = "AUTOMATION_RUN_IN_PROGRESS"
     // ErrorCodeAutomationTimeout: The run took longer than {{minutes}} minutes and was stopped. Try a faster model or a shorter prompt.
     ErrorCodeAutomationTimeout = "AUTOMATION_TIMEOUT"
     // ErrorCodeBadRequest: {{detail}}
@@ -174,7 +176,7 @@ const (
     ErrorCodeDevicesFailed = "DEVICES_FAILED"
     // ErrorCodeDeviceLimit: You have {{limit}} connected devices, the most you can. Disconnect one first.
     ErrorCodeDeviceLimit = "DEVICE_LIMIT"
-    // ErrorCodeDeviceNotAllowed: A device's key can't do this. Use a key from API Access.
+    // ErrorCodeDeviceNotAllowed: A device's key can't do this. Use a key from Settings › API keys.
     ErrorCodeDeviceNotAllowed = "DEVICE_NOT_ALLOWED"
     // ErrorCodeDeviceNotFound: No device of yours has that id.
     ErrorCodeDeviceNotFound = "DEVICE_NOT_FOUND"
@@ -200,6 +202,10 @@ const (
     ErrorCodeExternalLocalOnly = "EXTERNAL_LOCAL_ONLY"
     // ErrorCodeExternalOfflineProfile: This profile keeps work on this computer, so it doesn't use the external server. Choose a model on this computer or another profile.
     ErrorCodeExternalOfflineProfile = "EXTERNAL_OFFLINE_PROFILE"
+    // ErrorCodeFeatureSetupFailed: Part of the setup couldn't start: {{detail}}
+    ErrorCodeFeatureSetupFailed = "FEATURE_SETUP_FAILED"
+    // ErrorCodeFeatureUnknown: Toskar doesn't know that feature.
+    ErrorCodeFeatureUnknown = "FEATURE_UNKNOWN"
     // ErrorCodeFileNotFound: That file isn't here anymore.
     ErrorCodeFileNotFound = "FILE_NOT_FOUND"
     // ErrorCodeFitFailed: {{detail}}
@@ -274,7 +280,7 @@ const (
     ErrorCodeJoinWrongServer = "JOIN_WRONG_SERVER"
     // ErrorCodeKeysFailed: Their keys couldn't be read: {{detail}}
     ErrorCodeKeysFailed = "KEYS_FAILED"
-    // ErrorCodeKeyChatOnly: This key is for chat only, so it can't do this. Use another key from API Access.
+    // ErrorCodeKeyChatOnly: This key is for chat only, so it can't do this. Use another key from Settings › API keys.
     ErrorCodeKeyChatOnly = "KEY_CHAT_ONLY"
     // ErrorCodeKeyNotFound: They have no key with that id.
     ErrorCodeKeyNotFound = "KEY_NOT_FOUND"
@@ -384,6 +390,10 @@ const (
     ErrorCodeOfferFailed = "OFFER_FAILED"
     // ErrorCodeOffline: This computer isn't connected to the internet. Check the connection, then try again.
     ErrorCodeOffline = "OFFLINE"
+    // ErrorCodeOllamaPortFailed: Toskar can't listen on port {{port}}.
+    ErrorCodeOllamaPortFailed = "OLLAMA_PORT_FAILED"
+    // ErrorCodeOllamaPortInUse: Another program, probably Ollama, is using port {{port}}. Quit it, then try again.
+    ErrorCodeOllamaPortInUse = "OLLAMA_PORT_IN_USE"
     // ErrorCodeOriginNotAllowed: Websites cannot use Toskar without an API key.
     ErrorCodeOriginNotAllowed = "ORIGIN_NOT_ALLOWED"
     // ErrorCodeOutOfMemory: The model ran out of memory.
@@ -428,6 +438,14 @@ const (
     ErrorCodePermissionsFailed = "PERMISSIONS_FAILED"
     // ErrorCodePersonalizationFailed: {{detail}}
     ErrorCodePersonalizationFailed = "PERSONALIZATION_FAILED"
+    // ErrorCodePersonaLimit: There can be at most {{limit}} voice personas.
+    ErrorCodePersonaLimit = "PERSONA_LIMIT"
+    // ErrorCodePersonaNameInvalid: A persona's name is 1 to 40 characters.
+    ErrorCodePersonaNameInvalid = "PERSONA_NAME_INVALID"
+    // ErrorCodePersonaNotFound: That voice persona isn't here anymore.
+    ErrorCodePersonaNotFound = "PERSONA_NOT_FOUND"
+    // ErrorCodePersonaSpeedInvalid: A persona reads from half to twice as fast.
+    ErrorCodePersonaSpeedInvalid = "PERSONA_SPEED_INVALID"
     // ErrorCodePersonNotFound: That person isn't here.
     ErrorCodePersonNotFound = "PERSON_NOT_FOUND"
     // ErrorCodePinsFailed: Couldn't read which profiles people are pinned to.
@@ -682,7 +700,7 @@ const (
 <a name="ContractVersion"></a>ContractVersion is the client contract this SDK was built for.
 
 ```go
-const ContractVersion = "1.117"
+const ContractVersion = "1.133"
 ```
 
 <a name="DefaultURL"></a>DefaultURL is this computer's Toskar Core, which needs no key.

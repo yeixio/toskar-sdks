@@ -17,6 +17,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.automationNoResult` | `AUTOMATION_NO_RESULT` | This run has no result to continue in chat. |
 | `.automationNotWebhook` | `AUTOMATION_NOT_WEBHOOK` | This automation doesn't run from a webhook. |
 | `.automationPaused` | `AUTOMATION_PAUSED` | This automation is paused. |
+| `.automationRunInProgress` | `AUTOMATION_RUN_IN_PROGRESS` | This run is still going. Remove it once it finishes. |
 | `.automationRunning` | `AUTOMATION_RUNNING` | This automation is already running. Its result will appear here when it finishes. |
 | `.automationTimeout` | `AUTOMATION_TIMEOUT` | The run took longer than {{minutes}} minutes and was stopped. Try a faster model or a shorter prompt. |
 | `.badRequest` | `BAD_REQUEST` | {{detail}} |
@@ -59,7 +60,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.deleteFailed` | `DELETE_FAILED` | {{detail}} |
 | `.destinationNotFound` | `DESTINATION_NOT_FOUND` | That notification destination was removed. |
 | `.deviceLimit` | `DEVICE_LIMIT` | You have {{limit}} connected devices, the most you can. Disconnect one first. |
-| `.deviceNotAllowed` | `DEVICE_NOT_ALLOWED` | A device's key can't do this. Use a key from API Access. |
+| `.deviceNotAllowed` | `DEVICE_NOT_ALLOWED` | A device's key can't do this. Use a key from Settings › API keys. |
 | `.deviceNotFound` | `DEVICE_NOT_FOUND` | No device of yours has that id. |
 | `.devicesFailed` | `DEVICES_FAILED` | Couldn't read or change your devices. |
 | `.diagnosticsFailed` | `DIAGNOSTICS_FAILED` | Couldn't create a diagnostics bundle. |
@@ -73,6 +74,8 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.externalFailed` | `EXTERNAL_FAILED` | {{detail}} |
 | `.externalLocalOnly` | `EXTERNAL_LOCAL_ONLY` | This chat uses memories or knowledge marked This computer only, so it can't go to the external server. Choose a model on this computer. |
 | `.externalOfflineProfile` | `EXTERNAL_OFFLINE_PROFILE` | This profile keeps work on this computer, so it doesn't use the external server. Choose a model on this computer or another profile. |
+| `.featureSetupFailed` | `FEATURE_SETUP_FAILED` | Part of the setup couldn't start: {{detail}} |
+| `.featureUnknown` | `FEATURE_UNKNOWN` | Toskar doesn't know that feature. |
 | `.fileNotFound` | `FILE_NOT_FOUND` | That file isn't here anymore. |
 | `.fitFailed` | `FIT_FAILED` | {{detail}} |
 | `.gpuSetupFailed` | `GPU_SETUP_FAILED` | Couldn't check this computer's GPU setup. |
@@ -109,7 +112,7 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.joinTokenUsed` | `JOIN_TOKEN_USED` | This join token has already been used. Make a new join command for each computer. |
 | `.joinUnreachable` | `JOIN_UNREACHABLE` | Couldn't reach Toskar at {{server}}. Check the address, the firewall, and that Toskar is running there. |
 | `.joinWrongServer` | `JOIN_WRONG_SERVER` | The computer at that address isn't the one the join command was made on. Nothing that proves the token was sent. |
-| `.keyChatOnly` | `KEY_CHAT_ONLY` | This key is for chat only, so it can't do this. Use another key from API Access. |
+| `.keyChatOnly` | `KEY_CHAT_ONLY` | This key is for chat only, so it can't do this. Use another key from Settings › API keys. |
 | `.keyNotFound` | `KEY_NOT_FOUND` | They have no key with that id. |
 | `.keysFailed` | `KEYS_FAILED` | Their keys couldn't be read: {{detail}} |
 | `.knowledgeSourceNotFound` | `KNOWLEDGE_SOURCE_NOT_FOUND` | That knowledge source was removed. |
@@ -167,6 +170,8 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.notificationsFailed` | `NOTIFICATIONS_FAILED` | {{detail}} |
 | `.offerFailed` | `OFFER_FAILED` | {{detail}} |
 | `.offline` | `OFFLINE` | This computer isn't connected to the internet. Check the connection, then try again. |
+| `.ollamaPortFailed` | `OLLAMA_PORT_FAILED` | Toskar can't listen on port {{port}}. |
+| `.ollamaPortInUse` | `OLLAMA_PORT_IN_USE` | Another program, probably Ollama, is using port {{port}}. Quit it, then try again. |
 | `.originNotAllowed` | `ORIGIN_NOT_ALLOWED` | Websites cannot use Toskar without an API key. |
 | `.outOfMemory` | `OUT_OF_MEMORY` | The model ran out of memory. |
 | `.ownerFixed` | `OWNER_FIXED` | The Owner's role can't change, and nobody changes their own role or disables themselves. |
@@ -189,6 +194,10 @@ The codes Toskar Core and the SDK answer errors with, as `ToskarError.Code`, wit
 | `.performanceListFailed` | `PERFORMANCE_LIST_FAILED` | Couldn't list performance measurements. |
 | `.permissionsFailed` | `PERMISSIONS_FAILED` | {{detail}} |
 | `.personNotFound` | `PERSON_NOT_FOUND` | That person isn't here. |
+| `.personaLimit` | `PERSONA_LIMIT` | There can be at most {{limit}} voice personas. |
+| `.personaNameInvalid` | `PERSONA_NAME_INVALID` | A persona's name is 1 to 40 characters. |
+| `.personaNotFound` | `PERSONA_NOT_FOUND` | That voice persona isn't here anymore. |
+| `.personaSpeedInvalid` | `PERSONA_SPEED_INVALID` | A persona reads from half to twice as fast. |
 | `.personalizationFailed` | `PERSONALIZATION_FAILED` | {{detail}} |
 | `.pinInvalid` | `PIN_INVALID` | That pin can't be saved. Only Members and Visitors are pinned, and only to profiles that exist. |
 | `.pinMismatch` | `PIN_MISMATCH` | The computer's certificate isn't the one paired with: stop, and pair again to trust a new certificate. |

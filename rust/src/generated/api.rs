@@ -16,6 +16,102 @@ impl Api<'_> {
         self.client.call("GET", "/about", &[], &[], &[], None).await
     }
 
+    /// Ollama-compatible chat
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:&lt;model&gt;. A model name's :latest is ignored.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_chat(&self, ) -> Result<Vec<u8>> {
+        self.client.bytes("POST", "/api/chat", &[], &[], &[], None).await
+    }
+
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_copy(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("POST", "/api/copy", &[], &[], &[], None).await
+    }
+
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_create(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("POST", "/api/create", &[], &[], &[], None).await
+    }
+
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_delete(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("DELETE", "/api/delete", &[], &[], &[], None).await
+    }
+
+    /// Ollama-compatible embeddings
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_embed(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("POST", "/api/embed", &[], &[], &[], None).await
+    }
+
+    /// Ollama-compatible embeddings, older form
+    ///
+    /// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_embeddings(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("POST", "/api/embeddings", &[], &[], &[], None).await
+    }
+
+    /// Ollama-compatible completion
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_generate(&self, ) -> Result<Vec<u8>> {
+        self.client.bytes("POST", "/api/generate", &[], &[], &[], None).await
+    }
+
+    /// Ollama-compatible running models
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_ps(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("GET", "/api/ps", &[], &[], &[], None).await
+    }
+
+    /// Ollama model management
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_pull(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("POST", "/api/pull", &[], &[], &[], None).await
+    }
+
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_push(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("POST", "/api/push", &[], &[], &[], None).await
+    }
+
+    /// Ollama-compatible model details
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_show(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("POST", "/api/show", &[], &[], &[], None).await
+    }
+
+    /// Ollama-compatible model list
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_tags(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("GET", "/api/tags", &[], &[], &[], None).await
+    }
+
     /// API keys, without their secrets
     #[allow(clippy::too_many_arguments)]
     pub async fn list_api_keys(&self, ) -> Result<Vec<models::APIKey>> {
@@ -147,6 +243,24 @@ impl Api<'_> {
     #[allow(clippy::too_many_arguments)]
     pub async fn list_automation_runs(&self, id: &str, before: Option<&str>, limit: Option<i64>) -> Result<models::AutomationRunsPage> {
         self.client.call("GET", "/api/v1/automations/{id}/runs", &[id], &[("before", before.map(|v| v.to_string())), ("limit", limit.map(|v| v.to_string()))], &[], None).await
+    }
+
+    /// Clear an automation's history
+    ///
+    /// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+    ///
+    /// - `files`: Also delete the camera pictures the automation's runs took
+    #[allow(clippy::too_many_arguments)]
+    pub async fn clear_automation_runs(&self, id: &str, files: Option<bool>) -> Result<models::ClearedRuns> {
+        self.client.call("DELETE", "/api/v1/automations/{id}/runs", &[id], &[("files", files.map(|v| v.to_string()))], &[], None).await
+    }
+
+    /// Delete one finished run
+    ///
+    /// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn delete_automation_run(&self, id: &str, run_id: &str) -> Result<()> {
+        self.client.send("DELETE", "/api/v1/automations/{id}/runs/{run_id}", &[id, run_id], &[], &[], None).await
     }
 
     /// Open a run's result in a chat to reply to
@@ -464,7 +578,7 @@ impl Api<'_> {
 
     /// Send a problem report to Toskar (#588)
     ///
-    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
     #[allow(clippy::too_many_arguments)]
     pub async fn send_report(&self, ) -> Result<()> {
         self.client.send("POST", "/api/v1/diagnostics/report", &[], &[], &[], None).await
@@ -496,6 +610,22 @@ impl Api<'_> {
     #[allow(clippy::too_many_arguments)]
     pub async fn set_external_server(&self, body: &models::SetExternalServerRequest) -> Result<models::ExternalServer> {
         self.client.call("PUT", "/api/v1/external-server", &[], &[], &[], Some(json(body)?)).await
+    }
+
+    /// Each feature and what it still needs (#1355)
+    ///
+    /// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn list_features(&self, ) -> Result<Vec<models::Feature>> {
+        self.client.call("GET", "/api/v1/features", &[], &[], &[], None).await
+    }
+
+    /// Set up everything a feature still needs (#1355)
+    ///
+    /// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn set_up_feature(&self, id: &str) -> Result<models::Feature> {
+        self.client.call("POST", "/api/v1/features/{id}/setup", &[id], &[], &[], None).await
     }
 
     /// Local hardware inventory
@@ -802,7 +932,7 @@ impl Api<'_> {
 
     /// Save your own languages (#206)
     ///
-    /// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+    /// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
     #[allow(clippy::too_many_arguments)]
     pub async fn set_my_preferences(&self, body: &models::SetMyPreferencesRequest) -> Result<Map<String, Value>> {
         self.client.call("PATCH", "/api/v1/me/preferences", &[], &[], &[], Some(json(body)?)).await
@@ -2229,12 +2359,60 @@ impl Api<'_> {
         self.client.call("POST", "/api/v1/video/setup/build", &[], &[], &[], Some(json(body)?)).await
     }
 
+    /// Pick the voice persona you're read aloud in (#1319)
+    ///
+    /// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn pick_voice_persona(&self, body: &models::PickVoicePersonaRequest) -> Result<models::VoicePersonas> {
+        self.client.call("PUT", "/api/v1/voice/persona", &[], &[], &[], Some(json(body)?)).await
+    }
+
+    /// The voice personas, and the one you picked (#1319)
+    ///
+    /// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn voice_personas(&self, ) -> Result<models::VoicePersonas> {
+        self.client.call("GET", "/api/v1/voice/personas", &[], &[], &[], None).await
+    }
+
+    /// Make a voice persona (#1319)
+    ///
+    /// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_voice_persona(&self, body: &models::VoicePersona) -> Result<models::VoicePersonas> {
+        self.client.call("POST", "/api/v1/voice/personas", &[], &[], &[], Some(json(body)?)).await
+    }
+
+    /// Change a voice persona (#1319)
+    ///
+    /// Admins only (contract 1.129).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_voice_persona(&self, id: &str, body: &models::VoicePersona) -> Result<models::VoicePersonas> {
+        self.client.call("PUT", "/api/v1/voice/personas/{id}", &[id], &[], &[], Some(json(body)?)).await
+    }
+
+    /// Delete a voice persona (#1319)
+    ///
+    /// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn delete_voice_persona(&self, id: &str) -> Result<models::VoicePersonas> {
+        self.client.call("DELETE", "/api/v1/voice/personas/{id}", &[id], &[], &[], None).await
+    }
+
     /// Live voice mode, over a WebSocket (#795)
     ///
     /// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
     #[allow(clippy::too_many_arguments)]
     pub async fn voice_realtime(&self, ) -> Result<()> {
         self.client.send("GET", "/api/v1/voice/realtime", &[], &[], &[], None).await
+    }
+
+    /// Ollama API version
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn ollama_version(&self, ) -> Result<Map<String, Value>> {
+        self.client.call("GET", "/api/version", &[], &[], &[], None).await
     }
 
     /// Start the automation a webhook link belongs to
@@ -2277,12 +2455,36 @@ impl Api<'_> {
         self.client.call("GET", "/source", &[], &[], &[], None).await
     }
 
+    /// OpenAI audio speech
+    ///
+    /// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn openai_speech(&self, body: &models::OpenaiSpeechRequest) -> Result<Vec<u8>> {
+        self.client.bytes("POST", "/v1/audio/speech", &[], &[], &[], Some(json(body)?)).await
+    }
+
+    /// OpenAI audio transcriptions
+    ///
+    /// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn openai_transcriptions(&self, body: String) -> Result<()> {
+        self.client.send("POST", "/v1/audio/transcriptions", &[], &[], &[], Some(raw(body, "multipart/form-data"))).await
+    }
+
     /// OpenAI-compatible chat completions
     ///
     /// temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
     #[allow(clippy::too_many_arguments)]
     pub async fn openai_chat_completions(&self, body: &models::OpenaiChatCompletionsRequest) -> Result<models::OpenAIChatCompletion> {
         self.client.call("POST", "/v1/chat/completions", &[], &[], &[], Some(json(body)?)).await
+    }
+
+    /// OpenAI Embeddings
+    ///
+    /// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn openai_embeddings(&self, body: &models::OpenaiEmbeddingsRequest) -> Result<()> {
+        self.client.send("POST", "/v1/embeddings", &[], &[], &[], Some(json(body)?)).await
     }
 
     /// Anthropic-compatible messages, for coding agents

@@ -7,6 +7,18 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | Method | Route | |
 | --- | --- | --- |
 | `get_about()` | `GET /about` | AGPL corresponding-source offer |
+| `ollama_chat()` | `POST /api/chat` | Ollama-compatible chat |
+| `ollama_copy()` | `POST /api/copy` | Ollama model management |
+| `ollama_create()` | `POST /api/create` | Ollama model management |
+| `ollama_delete()` | `DELETE /api/delete` | Ollama model management |
+| `ollama_embed()` | `POST /api/embed` | Ollama-compatible embeddings |
+| `ollama_embeddings()` | `POST /api/embeddings` | Ollama-compatible embeddings, older form |
+| `ollama_generate()` | `POST /api/generate` | Ollama-compatible completion |
+| `ollama_ps()` | `GET /api/ps` | Ollama-compatible running models |
+| `ollama_pull()` | `POST /api/pull` | Ollama model management |
+| `ollama_push()` | `POST /api/push` | Ollama model management |
+| `ollama_show()` | `POST /api/show` | Ollama-compatible model details |
+| `ollama_tags()` | `GET /api/tags` | Ollama-compatible model list |
 | `list_apikeys()` | `GET /api/v1/api-keys` | API keys, without their secrets |
 | `create_apikey(*, body: dict[str, Any])` | `POST /api/v1/api-keys` | Create an API key; the secret is shown only in this response |
 | `delete_apikey(id: str)` | `DELETE /api/v1/api-keys/{id}` | Delete an API key |
@@ -28,6 +40,8 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `resume_automation(id: str)` | `POST /api/v1/automations/{id}/resume` | Resume an automation |
 | `run_automation(id: str)` | `POST /api/v1/automations/{id}/run` | Run an automation now |
 | `list_automation_runs(id: str, *, before: str \| None = None, limit: int \| None = None)` |  | A page of an automation's runs, newest first |
+| `clear_automation_runs(id: str, *, files: bool \| None = None)` |  | Clear an automation's history |
+| `delete_automation_run(id: str, run_id: str)` | `DELETE /api/v1/automations/{id}/runs/{run_id}` | Delete one finished run |
 | `continue_automation_run(id: str, run_id: str)` |  | Open a run's result in a chat to reply to |
 | `list_benchmarks()` | `GET /api/v1/benchmarks` | List recent benchmark jobs |
 | `start_benchmark(*, body: models.BenchmarkRequest \| dict[str, Any])` | `POST /api/v1/benchmarks` | Start a multi-model benchmark |
@@ -79,6 +93,8 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `list_egress(*, conversation_id: str \| None = None, limit: int \| None = None)` |  | What left this computer, newest first |
 | `get_external_server()` | `GET /api/v1/external-server` | The OpenAI-compatible server whose models can be chosen for a chat, and the models it offers |
 | `set_external_server(*, body: dict[str, Any])` | `PUT /api/v1/external-server` | Set the external server's base URL and API key |
+| `list_features()` | `GET /api/v1/features` | Each feature and what it still needs (#1355) |
+| `set_up_feature(id: str)` | `POST /api/v1/features/{id}/setup` | Set up everything a feature still needs (#1355) |
 | `get_hardware()` | `GET /api/v1/hardware` | Local hardware inventory |
 | `get_health()` | `GET /api/v1/health` | Health check |
 | `remove_image_model(id: str)` | `DELETE /api/v1/images/models/{id}` | Delete an installed image model to free its space |
@@ -328,14 +344,23 @@ One method per route, named after its operation in Core's API spec. `AsyncToskar
 | `start_video_setup(*, body: dict[str, Any])` | `POST /api/v1/video/setup` | Install stable-diffusion.cpp and a video model in the background |
 | `cancel_video_setup()` | `DELETE /api/v1/video/setup` | Stop the setup in progress; what was downloaded is kept and resumed next time |
 | `use_video_build(*, body: dict[str, Any])` | `POST /api/v1/video/setup/build` | Switch stable-diffusion.cpp to its CPU build, or back to its GPU build |
+| `pick_voice_persona(*, body: dict[str, Any])` | `PUT /api/v1/voice/persona` | Pick the voice persona you're read aloud in (#1319) |
+| `voice_personas()` | `GET /api/v1/voice/personas` | The voice personas, and the one you picked (#1319) |
+| `create_voice_persona(*, body: models.VoicePersona \| dict[str, Any])` | `POST /api/v1/voice/personas` | Make a voice persona (#1319) |
+| `update_voice_persona(id: str, *, body: models.VoicePersona \| dict[str, Any])` | `PUT /api/v1/voice/personas/{id}` | Change a voice persona (#1319) |
+| `delete_voice_persona(id: str)` | `DELETE /api/v1/voice/personas/{id}` | Delete a voice persona (#1319) |
 | `voice_realtime()` | `GET /api/v1/voice/realtime` | Live voice mode, over a WebSocket (#795) |
+| `ollama_version()` | `GET /api/version` | Ollama API version |
 | `run_hook(token: str)` | `POST /hooks/{token}` | Start the automation a webhook link belongs to |
 | `mcp_server_get()` | `GET /mcp` | Not supported; the server does not open a stream |
 | `mcp_server(*, body: dict[str, Any] \| None = None)` | `POST /mcp` | Toskar's MCP server (Streamable HTTP, JSON-RPC). Tools ask_local_ai, list_local_models, search_my_knowledge, run_swarm. |
 | `mcp_server_delete()` | `DELETE /mcp` | End an MCP session |
 | `mcp_oauth_callback()` | `GET /mcp/oauth/callback` | Where a tool source's sign-in returns; shows a page that says how it went |
 | `get_source()` | `GET /source` | AGPL corresponding-source offer |
+| `openai_speech(*, body: dict[str, Any])` | `POST /v1/audio/speech` | OpenAI audio speech |
+| `openai_transcriptions()` | `POST /v1/audio/transcriptions` | OpenAI audio transcriptions |
 | `openai_chat_completions(*, body: dict[str, Any])` | `POST /v1/chat/completions` | OpenAI-compatible chat completions |
+| `openai_embeddings(*, body: dict[str, Any])` | `POST /v1/embeddings` | OpenAI Embeddings |
 | `anthropic_messages(*, body: dict[str, Any])` | `POST /v1/messages` | Anthropic-compatible messages, for coding agents |
 | `anthropic_count_tokens()` | `POST /v1/messages/count_tokens` | About how many tokens a Messages request's input takes |
 | `openai_list_models()` | `GET /v1/models` | OpenAI-compatible model list |

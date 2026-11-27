@@ -333,6 +333,21 @@ Parameters:
 Task<M.ClassifiedMaterial> ClassifyMaterialAsync(M.ClassifyMaterialRequest body, CancellationToken cancellationToken = default)
 ```
 
+### ClearAutomationRunsAsync(id, files)
+
+Clear an automation's history
+
+Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+
+Parameters:
+
+- `id`: The id.
+- `files`: Also delete the camera pictures the automation's runs took
+
+```csharp
+Task<M.ClearedRuns> ClearAutomationRunsAsync(string id, bool? files = null, CancellationToken cancellationToken = default)
+```
+
 ### ClearCacheAsync(name)
 
 Clear one cache
@@ -555,6 +570,20 @@ Parameters:
 Task<M.ToskarTask> CreateTaskAsync(M.CreateTaskRequest body, CancellationToken cancellationToken = default)
 ```
 
+### CreateVoicePersonaAsync(body)
+
+Make a voice persona (#1319)
+
+voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+
+Parameters:
+
+- `body`: The request.
+
+```csharp
+Task<M.VoicePersonas> CreateVoicePersonaAsync(M.VoicePersona body, CancellationToken cancellationToken = default)
+```
+
 ### DecideToolAsync(body)
 
 Answer a tool approval request
@@ -613,6 +642,21 @@ Parameters:
 
 ```csharp
 Task DeleteAutomationAsync(string id, CancellationToken cancellationToken = default)
+```
+
+### DeleteAutomationRunAsync(id, runId)
+
+Delete one finished run
+
+A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+
+Parameters:
+
+- `id`: The id.
+- `runId`: The runId.
+
+```csharp
+Task DeleteAutomationRunAsync(string id, string runId, CancellationToken cancellationToken = default)
 ```
 
 ### DeleteComfyWorkflowAsync(name)
@@ -815,6 +859,20 @@ Parameters:
 
 ```csharp
 Task DeleteSwarmAsync(string id, CancellationToken cancellationToken = default)
+```
+
+### DeleteVoicePersonaAsync(id)
+
+Delete a voice persona (#1319)
+
+Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+
+Parameters:
+
+- `id`: The id.
+
+```csharp
+Task<M.VoicePersonas> DeleteVoicePersonaAsync(string id, CancellationToken cancellationToken = default)
 ```
 
 ### DeployedAIsAsync()
@@ -1936,6 +1994,16 @@ Parameters:
 Task<M.TrainingExamples> ListExamplesAsync(string id, CancellationToken cancellationToken = default)
 ```
 
+### ListFeaturesAsync()
+
+Each feature and what it still needs (#1355)
+
+One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+
+```csharp
+Task<List<M.Feature>> ListFeaturesAsync(CancellationToken cancellationToken = default)
+```
+
 ### ListJoinTokensAsync()
 
 Join tokens, active and from the last week, without their secrets
@@ -2415,6 +2483,136 @@ Parameters:
 Task OidcCallbackAsync(string? state = null, string? code = null, CancellationToken cancellationToken = default)
 ```
 
+### OllamaChatAsync()
+
+Ollama-compatible chat
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+
+```csharp
+Task<byte[]> OllamaChatAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaCopyAsync()
+
+Ollama model management
+
+Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+
+```csharp
+Task<JsonObject> OllamaCopyAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaCreateAsync()
+
+Ollama model management
+
+Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+
+```csharp
+Task<JsonObject> OllamaCreateAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaDeleteAsync()
+
+Ollama model management
+
+Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+
+```csharp
+Task<JsonObject> OllamaDeleteAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaEmbedAsync()
+
+Ollama-compatible embeddings
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+
+```csharp
+Task<JsonObject> OllamaEmbedAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaEmbeddingsAsync()
+
+Ollama-compatible embeddings, older form
+
+Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+
+```csharp
+Task<JsonObject> OllamaEmbeddingsAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaGenerateAsync()
+
+Ollama-compatible completion
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+
+```csharp
+Task<byte[]> OllamaGenerateAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaPsAsync()
+
+Ollama-compatible running models
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+
+```csharp
+Task<JsonObject> OllamaPsAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaPullAsync()
+
+Ollama model management
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+
+```csharp
+Task<JsonObject> OllamaPullAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaPushAsync()
+
+Ollama model management
+
+Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+
+```csharp
+Task<JsonObject> OllamaPushAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaShowAsync()
+
+Ollama-compatible model details
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+
+```csharp
+Task<JsonObject> OllamaShowAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaTagsAsync()
+
+Ollama-compatible model list
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+
+```csharp
+Task<JsonObject> OllamaTagsAsync(CancellationToken cancellationToken = default)
+```
+
+### OllamaVersionAsync()
+
+Ollama API version
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+
+```csharp
+Task<JsonObject> OllamaVersionAsync(CancellationToken cancellationToken = default)
+```
+
 ### OpenaiChatCompletionsAsync(body)
 
 OpenAI-compatible chat completions
@@ -2427,6 +2625,20 @@ Parameters:
 
 ```csharp
 Task<M.OpenAIChatCompletion> OpenaiChatCompletionsAsync(M.OpenaiChatCompletionsRequest body, CancellationToken cancellationToken = default)
+```
+
+### OpenaiEmbeddingsAsync(body)
+
+OpenAI Embeddings
+
+Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+
+Parameters:
+
+- `body`: The request.
+
+```csharp
+Task OpenaiEmbeddingsAsync(M.OpenaiEmbeddingsRequest body, CancellationToken cancellationToken = default)
 ```
 
 ### OpenaiListModelsAsync()
@@ -2451,6 +2663,34 @@ Parameters:
 
 ```csharp
 Task OpenaiResponsesAsync(M.OpenaiResponsesRequest body, CancellationToken cancellationToken = default)
+```
+
+### OpenaiSpeechAsync(body)
+
+OpenAI audio speech
+
+Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+
+Parameters:
+
+- `body`: The request.
+
+```csharp
+Task<byte[]> OpenaiSpeechAsync(M.OpenaiSpeechRequest body, CancellationToken cancellationToken = default)
+```
+
+### OpenaiTranscriptionsAsync(body)
+
+OpenAI audio transcriptions
+
+Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+
+Parameters:
+
+- `body`: The request.
+
+```csharp
+Task OpenaiTranscriptionsAsync(M.OpenaiTranscriptionsRequest body, CancellationToken cancellationToken = default)
 ```
 
 ### OutboundPairingAsync(code)
@@ -2606,6 +2846,20 @@ Parameters:
 
 ```csharp
 Task<M.InviteLink> PersonLinkAsync(string id, CancellationToken cancellationToken = default)
+```
+
+### PickVoicePersonaAsync(body)
+
+Pick the voice persona you're read aloud in (#1319)
+
+Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+
+Parameters:
+
+- `body`: The request.
+
+```csharp
+Task<M.VoicePersonas> PickVoicePersonaAsync(M.PickVoicePersonaRequest body, CancellationToken cancellationToken = default)
 ```
 
 ### PortalVisitorLinkAsync(id, vid)
@@ -3064,7 +3318,7 @@ Task<List<M.KnowledgeHit>> SearchKnowledgeAsync(M.SearchKnowledgeRequest body, C
 
 Send a problem report to Toskar (#588)
 
-Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
 
 ```csharp
 Task SendReportAsync(CancellationToken cancellationToken = default)
@@ -3190,7 +3444,7 @@ Task<M.ModelSpeculation> SetModelSpeculationAsync(string id, M.SetModelSpeculati
 
 Save your own languages (#206)
 
-The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 
 Parameters:
 
@@ -3333,6 +3587,20 @@ Parameters:
 
 ```csharp
 Task<M.ToolEnabled> SetToolEnabledAsync(string id, M.SetToolEnabledRequest body, CancellationToken cancellationToken = default)
+```
+
+### SetUpFeatureAsync(id)
+
+Set up everything a feature still needs (#1355)
+
+Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+
+Parameters:
+
+- `id`: The id.
+
+```csharp
+Task<M.Feature> SetUpFeatureAsync(string id, CancellationToken cancellationToken = default)
 ```
 
 ### ShowMessageVersionAsync(id, mid)
@@ -3875,6 +4143,21 @@ Parameters:
 Task<JsonObject> UpdateSettingsAsync(JsonObject body, CancellationToken cancellationToken = default)
 ```
 
+### UpdateVoicePersonaAsync(id, body)
+
+Change a voice persona (#1319)
+
+Admins only (contract 1.129).
+
+Parameters:
+
+- `id`: The id.
+- `body`: The request.
+
+```csharp
+Task<M.VoicePersonas> UpdateVoicePersonaAsync(string id, M.VoicePersona body, CancellationToken cancellationToken = default)
+```
+
 ### UploadArtifactAsync(body)
 
 Upload a file to attach to a chat (up to 25 MB)
@@ -3913,6 +4196,16 @@ Parameters:
 
 ```csharp
 Task<M.ImageSetup> UseVideoBuildAsync(M.UseVideoBuildRequest body, CancellationToken cancellationToken = default)
+```
+
+### VoicePersonasAsync()
+
+The voice personas, and the one you picked (#1319)
+
+Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+
+```csharp
+Task<M.VoicePersonas> VoicePersonasAsync(CancellationToken cancellationToken = default)
 ```
 
 ### VoiceRealtimeAsync()
