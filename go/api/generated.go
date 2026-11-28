@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Defines values for SetModelContextJSONBodyContextWindow.
@@ -264,11 +265,14 @@ type Automation struct {
 		// Connector Known values: `reolink`; others may be added.
 		Connector string `json:"connector"`
 
-		// Device Always camera: one Reolink connection is one camera
+		// Device camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
 		Device string `json:"device"`
 
 		// Listen Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
 		Listen *bool `json:"listen,omitempty"`
+
+		// NoThinkingSound Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+		NoThinkingSound *bool `json:"no_thinking_sound,omitempty"`
 
 		// QuietFrom With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
 		QuietFrom *string `json:"quiet_from,omitempty"`
@@ -384,11 +388,14 @@ type AutomationDetail struct {
 		// Connector Known values: `reolink`; others may be added.
 		Connector string `json:"connector"`
 
-		// Device Always camera: one Reolink connection is one camera
+		// Device camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
 		Device string `json:"device"`
 
 		// Listen Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
 		Listen *bool `json:"listen,omitempty"`
+
+		// NoThinkingSound Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+		NoThinkingSound *bool `json:"no_thinking_sound,omitempty"`
 
 		// QuietFrom With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
 		QuietFrom *string `json:"quiet_from,omitempty"`
@@ -457,7 +464,7 @@ type AutomationInput struct {
 		// Connector Known values: `homeassistant`, `reolink`; others may be added.
 		Connector string `json:"connector"`
 
-		// Device The camera as that service names it, such as Home Assistant's camera.driveway
+		// Device The camera as that service names it, such as Home Assistant's camera.driveway, or Reolink's camera, and camera@4 for the one on its hub's channel 4 (#1333)
 		Device string `json:"device"`
 	} `json:"cameras,omitempty"`
 
@@ -488,11 +495,14 @@ type AutomationInput struct {
 		// Connector Known values: `reolink`; others may be added.
 		Connector string `json:"connector"`
 
-		// Device Always camera: one Reolink connection is one camera
+		// Device camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
 		Device string `json:"device"`
 
 		// Listen Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
 		Listen *bool `json:"listen,omitempty"`
+
+		// NoThinkingSound Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+		NoThinkingSound *bool `json:"no_thinking_sound,omitempty"`
 
 		// QuietFrom With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
 		QuietFrom *string `json:"quiet_from,omitempty"`
@@ -591,12 +601,15 @@ type AutomationRequest struct {
 	// Say Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
 	Say *struct {
 		// Connector Known values: `reolink`; others may be added.
-		Connector string  `json:"connector"`
-		Device    string  `json:"device"`
-		Listen    *bool   `json:"listen,omitempty"`
-		QuietFrom *string `json:"quiet_from,omitempty"`
-		QuietTo   *string `json:"quiet_to,omitempty"`
-		Voice     *string `json:"voice,omitempty"`
+		Connector string `json:"connector"`
+		Device    string `json:"device"`
+		Listen    *bool  `json:"listen,omitempty"`
+
+		// NoThinkingSound Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+		NoThinkingSound *bool   `json:"no_thinking_sound,omitempty"`
+		QuietFrom       *string `json:"quiet_from,omitempty"`
+		QuietTo         *string `json:"quiet_to,omitempty"`
+		Voice           *string `json:"voice,omitempty"`
 	} `json:"say,omitempty"`
 
 	// Schedule The time rule for an automation. Clock fields are civil time in TimeZone. At and Anchor are absolute instants.
@@ -1000,6 +1013,15 @@ type ClassifiedMaterial struct {
 	Warning string `json:"warning"`
 }
 
+// ClearedRuns What clearing an automation's history removed
+type ClearedRuns struct {
+	// Files Camera pictures removed with them
+	Files int `json:"files"`
+
+	// Runs Finished runs removed
+	Runs int `json:"runs"`
+}
+
 // ComfyUIInfo defines model for ComfyUIInfo.
 type ComfyUIInfo struct {
 	Devices []struct {
@@ -1392,6 +1414,42 @@ type ExternalServer struct {
 	Error  *string   `json:"error,omitempty"`
 	HasKey *bool     `json:"has_key,omitempty"`
 	Models *[]string `json:"models,omitempty"`
+}
+
+// Feature A feature and whether it works here now (#1355)
+type Feature struct {
+	// Id Known values: `voice`, `door`, `pictures`, `clips`, `see`, `meaning`, `automationTools`, `train`; others may be added.
+	Id         string        `json:"id"`
+	Installing bool          `json:"installing"`
+	Needs      []FeatureNeed `json:"needs"`
+	Ready      bool          `json:"ready"`
+
+	// SetupBytes What setting up its missing needs downloads
+	SetupBytes int64 `json:"setup_bytes"`
+}
+
+// FeatureNeed One thing a feature needs, and what would set it up
+type FeatureNeed struct {
+	// Detail Why it can't be set up here, when this computer says
+	Detail *string `json:"detail,omitempty"`
+
+	// Install How setup installs it; absent when nothing here can Known values: `model`, `voice`, `images`, `video`; others may be added.
+	Install    *string `json:"install,omitempty"`
+	Installing *bool   `json:"installing,omitempty"`
+	Name       *string `json:"name,omitempty"`
+
+	// Need Known values: `chat`, `tools`, `vision`, `embedding`, `voice`, `images`, `video`, `trainer`, `camera`; others may be added.
+	Need string `json:"need"`
+
+	// NodeId The paired computer it is set up on
+	NodeId   *string `json:"node_id,omitempty"`
+	NodeName *string `json:"node_name,omitempty"`
+
+	// Option The model it installs
+	Option    *string `json:"option,omitempty"`
+	Percent   *int    `json:"percent,omitempty"`
+	Ready     bool    `json:"ready"`
+	SizeBytes *int64  `json:"size_bytes,omitempty"`
 }
 
 // FileRef Points at a stored file (an artifact). Its bytes are at GET /api/v1/artifacts/{id}/content.
@@ -2788,6 +2846,9 @@ type OK struct {
 	Ok bool `json:"ok"`
 }
 
+// OllamaAnswer An Ollama API answer, in the shape Ollama gives for the endpoint (#1356)
+type OllamaAnswer map[string]interface{}
+
 // OpenAIChatCompletion An OpenAI chat completion, for clients that speak OpenAI's API.
 type OpenAIChatCompletion struct {
 	Choices []struct {
@@ -3275,8 +3336,11 @@ type QualityResults struct {
 	Live bool `json:"live"`
 
 	// Method How the results are measured
-	Method  *string            `json:"method,omitempty"`
-	Note    *string            `json:"note,omitempty"`
+	Method *string `json:"method,omitempty"`
+	Note   *string `json:"note,omitempty"`
+
+	// Off The quality_results setting is off, so nothing was read (#1415, contract 1.124)
+	Off     *bool              `json:"off,omitempty"`
 	Results []QualityResult    `json:"results"`
 	Suites  *map[string]string `json:"suites,omitempty"`
 }
@@ -4305,6 +4369,31 @@ type VisitorLink struct {
 	Path      string    `json:"path"`
 }
 
+// VoicePersona defines model for VoicePersona.
+type VoicePersona struct {
+	Id *string `json:"id,omitempty"`
+
+	// Language A language code
+	Language *string `json:"language,omitempty"`
+	Name     *string `json:"name,omitempty"`
+
+	// Reads Whether its voice can read here now; only in answers
+	Reads *bool `json:"reads,omitempty"`
+
+	// ReadsWith The voice that reads in its place when reads is false
+	ReadsWith *string  `json:"reads_with,omitempty"`
+	Speed     *float32 `json:"speed,omitempty"`
+	Voice     *string  `json:"voice,omitempty"`
+}
+
+// VoicePersonas defines model for VoicePersonas.
+type VoicePersonas struct {
+	Personas []VoicePersona `json:"personas"`
+
+	// Picked The persona you picked
+	Picked string `json:"picked"`
+}
+
 // VoiceSettings The Voice settings (#1304, contract 1.112)
 type VoiceSettings struct {
 	Kitten struct {
@@ -4407,6 +4496,12 @@ type ParseAutomationJSONBody struct {
 	TimeZone *string `json:"time_zone,omitempty"`
 }
 
+// ClearAutomationRunsParams defines parameters for ClearAutomationRuns.
+type ClearAutomationRunsParams struct {
+	// Files Also delete the camera pictures the automation's runs took
+	Files *bool `form:"files,omitempty" json:"files,omitempty"`
+}
+
 // ListAutomationRunsParams defines parameters for ListAutomationRuns.
 type ListAutomationRunsParams struct {
 	// Before The id of the last run already shown; the page starts after it
@@ -4435,6 +4530,14 @@ type ChatJSONBody struct {
 	// Client The app asking; its run is traced with it, to measure how long answers take to start. car is the phone app in CarPlay (contract 1.65); terminal is toskarctl chat (#959, contract 1.74); editor is @toskar in an editor such as VS Code (#960, contract 1.75). Known values: `phone`, `tablet`, `watch`, `car`, `tv`, `desktop`, `web`, `terminal`, `editor`; others may be added.
 	Client         *string `json:"client,omitempty"`
 	ConversationId *string `json:"conversation_id,omitempty"`
+
+	// DeviceLocation Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
+	DeviceLocation *struct {
+		// AccuracyM How far off it may be
+		AccuracyM *float32 `json:"accuracy_m,omitempty"`
+		Latitude  *float32 `json:"latitude,omitempty"`
+		Longitude *float32 `json:"longitude,omitempty"`
+	} `json:"device_location,omitempty"`
 
 	// EditOf Send message in place of this one, as a new version of it
 	EditOf *string `json:"edit_of,omitempty"`
@@ -4805,7 +4908,19 @@ type SetMyPreferencesJSONBody struct {
 
 	// AssistantLanguageMode Known values: `auto`, `app`, `language`; others may be added.
 	AssistantLanguageMode *string `json:"assistant_language_mode,omitempty"`
-	UiLocale              *string `json:"ui_locale,omitempty"`
+
+	// NotifyTaskFinish Your finished automations notify you, with a push to your own phones and, for the Owner, a desktop notice (#1391, contract 1.128); until you choose, the Owner's choice. On by default
+	NotifyTaskFinish *bool `json:"notify_task_finish,omitempty"`
+
+	// SuggestModels Answers may offer a better-fitting model to install (#707)
+	SuggestModels *bool `json:"suggest_models,omitempty"`
+
+	// ThinkingSound Voice chat plays a soft chime while a spoken answer takes a while (#1334, contract 1.121); on by default
+	ThinkingSound *bool   `json:"thinking_sound,omitempty"`
+	UiLocale      *string `json:"ui_locale,omitempty"`
+
+	// VoiceAvatar The character you see in voice chat, whose mouth moves with the spoken answer (#1369, contract 1.130); ratatoskr until you choose, and none for the plain circle (contract 1.135). "" from older apps means none Known values: ``, `none`, `ratatoskr`, `pebble`, `lumen`; others may be added.
+	VoiceAvatar *string `json:"voice_avatar,omitempty"`
 }
 
 // RegisterPushJSONBody defines parameters for RegisterPush.
@@ -5191,8 +5306,11 @@ type ReadAloudJSONBody struct {
 // SpeechSayJSONBody defines parameters for SpeechSay.
 type SpeechSayJSONBody struct {
 	Language *string `json:"language,omitempty"`
-	Text     string  `json:"text"`
-	Voice    *string `json:"voice,omitempty"`
+
+	// Speed How fast to read, such as to preview a voice persona; omitted or 0 is the caller's persona's speed, or normal (#1319, contract 1.129)
+	Speed *float32 `json:"speed,omitempty"`
+	Text  string   `json:"text"`
+	Voice *string  `json:"voice,omitempty"`
 }
 
 // TranscribeRecordingJSONBody defines parameters for TranscribeRecording.
@@ -5381,8 +5499,34 @@ type UseVideoBuildJSONBody struct {
 	Build string `json:"build"`
 }
 
+// PickVoicePersonaJSONBody defines parameters for PickVoicePersona.
+type PickVoicePersonaJSONBody struct {
+	Id *string `json:"id,omitempty"`
+}
+
 // McpServerJSONBody defines parameters for McpServer.
 type McpServerJSONBody map[string]interface{}
+
+// OpenaiSpeechJSONBody defines parameters for OpenaiSpeech.
+type OpenaiSpeechJSONBody struct {
+	Input string  `json:"input"`
+	Model *string `json:"model,omitempty"`
+
+	// ResponseFormat Known values: `wav`, `pcm`, `mp3`, `opus`, `aac`, `flac`; others may be added.
+	ResponseFormat *string  `json:"response_format,omitempty"`
+	Speed          *float32 `json:"speed,omitempty"`
+	Voice          *string  `json:"voice,omitempty"`
+}
+
+// OpenaiTranscriptionsMultipartBody defines parameters for OpenaiTranscriptions.
+type OpenaiTranscriptionsMultipartBody struct {
+	File     openapi_types.File `json:"file"`
+	Language *string            `json:"language,omitempty"`
+	Model    *string            `json:"model,omitempty"`
+
+	// ResponseFormat Known values: `json`, `text`, `verbose_json`, `srt`, `vtt`; others may be added.
+	ResponseFormat *string `json:"response_format,omitempty"`
+}
 
 // OpenaiChatCompletionsJSONBody defines parameters for OpenaiChatCompletions.
 type OpenaiChatCompletionsJSONBody struct {
@@ -5440,6 +5584,18 @@ type OpenaiChatCompletionsJSONBody struct {
 
 	// Yggdrasil The assistant's own controls for an OpenAI-compatible request, sent as toskar (or yggdrasil, its name from before the rename)
 	Yggdrasil *AssistantOptions `json:"yggdrasil,omitempty"`
+}
+
+// OpenaiEmbeddingsJSONBody defines parameters for OpenaiEmbeddings.
+type OpenaiEmbeddingsJSONBody struct {
+	Dimensions *int `json:"dimensions,omitempty"`
+
+	// EncodingFormat Known values: `float`, `base64`; others may be added.
+	EncodingFormat *string `json:"encoding_format,omitempty"`
+
+	// Input A string or a list of strings
+	Input interface{} `json:"input"`
+	Model *string     `json:"model,omitempty"`
 }
 
 // AnthropicMessagesJSONBody defines parameters for AnthropicMessages.
@@ -5822,11 +5978,29 @@ type StartVideoSetupJSONRequestBody StartVideoSetupJSONBody
 // UseVideoBuildJSONRequestBody defines body for UseVideoBuild for application/json ContentType.
 type UseVideoBuildJSONRequestBody UseVideoBuildJSONBody
 
+// PickVoicePersonaJSONRequestBody defines body for PickVoicePersona for application/json ContentType.
+type PickVoicePersonaJSONRequestBody PickVoicePersonaJSONBody
+
+// CreateVoicePersonaJSONRequestBody defines body for CreateVoicePersona for application/json ContentType.
+type CreateVoicePersonaJSONRequestBody = VoicePersona
+
+// UpdateVoicePersonaJSONRequestBody defines body for UpdateVoicePersona for application/json ContentType.
+type UpdateVoicePersonaJSONRequestBody = VoicePersona
+
 // McpServerJSONRequestBody defines body for McpServer for application/json ContentType.
 type McpServerJSONRequestBody McpServerJSONBody
 
+// OpenaiSpeechJSONRequestBody defines body for OpenaiSpeech for application/json ContentType.
+type OpenaiSpeechJSONRequestBody OpenaiSpeechJSONBody
+
+// OpenaiTranscriptionsMultipartRequestBody defines body for OpenaiTranscriptions for multipart/form-data ContentType.
+type OpenaiTranscriptionsMultipartRequestBody OpenaiTranscriptionsMultipartBody
+
 // OpenaiChatCompletionsJSONRequestBody defines body for OpenaiChatCompletions for application/json ContentType.
 type OpenaiChatCompletionsJSONRequestBody OpenaiChatCompletionsJSONBody
+
+// OpenaiEmbeddingsJSONRequestBody defines body for OpenaiEmbeddings for application/json ContentType.
+type OpenaiEmbeddingsJSONRequestBody OpenaiEmbeddingsJSONBody
 
 // AnthropicMessagesJSONRequestBody defines body for AnthropicMessages for application/json ContentType.
 type AnthropicMessagesJSONRequestBody AnthropicMessagesJSONBody
@@ -6524,6 +6698,90 @@ type ClientInterface interface {
 	// Corresponds with GET /about (the `GetAbout` operationId).
 	GetAbout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// OllamaChat Ollama-compatible chat
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+	//
+	// Corresponds with POST /api/chat (the `OllamaChat` operationId).
+	OllamaChat(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaCopy Ollama model management
+	//
+	// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+	//
+	// Corresponds with POST /api/copy (the `OllamaCopy` operationId).
+	OllamaCopy(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaCreate Ollama model management
+	//
+	// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+	//
+	// Corresponds with POST /api/create (the `OllamaCreate` operationId).
+	OllamaCreate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaDelete Ollama model management
+	//
+	// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+	//
+	// Corresponds with DELETE /api/delete (the `OllamaDelete` operationId).
+	OllamaDelete(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaEmbed Ollama-compatible embeddings
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+	//
+	// Corresponds with POST /api/embed (the `OllamaEmbed` operationId).
+	OllamaEmbed(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaEmbeddings Ollama-compatible embeddings, older form
+	//
+	// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+	//
+	// Corresponds with POST /api/embeddings (the `OllamaEmbeddings` operationId).
+	OllamaEmbeddings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaGenerate Ollama-compatible completion
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+	//
+	// Corresponds with POST /api/generate (the `OllamaGenerate` operationId).
+	OllamaGenerate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaPs Ollama-compatible running models
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+	//
+	// Corresponds with GET /api/ps (the `OllamaPs` operationId).
+	OllamaPs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaPull Ollama model management
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+	//
+	// Corresponds with POST /api/pull (the `OllamaPull` operationId).
+	OllamaPull(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaPush Ollama model management
+	//
+	// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+	//
+	// Corresponds with POST /api/push (the `OllamaPush` operationId).
+	OllamaPush(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaShow Ollama-compatible model details
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+	//
+	// Corresponds with POST /api/show (the `OllamaShow` operationId).
+	OllamaShow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaTags Ollama-compatible model list
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+	//
+	// Corresponds with GET /api/tags (the `OllamaTags` operationId).
+	OllamaTags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListAPIKeys API keys, without their secrets
 	//
 	// Corresponds with GET /api/v1/api-keys (the `ListAPIKeys` operationId).
@@ -6689,10 +6947,24 @@ type ClientInterface interface {
 	// Corresponds with POST /api/v1/automations/{id}/run (the `RunAutomation` operationId).
 	RunAutomation(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ClearAutomationRuns Clear an automation's history
+	//
+	// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+	//
+	// Corresponds with DELETE /api/v1/automations/{id}/runs (the `ClearAutomationRuns` operationId).
+	ClearAutomationRuns(ctx context.Context, id string, params *ClearAutomationRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListAutomationRuns A page of an automation's runs, newest first
 	//
 	// Corresponds with GET /api/v1/automations/{id}/runs (the `ListAutomationRuns` operationId).
 	ListAutomationRuns(ctx context.Context, id string, params *ListAutomationRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAutomationRun Delete one finished run
+	//
+	// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+	//
+	// Corresponds with DELETE /api/v1/automations/{id}/runs/{run_id} (the `DeleteAutomationRun` operationId).
+	DeleteAutomationRun(ctx context.Context, id string, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ContinueAutomationRun Open a run's result in a chat to reply to
 	//
@@ -7088,7 +7360,7 @@ type ClientInterface interface {
 
 	// SendReport Send a problem report to Toskar (#588)
 	//
-	// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+	// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
 	//
 	// Corresponds with POST /api/v1/diagnostics/report (the `SendReport` operationId).
 	SendReport(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -7132,6 +7404,20 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /api/v1/external-server (the `SetExternalServer` operationId).
 	SetExternalServer(ctx context.Context, body SetExternalServerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListFeatures Each feature and what it still needs (#1355)
+	//
+	// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+	//
+	// Corresponds with GET /api/v1/features (the `ListFeatures` operationId).
+	ListFeatures(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetUpFeature Set up everything a feature still needs (#1355)
+	//
+	// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+	//
+	// Corresponds with POST /api/v1/features/{id}/setup (the `SetUpFeature` operationId).
+	SetUpFeature(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHardware Local hardware inventory
 	//
@@ -7546,7 +7832,7 @@ type ClientInterface interface {
 
 	// SetMyPreferencesWithBody Save your own languages (#206)
 	//
-	// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+	// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -7555,7 +7841,7 @@ type ClientInterface interface {
 
 	// SetMyPreferences Save your own languages (#206)
 	//
-	// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+	// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -9394,12 +9680,87 @@ type ClientInterface interface {
 	// Corresponds with POST /api/v1/video/setup/build (the `UseVideoBuild` operationId).
 	UseVideoBuild(ctx context.Context, body UseVideoBuildJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PickVoicePersonaWithBody Pick the voice persona you're read aloud in (#1319)
+	//
+	// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /api/v1/voice/persona (the `PickVoicePersona` operationId).
+	PickVoicePersonaWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PickVoicePersona Pick the voice persona you're read aloud in (#1319)
+	//
+	// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /api/v1/voice/persona (the `PickVoicePersona` operationId).
+	PickVoicePersona(ctx context.Context, body PickVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VoicePersonas The voice personas, and the one you picked (#1319)
+	//
+	// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+	//
+	// Corresponds with GET /api/v1/voice/personas (the `VoicePersonas` operationId).
+	VoicePersonas(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVoicePersonaWithBody Make a voice persona (#1319)
+	//
+	// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/voice/personas (the `CreateVoicePersona` operationId).
+	CreateVoicePersonaWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVoicePersona Make a voice persona (#1319)
+	//
+	// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/voice/personas (the `CreateVoicePersona` operationId).
+	CreateVoicePersona(ctx context.Context, body CreateVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteVoicePersona Delete a voice persona (#1319)
+	//
+	// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+	//
+	// Corresponds with DELETE /api/v1/voice/personas/{id} (the `DeleteVoicePersona` operationId).
+	DeleteVoicePersona(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateVoicePersonaWithBody Change a voice persona (#1319)
+	//
+	// Admins only (contract 1.129).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /api/v1/voice/personas/{id} (the `UpdateVoicePersona` operationId).
+	UpdateVoicePersonaWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateVoicePersona Change a voice persona (#1319)
+	//
+	// Admins only (contract 1.129).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /api/v1/voice/personas/{id} (the `UpdateVoicePersona` operationId).
+	UpdateVoicePersona(ctx context.Context, id string, body UpdateVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// VoiceRealtime Live voice mode, over a WebSocket (#795)
 	//
 	// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
 	//
 	// Corresponds with GET /api/v1/voice/realtime (the `VoiceRealtime` operationId).
 	VoiceRealtime(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OllamaVersion Ollama API version
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+	//
+	// Corresponds with GET /api/version (the `OllamaVersion` operationId).
+	OllamaVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunHookWithBody Start the automation a webhook link belongs to
 	//
@@ -9448,6 +9809,33 @@ type ClientInterface interface {
 	// Corresponds with GET /source (the `GetSource` operationId).
 	GetSource(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// OpenaiSpeechWithBody OpenAI audio speech
+	//
+	// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/audio/speech (the `OpenaiSpeech` operationId).
+	OpenaiSpeechWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OpenaiSpeech OpenAI audio speech
+	//
+	// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/audio/speech (the `OpenaiSpeech` operationId).
+	OpenaiSpeech(ctx context.Context, body OpenaiSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OpenaiTranscriptionsWithBody OpenAI audio transcriptions
+	//
+	// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/audio/transcriptions (the `OpenaiTranscriptions` operationId).
+	OpenaiTranscriptionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// OpenaiChatCompletionsWithBody OpenAI-compatible chat completions
 	//
 	// temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
@@ -9465,6 +9853,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /v1/chat/completions (the `OpenaiChatCompletions` operationId).
 	OpenaiChatCompletions(ctx context.Context, body OpenaiChatCompletionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OpenaiEmbeddingsWithBody OpenAI Embeddings
+	//
+	// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/embeddings (the `OpenaiEmbeddings` operationId).
+	OpenaiEmbeddingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OpenaiEmbeddings OpenAI Embeddings
+	//
+	// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/embeddings (the `OpenaiEmbeddings` operationId).
+	OpenaiEmbeddings(ctx context.Context, body OpenaiEmbeddingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AnthropicMessagesWithBody Anthropic-compatible messages, for coding agents
 	//
@@ -9522,6 +9928,210 @@ type ClientInterface interface {
 // Corresponds with GET /about (the `GetAbout` operationId).
 func (c *Client) GetAbout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAboutRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaChat Ollama-compatible chat
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+//
+// Corresponds with POST /api/chat (the `OllamaChat` operationId).
+func (c *Client) OllamaChat(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaChatRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaCopy Ollama model management
+//
+// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+//
+// Corresponds with POST /api/copy (the `OllamaCopy` operationId).
+func (c *Client) OllamaCopy(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaCopyRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaCreate Ollama model management
+//
+// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+//
+// Corresponds with POST /api/create (the `OllamaCreate` operationId).
+func (c *Client) OllamaCreate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaCreateRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaDelete Ollama model management
+//
+// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+//
+// Corresponds with DELETE /api/delete (the `OllamaDelete` operationId).
+func (c *Client) OllamaDelete(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaDeleteRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaEmbed Ollama-compatible embeddings
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+//
+// Corresponds with POST /api/embed (the `OllamaEmbed` operationId).
+func (c *Client) OllamaEmbed(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaEmbedRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaEmbeddings Ollama-compatible embeddings, older form
+//
+// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+//
+// Corresponds with POST /api/embeddings (the `OllamaEmbeddings` operationId).
+func (c *Client) OllamaEmbeddings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaEmbeddingsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaGenerate Ollama-compatible completion
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+//
+// Corresponds with POST /api/generate (the `OllamaGenerate` operationId).
+func (c *Client) OllamaGenerate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaGenerateRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaPs Ollama-compatible running models
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+//
+// Corresponds with GET /api/ps (the `OllamaPs` operationId).
+func (c *Client) OllamaPs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaPsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaPull Ollama model management
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+//
+// Corresponds with POST /api/pull (the `OllamaPull` operationId).
+func (c *Client) OllamaPull(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaPullRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaPush Ollama model management
+//
+// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+//
+// Corresponds with POST /api/push (the `OllamaPush` operationId).
+func (c *Client) OllamaPush(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaPushRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaShow Ollama-compatible model details
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+//
+// Corresponds with POST /api/show (the `OllamaShow` operationId).
+func (c *Client) OllamaShow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaShowRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaTags Ollama-compatible model list
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+//
+// Corresponds with GET /api/tags (the `OllamaTags` operationId).
+func (c *Client) OllamaTags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaTagsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -9967,11 +10577,45 @@ func (c *Client) RunAutomation(ctx context.Context, id string, reqEditors ...Req
 	return c.Client.Do(req)
 }
 
+// ClearAutomationRuns Clear an automation's history
+//
+// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+//
+// Corresponds with DELETE /api/v1/automations/{id}/runs (the `ClearAutomationRuns` operationId).
+func (c *Client) ClearAutomationRuns(ctx context.Context, id string, params *ClearAutomationRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewClearAutomationRunsRequest(c.Server, id, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListAutomationRuns A page of an automation's runs, newest first
 //
 // Corresponds with GET /api/v1/automations/{id}/runs (the `ListAutomationRuns` operationId).
 func (c *Client) ListAutomationRuns(ctx context.Context, id string, params *ListAutomationRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListAutomationRunsRequest(c.Server, id, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAutomationRun Delete one finished run
+//
+// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+//
+// Corresponds with DELETE /api/v1/automations/{id}/runs/{run_id} (the `DeleteAutomationRun` operationId).
+func (c *Client) DeleteAutomationRun(ctx context.Context, id string, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAutomationRunRequest(c.Server, id, runId)
 	if err != nil {
 		return nil, err
 	}
@@ -10976,7 +11620,7 @@ func (c *Client) GetReport(ctx context.Context, reqEditors ...RequestEditorFn) (
 
 // SendReport Send a problem report to Toskar (#588)
 //
-// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
 //
 // Corresponds with POST /api/v1/diagnostics/report (the `SendReport` operationId).
 func (c *Client) SendReport(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -11081,6 +11725,40 @@ func (c *Client) SetExternalServerWithBody(ctx context.Context, contentType stri
 // Corresponds with PUT /api/v1/external-server (the `SetExternalServer` operationId).
 func (c *Client) SetExternalServer(ctx context.Context, body SetExternalServerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetExternalServerRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListFeatures Each feature and what it still needs (#1355)
+//
+// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+//
+// Corresponds with GET /api/v1/features (the `ListFeatures` operationId).
+func (c *Client) ListFeatures(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListFeaturesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetUpFeature Set up everything a feature still needs (#1355)
+//
+// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+//
+// Corresponds with POST /api/v1/features/{id}/setup (the `SetUpFeature` operationId).
+func (c *Client) SetUpFeature(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetUpFeatureRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -12134,7 +12812,7 @@ func (c *Client) ChangeMyPassword(ctx context.Context, body ChangeMyPasswordJSON
 
 // SetMyPreferencesWithBody Save your own languages (#206)
 //
-// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 //
 // Takes any type of body and a specified content type.
 //
@@ -12153,7 +12831,7 @@ func (c *Client) SetMyPreferencesWithBody(ctx context.Context, contentType strin
 
 // SetMyPreferences Save your own languages (#206)
 //
-// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -16702,6 +17380,154 @@ func (c *Client) UseVideoBuild(ctx context.Context, body UseVideoBuildJSONReques
 	return c.Client.Do(req)
 }
 
+// PickVoicePersonaWithBody Pick the voice persona you're read aloud in (#1319)
+//
+// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /api/v1/voice/persona (the `PickVoicePersona` operationId).
+func (c *Client) PickVoicePersonaWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPickVoicePersonaRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PickVoicePersona Pick the voice persona you're read aloud in (#1319)
+//
+// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /api/v1/voice/persona (the `PickVoicePersona` operationId).
+func (c *Client) PickVoicePersona(ctx context.Context, body PickVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPickVoicePersonaRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VoicePersonas The voice personas, and the one you picked (#1319)
+//
+// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+//
+// Corresponds with GET /api/v1/voice/personas (the `VoicePersonas` operationId).
+func (c *Client) VoicePersonas(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVoicePersonasRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVoicePersonaWithBody Make a voice persona (#1319)
+//
+// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/voice/personas (the `CreateVoicePersona` operationId).
+func (c *Client) CreateVoicePersonaWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVoicePersonaRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVoicePersona Make a voice persona (#1319)
+//
+// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/voice/personas (the `CreateVoicePersona` operationId).
+func (c *Client) CreateVoicePersona(ctx context.Context, body CreateVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVoicePersonaRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteVoicePersona Delete a voice persona (#1319)
+//
+// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+//
+// Corresponds with DELETE /api/v1/voice/personas/{id} (the `DeleteVoicePersona` operationId).
+func (c *Client) DeleteVoicePersona(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteVoicePersonaRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateVoicePersonaWithBody Change a voice persona (#1319)
+//
+// Admins only (contract 1.129).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /api/v1/voice/personas/{id} (the `UpdateVoicePersona` operationId).
+func (c *Client) UpdateVoicePersonaWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateVoicePersonaRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateVoicePersona Change a voice persona (#1319)
+//
+// Admins only (contract 1.129).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /api/v1/voice/personas/{id} (the `UpdateVoicePersona` operationId).
+func (c *Client) UpdateVoicePersona(ctx context.Context, id string, body UpdateVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateVoicePersonaRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // VoiceRealtime Live voice mode, over a WebSocket (#795)
 //
 // Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
@@ -16709,6 +17535,23 @@ func (c *Client) UseVideoBuild(ctx context.Context, body UseVideoBuildJSONReques
 // Corresponds with GET /api/v1/voice/realtime (the `VoiceRealtime` operationId).
 func (c *Client) VoiceRealtime(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVoiceRealtimeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OllamaVersion Ollama API version
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+//
+// Corresponds with GET /api/version (the `OllamaVersion` operationId).
+func (c *Client) OllamaVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOllamaVersionRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -16836,6 +17679,63 @@ func (c *Client) GetSource(ctx context.Context, reqEditors ...RequestEditorFn) (
 	return c.Client.Do(req)
 }
 
+// OpenaiSpeechWithBody OpenAI audio speech
+//
+// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/audio/speech (the `OpenaiSpeech` operationId).
+func (c *Client) OpenaiSpeechWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOpenaiSpeechRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OpenaiSpeech OpenAI audio speech
+//
+// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/audio/speech (the `OpenaiSpeech` operationId).
+func (c *Client) OpenaiSpeech(ctx context.Context, body OpenaiSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOpenaiSpeechRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OpenaiTranscriptionsWithBody OpenAI audio transcriptions
+//
+// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/audio/transcriptions (the `OpenaiTranscriptions` operationId).
+func (c *Client) OpenaiTranscriptionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOpenaiTranscriptionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // OpenaiChatCompletionsWithBody OpenAI-compatible chat completions
 //
 // temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
@@ -16864,6 +17764,44 @@ func (c *Client) OpenaiChatCompletionsWithBody(ctx context.Context, contentType 
 // Corresponds with POST /v1/chat/completions (the `OpenaiChatCompletions` operationId).
 func (c *Client) OpenaiChatCompletions(ctx context.Context, body OpenaiChatCompletionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOpenaiChatCompletionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OpenaiEmbeddingsWithBody OpenAI Embeddings
+//
+// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/embeddings (the `OpenaiEmbeddings` operationId).
+func (c *Client) OpenaiEmbeddingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOpenaiEmbeddingsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OpenaiEmbeddings OpenAI Embeddings
+//
+// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/embeddings (the `OpenaiEmbeddings` operationId).
+func (c *Client) OpenaiEmbeddings(ctx context.Context, body OpenaiEmbeddingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOpenaiEmbeddingsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16994,6 +17932,330 @@ func NewGetAboutRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/about")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaChatRequest constructs an http.Request for the OllamaChat method
+func NewOllamaChatRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/chat")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaCopyRequest constructs an http.Request for the OllamaCopy method
+func NewOllamaCopyRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/copy")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaCreateRequest constructs an http.Request for the OllamaCreate method
+func NewOllamaCreateRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/create")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaDeleteRequest constructs an http.Request for the OllamaDelete method
+func NewOllamaDeleteRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/delete")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaEmbedRequest constructs an http.Request for the OllamaEmbed method
+func NewOllamaEmbedRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/embed")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaEmbeddingsRequest constructs an http.Request for the OllamaEmbeddings method
+func NewOllamaEmbeddingsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/embeddings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaGenerateRequest constructs an http.Request for the OllamaGenerate method
+func NewOllamaGenerateRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/generate")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaPsRequest constructs an http.Request for the OllamaPs method
+func NewOllamaPsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/ps")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaPullRequest constructs an http.Request for the OllamaPull method
+func NewOllamaPullRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/pull")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaPushRequest constructs an http.Request for the OllamaPush method
+func NewOllamaPushRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/push")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaShowRequest constructs an http.Request for the OllamaShow method
+func NewOllamaShowRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/show")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaTagsRequest constructs an http.Request for the OllamaTags method
+func NewOllamaTagsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tags")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -17760,6 +19022,67 @@ func NewRunAutomationRequest(server string, id string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewClearAutomationRunsRequest constructs an http.Request for the ClearAutomationRuns method
+func NewClearAutomationRunsRequest(server string, id string, params *ClearAutomationRunsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/automations/%s/runs", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Files != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "files", *params.Files, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListAutomationRunsRequest constructs an http.Request for the ListAutomationRuns method
 func NewListAutomationRunsRequest(server string, id string, params *ListAutomationRunsParams) (*http.Request, error) {
 	var err error
@@ -17826,6 +19149,47 @@ func NewListAutomationRunsRequest(server string, id string, params *ListAutomati
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteAutomationRunRequest constructs an http.Request for the DeleteAutomationRun method
+func NewDeleteAutomationRunRequest(server string, id string, runId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "run_id", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/automations/%s/runs/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -19803,6 +21167,67 @@ func NewSetExternalServerRequestWithBody(server string, contentType string, body
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListFeaturesRequest constructs an http.Request for the ListFeatures method
+func NewListFeaturesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/features")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetUpFeatureRequest constructs an http.Request for the SetUpFeature method
+func NewSetUpFeatureRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/features/%s/setup", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -29368,6 +30793,194 @@ func NewUseVideoBuildRequestWithBody(server string, contentType string, body io.
 	return req, nil
 }
 
+// NewPickVoicePersonaRequest calls the generic PickVoicePersona builder with application/json body
+func NewPickVoicePersonaRequest(server string, body PickVoicePersonaJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPickVoicePersonaRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPickVoicePersonaRequestWithBody constructs an http.Request for the PickVoicePersona method, with any body, and a specified content type
+func NewPickVoicePersonaRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/voice/persona")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewVoicePersonasRequest constructs an http.Request for the VoicePersonas method
+func NewVoicePersonasRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/voice/personas")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateVoicePersonaRequest calls the generic CreateVoicePersona builder with application/json body
+func NewCreateVoicePersonaRequest(server string, body CreateVoicePersonaJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateVoicePersonaRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateVoicePersonaRequestWithBody constructs an http.Request for the CreateVoicePersona method, with any body, and a specified content type
+func NewCreateVoicePersonaRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/voice/personas")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteVoicePersonaRequest constructs an http.Request for the DeleteVoicePersona method
+func NewDeleteVoicePersonaRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/voice/personas/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateVoicePersonaRequest calls the generic UpdateVoicePersona builder with application/json body
+func NewUpdateVoicePersonaRequest(server string, id string, body UpdateVoicePersonaJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateVoicePersonaRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewUpdateVoicePersonaRequestWithBody constructs an http.Request for the UpdateVoicePersona method, with any body, and a specified content type
+func NewUpdateVoicePersonaRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/voice/personas/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewVoiceRealtimeRequest constructs an http.Request for the VoiceRealtime method
 func NewVoiceRealtimeRequest(server string) (*http.Request, error) {
 	var err error
@@ -29378,6 +30991,33 @@ func NewVoiceRealtimeRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/voice/realtime")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOllamaVersionRequest constructs an http.Request for the OllamaVersion method
+func NewOllamaVersionRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/version")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -29579,6 +31219,75 @@ func NewGetSourceRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewOpenaiSpeechRequest calls the generic OpenaiSpeech builder with application/json body
+func NewOpenaiSpeechRequest(server string, body OpenaiSpeechJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewOpenaiSpeechRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewOpenaiSpeechRequestWithBody constructs an http.Request for the OpenaiSpeech method, with any body, and a specified content type
+func NewOpenaiSpeechRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/audio/speech")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewOpenaiTranscriptionsRequestWithBody constructs an http.Request for the OpenaiTranscriptions method, with any body, and a specified content type
+func NewOpenaiTranscriptionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/audio/transcriptions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewOpenaiChatCompletionsRequest calls the generic OpenaiChatCompletions builder with application/json body
 func NewOpenaiChatCompletionsRequest(server string, body OpenaiChatCompletionsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -29600,6 +31309,46 @@ func NewOpenaiChatCompletionsRequestWithBody(server string, contentType string, 
 	}
 
 	operationPath := fmt.Sprintf("/v1/chat/completions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewOpenaiEmbeddingsRequest calls the generic OpenaiEmbeddings builder with application/json body
+func NewOpenaiEmbeddingsRequest(server string, body OpenaiEmbeddingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewOpenaiEmbeddingsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewOpenaiEmbeddingsRequestWithBody constructs an http.Request for the OpenaiEmbeddings method, with any body, and a specified content type
+func NewOpenaiEmbeddingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/embeddings")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -29804,6 +31553,114 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /about (the `GetAbout` operationId).
 	GetAboutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAboutResponse, error)
 
+	// OllamaChatWithResponse Ollama-compatible chat
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/chat (the `OllamaChat` operationId).
+	OllamaChatWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaChatResponse, error)
+
+	// OllamaCopyWithResponse Ollama model management
+	//
+	// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/copy (the `OllamaCopy` operationId).
+	OllamaCopyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaCopyResponse, error)
+
+	// OllamaCreateWithResponse Ollama model management
+	//
+	// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/create (the `OllamaCreate` operationId).
+	OllamaCreateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaCreateResponse, error)
+
+	// OllamaDeleteWithResponse Ollama model management
+	//
+	// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/delete (the `OllamaDelete` operationId).
+	OllamaDeleteWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaDeleteResponse, error)
+
+	// OllamaEmbedWithResponse Ollama-compatible embeddings
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/embed (the `OllamaEmbed` operationId).
+	OllamaEmbedWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaEmbedResponse, error)
+
+	// OllamaEmbeddingsWithResponse Ollama-compatible embeddings, older form
+	//
+	// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/embeddings (the `OllamaEmbeddings` operationId).
+	OllamaEmbeddingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaEmbeddingsResponse, error)
+
+	// OllamaGenerateWithResponse Ollama-compatible completion
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/generate (the `OllamaGenerate` operationId).
+	OllamaGenerateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaGenerateResponse, error)
+
+	// OllamaPsWithResponse Ollama-compatible running models
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/ps (the `OllamaPs` operationId).
+	OllamaPsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaPsResponse, error)
+
+	// OllamaPullWithResponse Ollama model management
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/pull (the `OllamaPull` operationId).
+	OllamaPullWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaPullResponse, error)
+
+	// OllamaPushWithResponse Ollama model management
+	//
+	// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/push (the `OllamaPush` operationId).
+	OllamaPushWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaPushResponse, error)
+
+	// OllamaShowWithResponse Ollama-compatible model details
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/show (the `OllamaShow` operationId).
+	OllamaShowWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaShowResponse, error)
+
+	// OllamaTagsWithResponse Ollama-compatible model list
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/tags (the `OllamaTags` operationId).
+	OllamaTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaTagsResponse, error)
+
 	// ListAPIKeysWithResponse API keys, without their secrets
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -29995,12 +31852,30 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /api/v1/automations/{id}/run (the `RunAutomation` operationId).
 	RunAutomationWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*RunAutomationResponse, error)
 
+	// ClearAutomationRunsWithResponse Clear an automation's history
+	//
+	// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/v1/automations/{id}/runs (the `ClearAutomationRuns` operationId).
+	ClearAutomationRunsWithResponse(ctx context.Context, id string, params *ClearAutomationRunsParams, reqEditors ...RequestEditorFn) (*ClearAutomationRunsResponse, error)
+
 	// ListAutomationRunsWithResponse A page of an automation's runs, newest first
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /api/v1/automations/{id}/runs (the `ListAutomationRuns` operationId).
 	ListAutomationRunsWithResponse(ctx context.Context, id string, params *ListAutomationRunsParams, reqEditors ...RequestEditorFn) (*ListAutomationRunsResponse, error)
+
+	// DeleteAutomationRunWithResponse Delete one finished run
+	//
+	// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/v1/automations/{id}/runs/{run_id} (the `DeleteAutomationRun` operationId).
+	DeleteAutomationRunWithResponse(ctx context.Context, id string, runId string, reqEditors ...RequestEditorFn) (*DeleteAutomationRunResponse, error)
 
 	// ContinueAutomationRunWithResponse Open a run's result in a chat to reply to
 	//
@@ -30460,7 +32335,7 @@ type ClientWithResponsesInterface interface {
 
 	// SendReportWithResponse Send a problem report to Toskar (#588)
 	//
-	// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+	// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -30514,6 +32389,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /api/v1/external-server (the `SetExternalServer` operationId).
 	SetExternalServerWithResponse(ctx context.Context, body SetExternalServerJSONRequestBody, reqEditors ...RequestEditorFn) (*SetExternalServerResponse, error)
+
+	// ListFeaturesWithResponse Each feature and what it still needs (#1355)
+	//
+	// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/features (the `ListFeatures` operationId).
+	ListFeaturesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListFeaturesResponse, error)
+
+	// SetUpFeatureWithResponse Set up everything a feature still needs (#1355)
+	//
+	// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/features/{id}/setup (the `SetUpFeature` operationId).
+	SetUpFeatureWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*SetUpFeatureResponse, error)
 
 	// GetHardwareWithResponse Local hardware inventory
 	//
@@ -30990,7 +32883,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetMyPreferencesWithBodyWithResponse Save your own languages (#206)
 	//
-	// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+	// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -30999,7 +32892,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetMyPreferencesWithResponse Save your own languages (#206)
 	//
-	// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+	// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -33102,6 +34995,78 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /api/v1/video/setup/build (the `UseVideoBuild` operationId).
 	UseVideoBuildWithResponse(ctx context.Context, body UseVideoBuildJSONRequestBody, reqEditors ...RequestEditorFn) (*UseVideoBuildResponse, error)
 
+	// PickVoicePersonaWithBodyWithResponse Pick the voice persona you're read aloud in (#1319)
+	//
+	// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/voice/persona (the `PickVoicePersona` operationId).
+	PickVoicePersonaWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PickVoicePersonaResponse, error)
+
+	// PickVoicePersonaWithResponse Pick the voice persona you're read aloud in (#1319)
+	//
+	// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/voice/persona (the `PickVoicePersona` operationId).
+	PickVoicePersonaWithResponse(ctx context.Context, body PickVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*PickVoicePersonaResponse, error)
+
+	// VoicePersonasWithResponse The voice personas, and the one you picked (#1319)
+	//
+	// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/voice/personas (the `VoicePersonas` operationId).
+	VoicePersonasWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*VoicePersonasResponse, error)
+
+	// CreateVoicePersonaWithBodyWithResponse Make a voice persona (#1319)
+	//
+	// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/voice/personas (the `CreateVoicePersona` operationId).
+	CreateVoicePersonaWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVoicePersonaResponse, error)
+
+	// CreateVoicePersonaWithResponse Make a voice persona (#1319)
+	//
+	// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/voice/personas (the `CreateVoicePersona` operationId).
+	CreateVoicePersonaWithResponse(ctx context.Context, body CreateVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVoicePersonaResponse, error)
+
+	// DeleteVoicePersonaWithResponse Delete a voice persona (#1319)
+	//
+	// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api/v1/voice/personas/{id} (the `DeleteVoicePersona` operationId).
+	DeleteVoicePersonaWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteVoicePersonaResponse, error)
+
+	// UpdateVoicePersonaWithBodyWithResponse Change a voice persona (#1319)
+	//
+	// Admins only (contract 1.129).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/voice/personas/{id} (the `UpdateVoicePersona` operationId).
+	UpdateVoicePersonaWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVoicePersonaResponse, error)
+
+	// UpdateVoicePersonaWithResponse Change a voice persona (#1319)
+	//
+	// Admins only (contract 1.129).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api/v1/voice/personas/{id} (the `UpdateVoicePersona` operationId).
+	UpdateVoicePersonaWithResponse(ctx context.Context, id string, body UpdateVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVoicePersonaResponse, error)
+
 	// VoiceRealtimeWithResponse Live voice mode, over a WebSocket (#795)
 	//
 	// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
@@ -33110,6 +35075,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /api/v1/voice/realtime (the `VoiceRealtime` operationId).
 	VoiceRealtimeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*VoiceRealtimeResponse, error)
+
+	// OllamaVersionWithResponse Ollama API version
+	//
+	// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/version (the `OllamaVersion` operationId).
+	OllamaVersionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaVersionResponse, error)
 
 	// RunHookWithBodyWithResponse Start the automation a webhook link belongs to
 	//
@@ -33166,6 +35140,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /source (the `GetSource` operationId).
 	GetSourceWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSourceResponse, error)
 
+	// OpenaiSpeechWithBodyWithResponse OpenAI audio speech
+	//
+	// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/audio/speech (the `OpenaiSpeech` operationId).
+	OpenaiSpeechWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OpenaiSpeechResponse, error)
+
+	// OpenaiSpeechWithResponse OpenAI audio speech
+	//
+	// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/audio/speech (the `OpenaiSpeech` operationId).
+	OpenaiSpeechWithResponse(ctx context.Context, body OpenaiSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*OpenaiSpeechResponse, error)
+
+	// OpenaiTranscriptionsWithBodyWithResponse OpenAI audio transcriptions
+	//
+	// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/audio/transcriptions (the `OpenaiTranscriptions` operationId).
+	OpenaiTranscriptionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OpenaiTranscriptionsResponse, error)
+
 	// OpenaiChatCompletionsWithBodyWithResponse OpenAI-compatible chat completions
 	//
 	// temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
@@ -33183,6 +35184,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /v1/chat/completions (the `OpenaiChatCompletions` operationId).
 	OpenaiChatCompletionsWithResponse(ctx context.Context, body OpenaiChatCompletionsJSONRequestBody, reqEditors ...RequestEditorFn) (*OpenaiChatCompletionsResponse, error)
+
+	// OpenaiEmbeddingsWithBodyWithResponse OpenAI Embeddings
+	//
+	// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/embeddings (the `OpenaiEmbeddings` operationId).
+	OpenaiEmbeddingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OpenaiEmbeddingsResponse, error)
+
+	// OpenaiEmbeddingsWithResponse OpenAI Embeddings
+	//
+	// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/embeddings (the `OpenaiEmbeddings` operationId).
+	OpenaiEmbeddingsWithResponse(ctx context.Context, body OpenaiEmbeddingsJSONRequestBody, reqEditors ...RequestEditorFn) (*OpenaiEmbeddingsResponse, error)
 
 	// AnthropicMessagesWithBodyWithResponse Anthropic-compatible messages, for coding agents
 	//
@@ -33274,6 +35293,484 @@ func (r GetAboutResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetAboutResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaChatResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaChatResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaChatResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaChatResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaChatResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaCopyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaCopyResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaCopyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaCopyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaCopyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaCopyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaCreateResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaDeleteResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaEmbedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaEmbedResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaEmbedResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaEmbedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaEmbedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaEmbedResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaEmbeddingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaEmbeddingsResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaEmbeddingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaEmbeddingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaEmbeddingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaEmbeddingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaGenerateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaGenerateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaGenerateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaGenerateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaGenerateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaPsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaPsResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaPsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaPsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaPsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaPsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaPullResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaPullResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaPullResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaPullResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaPullResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaPullResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaPushResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaPushResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaPushResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaPushResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaPushResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaPushResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaShowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaShowResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaShowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaShowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaShowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaShowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaTagsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaTagsResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaTagsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaTagsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaTagsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaTagsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -34247,6 +36744,54 @@ func (r RunAutomationResponse) ContentType() string {
 	return ""
 }
 
+type ClearAutomationRunsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ClearedRuns
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ClearAutomationRunsResponse) GetJSON200() *ClearedRuns {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ClearAutomationRunsResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ClearAutomationRunsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ClearAutomationRunsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ClearAutomationRunsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ClearAutomationRunsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListAutomationRunsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -34289,6 +36834,54 @@ func (r ListAutomationRunsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListAutomationRunsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAutomationRunResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Error
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAutomationRunResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteAutomationRunResponse) GetJSON409() *Error {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAutomationRunResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAutomationRunResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAutomationRunResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAutomationRunResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -36414,6 +39007,102 @@ func (r SetExternalServerResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SetExternalServerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListFeaturesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]Feature
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListFeaturesResponse) GetJSON200() *[]Feature {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListFeaturesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListFeaturesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListFeaturesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListFeaturesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetUpFeatureResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *Feature
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Error
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r SetUpFeatureResponse) GetJSON202() *Feature {
+	return r.JSON202
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetUpFeatureResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetUpFeatureResponse) GetJSON409() *Error {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r SetUpFeatureResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetUpFeatureResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetUpFeatureResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetUpFeatureResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -46888,6 +49577,253 @@ func (r UseVideoBuildResponse) ContentType() string {
 	return ""
 }
 
+type PickVoicePersonaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VoicePersonas
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PickVoicePersonaResponse) GetJSON200() *VoicePersonas {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PickVoicePersonaResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r PickVoicePersonaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PickVoicePersonaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PickVoicePersonaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PickVoicePersonaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type VoicePersonasResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VoicePersonas
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VoicePersonasResponse) GetJSON200() *VoicePersonas {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r VoicePersonasResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VoicePersonasResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VoicePersonasResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VoicePersonasResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateVoicePersonaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VoicePersonas
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *Error
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateVoicePersonaResponse) GetJSON200() *VoicePersonas {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateVoicePersonaResponse) GetJSON400() *Error {
+	return r.JSON400
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateVoicePersonaResponse) GetJSON403() *Error {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateVoicePersonaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateVoicePersonaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateVoicePersonaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateVoicePersonaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteVoicePersonaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VoicePersonas
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteVoicePersonaResponse) GetJSON200() *VoicePersonas {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteVoicePersonaResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteVoicePersonaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteVoicePersonaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteVoicePersonaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteVoicePersonaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateVoicePersonaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VoicePersonas
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *Error
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateVoicePersonaResponse) GetJSON200() *VoicePersonas {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateVoicePersonaResponse) GetJSON400() *Error {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateVoicePersonaResponse) GetJSON404() *Error {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateVoicePersonaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateVoicePersonaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateVoicePersonaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateVoicePersonaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type VoiceRealtimeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -46930,6 +49866,47 @@ func (r VoiceRealtimeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r VoiceRealtimeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OllamaVersionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OllamaAnswer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OllamaVersionResponse) GetJSON200() *OllamaAnswer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r OllamaVersionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OllamaVersionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OllamaVersionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OllamaVersionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -47182,6 +50159,74 @@ func (r GetSourceResponse) ContentType() string {
 	return ""
 }
 
+type OpenaiSpeechResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r OpenaiSpeechResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OpenaiSpeechResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OpenaiSpeechResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OpenaiSpeechResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OpenaiTranscriptionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r OpenaiTranscriptionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OpenaiTranscriptionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OpenaiTranscriptionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OpenaiTranscriptionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type OpenaiChatCompletionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -47252,6 +50297,40 @@ func (r OpenaiChatCompletionsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r OpenaiChatCompletionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type OpenaiEmbeddingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r OpenaiEmbeddingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OpenaiEmbeddingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OpenaiEmbeddingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OpenaiEmbeddingsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -47412,6 +50491,186 @@ func (c *ClientWithResponses) GetAboutWithResponse(ctx context.Context, reqEdito
 		return nil, err
 	}
 	return ParseGetAboutResponse(rsp)
+}
+
+// OllamaChatWithResponse Ollama-compatible chat
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/chat (the `OllamaChat` operationId).
+func (c *ClientWithResponses) OllamaChatWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaChatResponse, error) {
+	rsp, err := c.OllamaChat(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaChatResponse(rsp)
+}
+
+// OllamaCopyWithResponse Ollama model management
+//
+// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/copy (the `OllamaCopy` operationId).
+func (c *ClientWithResponses) OllamaCopyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaCopyResponse, error) {
+	rsp, err := c.OllamaCopy(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaCopyResponse(rsp)
+}
+
+// OllamaCreateWithResponse Ollama model management
+//
+// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/create (the `OllamaCreate` operationId).
+func (c *ClientWithResponses) OllamaCreateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaCreateResponse, error) {
+	rsp, err := c.OllamaCreate(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaCreateResponse(rsp)
+}
+
+// OllamaDeleteWithResponse Ollama model management
+//
+// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/delete (the `OllamaDelete` operationId).
+func (c *ClientWithResponses) OllamaDeleteWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaDeleteResponse, error) {
+	rsp, err := c.OllamaDelete(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaDeleteResponse(rsp)
+}
+
+// OllamaEmbedWithResponse Ollama-compatible embeddings
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/embed (the `OllamaEmbed` operationId).
+func (c *ClientWithResponses) OllamaEmbedWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaEmbedResponse, error) {
+	rsp, err := c.OllamaEmbed(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaEmbedResponse(rsp)
+}
+
+// OllamaEmbeddingsWithResponse Ollama-compatible embeddings, older form
+//
+// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/embeddings (the `OllamaEmbeddings` operationId).
+func (c *ClientWithResponses) OllamaEmbeddingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaEmbeddingsResponse, error) {
+	rsp, err := c.OllamaEmbeddings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaEmbeddingsResponse(rsp)
+}
+
+// OllamaGenerateWithResponse Ollama-compatible completion
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/generate (the `OllamaGenerate` operationId).
+func (c *ClientWithResponses) OllamaGenerateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaGenerateResponse, error) {
+	rsp, err := c.OllamaGenerate(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaGenerateResponse(rsp)
+}
+
+// OllamaPsWithResponse Ollama-compatible running models
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/ps (the `OllamaPs` operationId).
+func (c *ClientWithResponses) OllamaPsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaPsResponse, error) {
+	rsp, err := c.OllamaPs(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaPsResponse(rsp)
+}
+
+// OllamaPullWithResponse Ollama model management
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/pull (the `OllamaPull` operationId).
+func (c *ClientWithResponses) OllamaPullWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaPullResponse, error) {
+	rsp, err := c.OllamaPull(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaPullResponse(rsp)
+}
+
+// OllamaPushWithResponse Ollama model management
+//
+// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/push (the `OllamaPush` operationId).
+func (c *ClientWithResponses) OllamaPushWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaPushResponse, error) {
+	rsp, err := c.OllamaPush(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaPushResponse(rsp)
+}
+
+// OllamaShowWithResponse Ollama-compatible model details
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/show (the `OllamaShow` operationId).
+func (c *ClientWithResponses) OllamaShowWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaShowResponse, error) {
+	rsp, err := c.OllamaShow(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaShowResponse(rsp)
+}
+
+// OllamaTagsWithResponse Ollama-compatible model list
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/tags (the `OllamaTags` operationId).
+func (c *ClientWithResponses) OllamaTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaTagsResponse, error) {
+	rsp, err := c.OllamaTags(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaTagsResponse(rsp)
 }
 
 // ListAPIKeysWithResponse API keys, without their secrets
@@ -47767,6 +51026,21 @@ func (c *ClientWithResponses) RunAutomationWithResponse(ctx context.Context, id 
 	return ParseRunAutomationResponse(rsp)
 }
 
+// ClearAutomationRunsWithResponse Clear an automation's history
+//
+// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/v1/automations/{id}/runs (the `ClearAutomationRuns` operationId).
+func (c *ClientWithResponses) ClearAutomationRunsWithResponse(ctx context.Context, id string, params *ClearAutomationRunsParams, reqEditors ...RequestEditorFn) (*ClearAutomationRunsResponse, error) {
+	rsp, err := c.ClearAutomationRuns(ctx, id, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseClearAutomationRunsResponse(rsp)
+}
+
 // ListAutomationRunsWithResponse A page of an automation's runs, newest first
 //
 // Returns a wrapper object for the known response body format(s).
@@ -47778,6 +51052,21 @@ func (c *ClientWithResponses) ListAutomationRunsWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseListAutomationRunsResponse(rsp)
+}
+
+// DeleteAutomationRunWithResponse Delete one finished run
+//
+// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/v1/automations/{id}/runs/{run_id} (the `DeleteAutomationRun` operationId).
+func (c *ClientWithResponses) DeleteAutomationRunWithResponse(ctx context.Context, id string, runId string, reqEditors ...RequestEditorFn) (*DeleteAutomationRunResponse, error) {
+	rsp, err := c.DeleteAutomationRun(ctx, id, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAutomationRunResponse(rsp)
 }
 
 // ContinueAutomationRunWithResponse Open a run's result in a chat to reply to
@@ -48598,7 +51887,7 @@ func (c *ClientWithResponses) GetReportWithResponse(ctx context.Context, reqEdit
 
 // SendReportWithResponse Send a problem report to Toskar (#588)
 //
-// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -48693,6 +51982,36 @@ func (c *ClientWithResponses) SetExternalServerWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseSetExternalServerResponse(rsp)
+}
+
+// ListFeaturesWithResponse Each feature and what it still needs (#1355)
+//
+// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/features (the `ListFeatures` operationId).
+func (c *ClientWithResponses) ListFeaturesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListFeaturesResponse, error) {
+	rsp, err := c.ListFeatures(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListFeaturesResponse(rsp)
+}
+
+// SetUpFeatureWithResponse Set up everything a feature still needs (#1355)
+//
+// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/features/{id}/setup (the `SetUpFeature` operationId).
+func (c *ClientWithResponses) SetUpFeatureWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*SetUpFeatureResponse, error) {
+	rsp, err := c.SetUpFeature(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetUpFeatureResponse(rsp)
 }
 
 // GetHardwareWithResponse Local hardware inventory
@@ -49548,7 +52867,7 @@ func (c *ClientWithResponses) ChangeMyPasswordWithResponse(ctx context.Context, 
 
 // SetMyPreferencesWithBodyWithResponse Save your own languages (#206)
 //
-// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -49563,7 +52882,7 @@ func (c *ClientWithResponses) SetMyPreferencesWithBodyWithResponse(ctx context.C
 
 // SetMyPreferencesWithResponse Save your own languages (#206)
 //
-// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -53292,6 +56611,126 @@ func (c *ClientWithResponses) UseVideoBuildWithResponse(ctx context.Context, bod
 	return ParseUseVideoBuildResponse(rsp)
 }
 
+// PickVoicePersonaWithBodyWithResponse Pick the voice persona you're read aloud in (#1319)
+//
+// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/voice/persona (the `PickVoicePersona` operationId).
+func (c *ClientWithResponses) PickVoicePersonaWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PickVoicePersonaResponse, error) {
+	rsp, err := c.PickVoicePersonaWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePickVoicePersonaResponse(rsp)
+}
+
+// PickVoicePersonaWithResponse Pick the voice persona you're read aloud in (#1319)
+//
+// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/voice/persona (the `PickVoicePersona` operationId).
+func (c *ClientWithResponses) PickVoicePersonaWithResponse(ctx context.Context, body PickVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*PickVoicePersonaResponse, error) {
+	rsp, err := c.PickVoicePersona(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePickVoicePersonaResponse(rsp)
+}
+
+// VoicePersonasWithResponse The voice personas, and the one you picked (#1319)
+//
+// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/voice/personas (the `VoicePersonas` operationId).
+func (c *ClientWithResponses) VoicePersonasWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*VoicePersonasResponse, error) {
+	rsp, err := c.VoicePersonas(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVoicePersonasResponse(rsp)
+}
+
+// CreateVoicePersonaWithBodyWithResponse Make a voice persona (#1319)
+//
+// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/voice/personas (the `CreateVoicePersona` operationId).
+func (c *ClientWithResponses) CreateVoicePersonaWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVoicePersonaResponse, error) {
+	rsp, err := c.CreateVoicePersonaWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVoicePersonaResponse(rsp)
+}
+
+// CreateVoicePersonaWithResponse Make a voice persona (#1319)
+//
+// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/voice/personas (the `CreateVoicePersona` operationId).
+func (c *ClientWithResponses) CreateVoicePersonaWithResponse(ctx context.Context, body CreateVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVoicePersonaResponse, error) {
+	rsp, err := c.CreateVoicePersona(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVoicePersonaResponse(rsp)
+}
+
+// DeleteVoicePersonaWithResponse Delete a voice persona (#1319)
+//
+// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api/v1/voice/personas/{id} (the `DeleteVoicePersona` operationId).
+func (c *ClientWithResponses) DeleteVoicePersonaWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteVoicePersonaResponse, error) {
+	rsp, err := c.DeleteVoicePersona(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteVoicePersonaResponse(rsp)
+}
+
+// UpdateVoicePersonaWithBodyWithResponse Change a voice persona (#1319)
+//
+// Admins only (contract 1.129).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/voice/personas/{id} (the `UpdateVoicePersona` operationId).
+func (c *ClientWithResponses) UpdateVoicePersonaWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVoicePersonaResponse, error) {
+	rsp, err := c.UpdateVoicePersonaWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateVoicePersonaResponse(rsp)
+}
+
+// UpdateVoicePersonaWithResponse Change a voice persona (#1319)
+//
+// Admins only (contract 1.129).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api/v1/voice/personas/{id} (the `UpdateVoicePersona` operationId).
+func (c *ClientWithResponses) UpdateVoicePersonaWithResponse(ctx context.Context, id string, body UpdateVoicePersonaJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVoicePersonaResponse, error) {
+	rsp, err := c.UpdateVoicePersona(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateVoicePersonaResponse(rsp)
+}
+
 // VoiceRealtimeWithResponse Live voice mode, over a WebSocket (#795)
 //
 // Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
@@ -53305,6 +56744,21 @@ func (c *ClientWithResponses) VoiceRealtimeWithResponse(ctx context.Context, req
 		return nil, err
 	}
 	return ParseVoiceRealtimeResponse(rsp)
+}
+
+// OllamaVersionWithResponse Ollama API version
+//
+// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/version (the `OllamaVersion` operationId).
+func (c *ClientWithResponses) OllamaVersionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OllamaVersionResponse, error) {
+	rsp, err := c.OllamaVersion(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOllamaVersionResponse(rsp)
 }
 
 // RunHookWithBodyWithResponse Start the automation a webhook link belongs to
@@ -53404,6 +56858,51 @@ func (c *ClientWithResponses) GetSourceWithResponse(ctx context.Context, reqEdit
 	return ParseGetSourceResponse(rsp)
 }
 
+// OpenaiSpeechWithBodyWithResponse OpenAI audio speech
+//
+// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/audio/speech (the `OpenaiSpeech` operationId).
+func (c *ClientWithResponses) OpenaiSpeechWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OpenaiSpeechResponse, error) {
+	rsp, err := c.OpenaiSpeechWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOpenaiSpeechResponse(rsp)
+}
+
+// OpenaiSpeechWithResponse OpenAI audio speech
+//
+// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/audio/speech (the `OpenaiSpeech` operationId).
+func (c *ClientWithResponses) OpenaiSpeechWithResponse(ctx context.Context, body OpenaiSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*OpenaiSpeechResponse, error) {
+	rsp, err := c.OpenaiSpeech(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOpenaiSpeechResponse(rsp)
+}
+
+// OpenaiTranscriptionsWithBodyWithResponse OpenAI audio transcriptions
+//
+// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/audio/transcriptions (the `OpenaiTranscriptions` operationId).
+func (c *ClientWithResponses) OpenaiTranscriptionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OpenaiTranscriptionsResponse, error) {
+	rsp, err := c.OpenaiTranscriptionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOpenaiTranscriptionsResponse(rsp)
+}
+
 // OpenaiChatCompletionsWithBodyWithResponse OpenAI-compatible chat completions
 //
 // temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
@@ -53432,6 +56931,36 @@ func (c *ClientWithResponses) OpenaiChatCompletionsWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseOpenaiChatCompletionsResponse(rsp)
+}
+
+// OpenaiEmbeddingsWithBodyWithResponse OpenAI Embeddings
+//
+// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/embeddings (the `OpenaiEmbeddings` operationId).
+func (c *ClientWithResponses) OpenaiEmbeddingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OpenaiEmbeddingsResponse, error) {
+	rsp, err := c.OpenaiEmbeddingsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOpenaiEmbeddingsResponse(rsp)
+}
+
+// OpenaiEmbeddingsWithResponse OpenAI Embeddings
+//
+// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/embeddings (the `OpenaiEmbeddings` operationId).
+func (c *ClientWithResponses) OpenaiEmbeddingsWithResponse(ctx context.Context, body OpenaiEmbeddingsJSONRequestBody, reqEditors ...RequestEditorFn) (*OpenaiEmbeddingsResponse, error) {
+	rsp, err := c.OpenaiEmbeddings(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOpenaiEmbeddingsResponse(rsp)
 }
 
 // AnthropicMessagesWithBodyWithResponse Anthropic-compatible messages, for coding agents
@@ -53540,6 +57069,298 @@ func ParseGetAboutResponse(rsp *http.Response) (*GetAboutResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest SourceOffer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaChatResponse parses an HTTP response from a OllamaChatWithResponse call
+func ParseOllamaChatResponse(rsp *http.Response) (*OllamaChatResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaChatResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseOllamaCopyResponse parses an HTTP response from a OllamaCopyWithResponse call
+func ParseOllamaCopyResponse(rsp *http.Response) (*OllamaCopyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaCopyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaCreateResponse parses an HTTP response from a OllamaCreateWithResponse call
+func ParseOllamaCreateResponse(rsp *http.Response) (*OllamaCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaDeleteResponse parses an HTTP response from a OllamaDeleteWithResponse call
+func ParseOllamaDeleteResponse(rsp *http.Response) (*OllamaDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaEmbedResponse parses an HTTP response from a OllamaEmbedWithResponse call
+func ParseOllamaEmbedResponse(rsp *http.Response) (*OllamaEmbedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaEmbedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaEmbeddingsResponse parses an HTTP response from a OllamaEmbeddingsWithResponse call
+func ParseOllamaEmbeddingsResponse(rsp *http.Response) (*OllamaEmbeddingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaEmbeddingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaGenerateResponse parses an HTTP response from a OllamaGenerateWithResponse call
+func ParseOllamaGenerateResponse(rsp *http.Response) (*OllamaGenerateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaGenerateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseOllamaPsResponse parses an HTTP response from a OllamaPsWithResponse call
+func ParseOllamaPsResponse(rsp *http.Response) (*OllamaPsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaPsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaPullResponse parses an HTTP response from a OllamaPullWithResponse call
+func ParseOllamaPullResponse(rsp *http.Response) (*OllamaPullResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaPullResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaPushResponse parses an HTTP response from a OllamaPushWithResponse call
+func ParseOllamaPushResponse(rsp *http.Response) (*OllamaPushResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaPushResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaShowResponse parses an HTTP response from a OllamaShowWithResponse call
+func ParseOllamaShowResponse(rsp *http.Response) (*OllamaShowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaShowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaTagsResponse parses an HTTP response from a OllamaTagsWithResponse call
+func ParseOllamaTagsResponse(rsp *http.Response) (*OllamaTagsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaTagsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -54223,6 +58044,39 @@ func ParseRunAutomationResponse(rsp *http.Response) (*RunAutomationResponse, err
 	return response, nil
 }
 
+// ParseClearAutomationRunsResponse parses an HTTP response from a ClearAutomationRunsWithResponse call
+func ParseClearAutomationRunsResponse(rsp *http.Response) (*ClearAutomationRunsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ClearAutomationRunsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClearedRuns
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListAutomationRunsResponse parses an HTTP response from a ListAutomationRunsWithResponse call
 func ParseListAutomationRunsResponse(rsp *http.Response) (*ListAutomationRunsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -54250,6 +58104,42 @@ func ParseListAutomationRunsResponse(rsp *http.Response) (*ListAutomationRunsRes
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAutomationRunResponse parses an HTTP response from a DeleteAutomationRunWithResponse call
+func ParseDeleteAutomationRunResponse(rsp *http.Response) (*DeleteAutomationRunResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAutomationRunResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
@@ -55625,6 +59515,72 @@ func ParseSetExternalServerResponse(rsp *http.Response) (*SetExternalServerRespo
 
 	case rsp.StatusCode == 400:
 		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseListFeaturesResponse parses an HTTP response from a ListFeaturesWithResponse call
+func ParseListFeaturesResponse(rsp *http.Response) (*ListFeaturesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListFeaturesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Feature
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetUpFeatureResponse parses an HTTP response from a SetUpFeatureWithResponse call
+func ParseSetUpFeatureResponse(rsp *http.Response) (*SetUpFeatureResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetUpFeatureResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest Feature
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
@@ -62436,6 +66392,178 @@ func ParseUseVideoBuildResponse(rsp *http.Response) (*UseVideoBuildResponse, err
 	return response, nil
 }
 
+// ParsePickVoicePersonaResponse parses an HTTP response from a PickVoicePersonaWithResponse call
+func ParsePickVoicePersonaResponse(rsp *http.Response) (*PickVoicePersonaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PickVoicePersonaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VoicePersonas
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseVoicePersonasResponse parses an HTTP response from a VoicePersonasWithResponse call
+func ParseVoicePersonasResponse(rsp *http.Response) (*VoicePersonasResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VoicePersonasResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VoicePersonas
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateVoicePersonaResponse parses an HTTP response from a CreateVoicePersonaWithResponse call
+func ParseCreateVoicePersonaResponse(rsp *http.Response) (*CreateVoicePersonaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateVoicePersonaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VoicePersonas
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteVoicePersonaResponse parses an HTTP response from a DeleteVoicePersonaWithResponse call
+func ParseDeleteVoicePersonaResponse(rsp *http.Response) (*DeleteVoicePersonaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteVoicePersonaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VoicePersonas
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateVoicePersonaResponse parses an HTTP response from a UpdateVoicePersonaWithResponse call
+func ParseUpdateVoicePersonaResponse(rsp *http.Response) (*UpdateVoicePersonaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateVoicePersonaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VoicePersonas
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseVoiceRealtimeResponse parses an HTTP response from a VoiceRealtimeWithResponse call
 func ParseVoiceRealtimeResponse(rsp *http.Response) (*VoiceRealtimeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -62466,6 +66594,32 @@ func ParseVoiceRealtimeResponse(rsp *http.Response) (*VoiceRealtimeResponse, err
 			return nil, err
 		}
 		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOllamaVersionResponse parses an HTTP response from a OllamaVersionWithResponse call
+func ParseOllamaVersionResponse(rsp *http.Response) (*OllamaVersionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OllamaVersionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OllamaAnswer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 
@@ -62616,6 +66770,38 @@ func ParseGetSourceResponse(rsp *http.Response) (*GetSourceResponse, error) {
 	return response, nil
 }
 
+// ParseOpenaiSpeechResponse parses an HTTP response from a OpenaiSpeechWithResponse call
+func ParseOpenaiSpeechResponse(rsp *http.Response) (*OpenaiSpeechResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OpenaiSpeechResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseOpenaiTranscriptionsResponse parses an HTTP response from a OpenaiTranscriptionsWithResponse call
+func ParseOpenaiTranscriptionsResponse(rsp *http.Response) (*OpenaiTranscriptionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OpenaiTranscriptionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseOpenaiChatCompletionsResponse parses an HTTP response from a OpenaiChatCompletionsWithResponse call
 func ParseOpenaiChatCompletionsResponse(rsp *http.Response) (*OpenaiChatCompletionsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -62675,6 +66861,22 @@ func ParseOpenaiChatCompletionsResponse(rsp *http.Response) (*OpenaiChatCompleti
 	case rsp.StatusCode == 200:
 		// Content-type (text/event-stream) unsupported
 
+	}
+
+	return response, nil
+}
+
+// ParseOpenaiEmbeddingsResponse parses an HTTP response from a OpenaiEmbeddingsWithResponse call
+func ParseOpenaiEmbeddingsResponse(rsp *http.Response) (*OpenaiEmbeddingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OpenaiEmbeddingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil

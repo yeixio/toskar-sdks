@@ -4,7 +4,7 @@
 package ai.toskar
 
 /** The client contract this SDK was built for. */
-public const val CONTRACT_VERSION: String = "1.117"
+public const val CONTRACT_VERSION: String = "1.135"
 
 /**
  * The codes Toskar Core answers errors with, for [ToskarException.code]. A
@@ -46,6 +46,9 @@ public object ErrorCodes {
 
     /** This automation is already running. Its result will appear here when it finishes. */
     public const val AUTOMATION_RUNNING: String = "AUTOMATION_RUNNING"
+
+    /** This run is still going. Remove it once it finishes. */
+    public const val AUTOMATION_RUN_IN_PROGRESS: String = "AUTOMATION_RUN_IN_PROGRESS"
 
     /** The run took longer than {{minutes}} minutes and was stopped. Try a faster model or a shorter prompt. */
     public const val AUTOMATION_TIMEOUT: String = "AUTOMATION_TIMEOUT"
@@ -173,7 +176,7 @@ public object ErrorCodes {
     /** You have {{limit}} connected devices, the most you can. Disconnect one first. */
     public const val DEVICE_LIMIT: String = "DEVICE_LIMIT"
 
-    /** A device's key can't do this. Use a key from API Access. */
+    /** A device's key can't do this. Use a key from Settings › API keys. */
     public const val DEVICE_NOT_ALLOWED: String = "DEVICE_NOT_ALLOWED"
 
     /** No device of yours has that id. */
@@ -211,6 +214,12 @@ public object ErrorCodes {
 
     /** This profile keeps work on this computer, so it doesn't use the external server. Choose a model on this computer or another profile. */
     public const val EXTERNAL_OFFLINE_PROFILE: String = "EXTERNAL_OFFLINE_PROFILE"
+
+    /** Part of the setup couldn't start: {{detail}} */
+    public const val FEATURE_SETUP_FAILED: String = "FEATURE_SETUP_FAILED"
+
+    /** Toskar doesn't know that feature. */
+    public const val FEATURE_UNKNOWN: String = "FEATURE_UNKNOWN"
 
     /** That file isn't here anymore. */
     public const val FILE_NOT_FOUND: String = "FILE_NOT_FOUND"
@@ -323,7 +332,7 @@ public object ErrorCodes {
     /** Their keys couldn't be read: {{detail}} */
     public const val KEYS_FAILED: String = "KEYS_FAILED"
 
-    /** This key is for chat only, so it can't do this. Use another key from API Access. */
+    /** This key is for chat only, so it can't do this. Use another key from Settings › API keys. */
     public const val KEY_CHAT_ONLY: String = "KEY_CHAT_ONLY"
 
     /** They have no key with that id. */
@@ -488,6 +497,12 @@ public object ErrorCodes {
     /** This computer isn't connected to the internet. Check the connection, then try again. */
     public const val OFFLINE: String = "OFFLINE"
 
+    /** Toskar can't listen on port {{port}}. */
+    public const val OLLAMA_PORT_FAILED: String = "OLLAMA_PORT_FAILED"
+
+    /** Another program, probably Ollama, is using port {{port}}. Quit it, then try again. */
+    public const val OLLAMA_PORT_IN_USE: String = "OLLAMA_PORT_IN_USE"
+
     /** Websites cannot use Toskar without an API key. */
     public const val ORIGIN_NOT_ALLOWED: String = "ORIGIN_NOT_ALLOWED"
 
@@ -553,6 +568,18 @@ public object ErrorCodes {
 
     /** {{detail}} */
     public const val PERSONALIZATION_FAILED: String = "PERSONALIZATION_FAILED"
+
+    /** There can be at most {{limit}} voice personas. */
+    public const val PERSONA_LIMIT: String = "PERSONA_LIMIT"
+
+    /** A persona's name is 1 to 40 characters. */
+    public const val PERSONA_NAME_INVALID: String = "PERSONA_NAME_INVALID"
+
+    /** That voice persona isn't here anymore. */
+    public const val PERSONA_NOT_FOUND: String = "PERSONA_NOT_FOUND"
+
+    /** A persona reads from half to twice as fast. */
+    public const val PERSONA_SPEED_INVALID: String = "PERSONA_SPEED_INVALID"
 
     /** That person isn't here. */
     public const val PERSON_NOT_FOUND: String = "PERSON_NOT_FOUND"

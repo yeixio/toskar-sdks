@@ -11,6 +11,69 @@ import kotlinx.serialization.UseSerializers
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
+/** A feature and whether it works here now (#1355) */
+@Serializable
+public data class Feature @JvmOverloads constructor(
+    /** Known values: `voice`, `door`, `pictures`, `clips`, `see`, `meaning`, `automationTools`, `train`; others may be added. */
+    @SerialName("id") public val id: String,
+    @SerialName("ready") public val ready: Boolean,
+    @SerialName("needs") public val needs: List<FeatureNeed>,
+    /** What setting up its missing needs downloads */
+    @SerialName("setup_bytes") public val setupBytes: Long,
+    @SerialName("installing") public val installing: Boolean,
+)
+
+/** One thing a feature needs, and what would set it up */
+@Serializable
+public data class FeatureNeed @JvmOverloads constructor(
+    /** Known values: `chat`, `tools`, `vision`, `embedding`, `voice`, `images`, `video`, `trainer`, `camera`; others may be added. */
+    @SerialName("need") public val need: String,
+    @SerialName("ready") public val ready: Boolean,
+    /** How setup installs it; absent when nothing here can Known values: `model`, `voice`, `images`, `video`; others may be added. */
+    @SerialName("install") public val install: String? = null,
+    /** The model it installs */
+    @SerialName("option") public val option: String? = null,
+    @SerialName("name") public val name: String? = null,
+    @SerialName("size_bytes") public val sizeBytes: Long? = null,
+    /** The paired computer it is set up on */
+    @SerialName("node_id") public val nodeId: String? = null,
+    @SerialName("node_name") public val nodeName: String? = null,
+    @SerialName("installing") public val installing: Boolean? = null,
+    @SerialName("percent") public val percent: Long? = null,
+    /** Why it can't be set up here, when this computer says */
+    @SerialName("detail") public val detail: String? = null,
+)
+
+/** What clearing an automation's history removed */
+@Serializable
+public data class ClearedRuns @JvmOverloads constructor(
+    /** Finished runs removed */
+    @SerialName("runs") public val runs: Long,
+    /** Camera pictures removed with them */
+    @SerialName("files") public val files: Long,
+)
+
+@Serializable
+public data class VoicePersona @JvmOverloads constructor(
+    @SerialName("id") public val id: String? = null,
+    @SerialName("name") public val name: String? = null,
+    /** A language code */
+    @SerialName("language") public val language: String? = null,
+    @SerialName("voice") public val voice: String? = null,
+    @SerialName("speed") public val speed: Double? = null,
+    /** Whether its voice can read here now; only in answers */
+    @SerialName("reads") public val reads: Boolean? = null,
+    /** The voice that reads in its place when reads is false */
+    @SerialName("reads_with") public val readsWith: String? = null,
+)
+
+@Serializable
+public data class VoicePersonas @JvmOverloads constructor(
+    @SerialName("personas") public val personas: List<VoicePersona>,
+    /** The persona you picked */
+    @SerialName("picked") public val picked: String,
+)
+
 /** The Voice settings (#1304, contract 1.112) */
 @Serializable
 public data class VoiceSettings @JvmOverloads constructor(
@@ -1666,6 +1729,8 @@ public data class ModelsFit @JvmOverloads constructor(
 public data class QualityResults @JvmOverloads constructor(
     @SerialName("live") public val live: Boolean,
     @SerialName("results") public val results: List<QualityResult>,
+    /** The quality_results setting is off, so nothing was read (#1415, contract 1.124) */
+    @SerialName("off") public val off: Boolean? = null,
     @SerialName("note") public val note: String? = null,
     /** How the results are measured */
     @SerialName("method") public val method: String? = null,
@@ -2842,6 +2907,8 @@ public data class ChatRequest @JvmOverloads constructor(
     @SerialName("thinking") public val thinking: String? = null,
     /** The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown */
     @SerialName("time_zone") public val timeZone: String? = null,
+    /** Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored. */
+    @SerialName("device_location") public val deviceLocation: ChatRequestDeviceLocation? = null,
     /** Answer from this message in the chat, as a new version of the point after it (#447) */
     @SerialName("parent_id") public val parentId: String? = null,
     /** Ask this answer's question again, as a new version of the answer; message may be empty */
@@ -3067,6 +3134,14 @@ public data class SetMyPreferencesRequest @JvmOverloads constructor(
     /** Known values: `auto`, `app`, `language`; others may be added. */
     @SerialName("assistant_language_mode") public val assistantLanguageMode: String? = null,
     @SerialName("assistant_language") public val assistantLanguage: String? = null,
+    /** Answers may offer a better-fitting model to install (#707) */
+    @SerialName("suggest_models") public val suggestModels: Boolean? = null,
+    /** Voice chat plays a soft chime while a spoken answer takes a while (#1334, contract 1.121); on by default */
+    @SerialName("thinking_sound") public val thinkingSound: Boolean? = null,
+    /** The character you see in voice chat, whose mouth moves with the spoken answer (#1369, contract 1.130); ratatoskr until you choose, and none for the plain circle (contract 1.135). "" from older apps means none Known values: ``, `none`, `ratatoskr`, `pebble`, `lumen`; others may be added. */
+    @SerialName("voice_avatar") public val voiceAvatar: String? = null,
+    /** Your finished automations notify you, with a push to your own phones and, for the Owner, a desktop notice (#1391, contract 1.128); until you choose, the Owner's choice. On by default */
+    @SerialName("notify_task_finish") public val notifyTaskFinish: Boolean? = null,
 )
 
 @Serializable
@@ -3304,6 +3379,8 @@ public data class SpeechSayRequest @JvmOverloads constructor(
     @SerialName("text") public val text: String,
     @SerialName("voice") public val voice: String? = null,
     @SerialName("language") public val language: String? = null,
+    /** How fast to read, such as to preview a voice persona; omitted or 0 is the caller's persona's speed, or normal (#1319, contract 1.129) */
+    @SerialName("speed") public val speed: Double? = null,
 )
 
 @Serializable
@@ -3439,6 +3516,30 @@ public data class UseVideoBuildRequest @JvmOverloads constructor(
 )
 
 @Serializable
+public data class PickVoicePersonaRequest @JvmOverloads constructor(
+    @SerialName("id") public val id: String? = null,
+)
+
+@Serializable
+public data class OpenaiSpeechRequest @JvmOverloads constructor(
+    @SerialName("input") public val input: String,
+    @SerialName("model") public val model: String? = null,
+    @SerialName("voice") public val voice: String? = null,
+    /** Known values: `wav`, `pcm`, `mp3`, `opus`, `aac`, `flac`; others may be added. */
+    @SerialName("response_format") public val responseFormat: String? = null,
+    @SerialName("speed") public val speed: Double? = null,
+)
+
+@Serializable
+public data class OpenaiTranscriptionsRequest @JvmOverloads constructor(
+    @SerialName("file") public val file: ByteArray,
+    @SerialName("model") public val model: String? = null,
+    @SerialName("language") public val language: String? = null,
+    /** Known values: `json`, `text`, `verbose_json`, `srt`, `vtt`; others may be added. */
+    @SerialName("response_format") public val responseFormat: String? = null,
+)
+
+@Serializable
 public data class OpenaiChatCompletionsRequest @JvmOverloads constructor(
     /** auto, profile:<id>, sai:<slug>, a model id, raw:<model id> to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:<profile> (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id */
     @SerialName("model") public val model: String,
@@ -3467,6 +3568,16 @@ public data class OpenaiChatCompletionsRequest @JvmOverloads constructor(
     @SerialName("stream_options") public val streamOptions: OpenaiChatCompletionsRequestStreamOptions? = null,
     @SerialName("toskar") public val toskar: AssistantOptions? = null,
     @SerialName("yggdrasil") public val yggdrasil: AssistantOptions? = null,
+)
+
+@Serializable
+public data class OpenaiEmbeddingsRequest @JvmOverloads constructor(
+    @SerialName("model") public val model: String? = null,
+    /** A string or a list of strings */
+    @SerialName("input") public val input: JsonElement? = null,
+    /** Known values: `float`, `base64`; others may be added. */
+    @SerialName("encoding_format") public val encodingFormat: String? = null,
+    @SerialName("dimensions") public val dimensions: Long? = null,
 )
 
 @Serializable
@@ -3769,7 +3880,7 @@ public data class AutomationInputTrigger @JvmOverloads constructor(
 public data class AutomationInputCameras @JvmOverloads constructor(
     /** Known values: `homeassistant`, `reolink`; others may be added. */
     @SerialName("connector") public val connector: String,
-    /** The camera as that service names it, such as Home Assistant's camera.driveway */
+    /** The camera as that service names it, such as Home Assistant's camera.driveway, or Reolink's camera, and camera@4 for the one on its hub's channel 4 (#1333) */
     @SerialName("device") public val device: String,
 )
 
@@ -3778,7 +3889,7 @@ public data class AutomationInputCameras @JvmOverloads constructor(
 public data class AutomationInputSay @JvmOverloads constructor(
     /** Known values: `reolink`; others may be added. */
     @SerialName("connector") public val connector: String,
-    /** Always camera: one Reolink connection is one camera */
+    /** camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133) */
     @SerialName("device") public val device: String,
     /** With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies. */
     @SerialName("quiet_from") public val quietFrom: String? = null,
@@ -3787,6 +3898,8 @@ public data class AutomationInputSay @JvmOverloads constructor(
     @SerialName("voice") public val voice: String? = null,
     /** Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114) */
     @SerialName("listen") public val listen: Boolean? = null,
+    /** Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too. */
+    @SerialName("no_thinking_sound") public val noThinkingSound: Boolean? = null,
 )
 
 @Serializable
@@ -3832,7 +3945,7 @@ public data class AutomationCameras @JvmOverloads constructor(
 public data class AutomationSay @JvmOverloads constructor(
     /** Known values: `reolink`; others may be added. */
     @SerialName("connector") public val connector: String,
-    /** Always camera: one Reolink connection is one camera */
+    /** camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133) */
     @SerialName("device") public val device: String,
     /** With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies. */
     @SerialName("quiet_from") public val quietFrom: String? = null,
@@ -3841,6 +3954,8 @@ public data class AutomationSay @JvmOverloads constructor(
     @SerialName("voice") public val voice: String? = null,
     /** Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114) */
     @SerialName("listen") public val listen: Boolean? = null,
+    /** Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too. */
+    @SerialName("no_thinking_sound") public val noThinkingSound: Boolean? = null,
 )
 
 @Serializable
@@ -4137,7 +4252,7 @@ public data class AutomationDetailCameras @JvmOverloads constructor(
 public data class AutomationDetailSay @JvmOverloads constructor(
     /** Known values: `reolink`; others may be added. */
     @SerialName("connector") public val connector: String,
-    /** Always camera: one Reolink connection is one camera */
+    /** camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133) */
     @SerialName("device") public val device: String,
     /** With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies. */
     @SerialName("quiet_from") public val quietFrom: String? = null,
@@ -4146,6 +4261,8 @@ public data class AutomationDetailSay @JvmOverloads constructor(
     @SerialName("voice") public val voice: String? = null,
     /** Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114) */
     @SerialName("listen") public val listen: Boolean? = null,
+    /** Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too. */
+    @SerialName("no_thinking_sound") public val noThinkingSound: Boolean? = null,
 )
 
 @Serializable
@@ -4187,6 +4304,8 @@ public data class AutomationRequestSay @JvmOverloads constructor(
     @SerialName("quiet_to") public val quietTo: String? = null,
     @SerialName("voice") public val voice: String? = null,
     @SerialName("listen") public val listen: Boolean? = null,
+    /** Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too. */
+    @SerialName("no_thinking_sound") public val noThinkingSound: Boolean? = null,
 )
 
 /** One value a service needs to connect, such as a token. */
@@ -4649,6 +4768,15 @@ public data class OpenAIErrorError @JvmOverloads constructor(
     @SerialName("code") public val code: String,
     /** The request field the error is about, when there is one */
     @SerialName("param") public val param: String? = null,
+)
+
+/** Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored. */
+@Serializable
+public data class ChatRequestDeviceLocation @JvmOverloads constructor(
+    @SerialName("latitude") public val latitude: Double? = null,
+    @SerialName("longitude") public val longitude: Double? = null,
+    /** How far off it may be */
+    @SerialName("accuracy_m") public val accuracyM: Double? = null,
 )
 
 @Serializable

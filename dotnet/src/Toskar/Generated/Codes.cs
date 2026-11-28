@@ -6,8 +6,8 @@ namespace Toskar;
 /// <summary>The client contract this SDK was built for.</summary>
 public static class Contract
 {
-    /// <summary>The contract version, such as 1.117.</summary>
-    public const string Version = "1.117";
+    /// <summary>The contract version, such as 1.135.</summary>
+    public const string Version = "1.135";
 }
 
 /// <summary>
@@ -75,6 +75,11 @@ public static class ErrorCodes
     /// This automation is already running. Its result will appear here when it finishes.
     /// </summary>
     public const string AUTOMATION_RUNNING = "AUTOMATION_RUNNING";
+
+    /// <summary>
+    /// This run is still going. Remove it once it finishes.
+    /// </summary>
+    public const string AUTOMATION_RUN_IN_PROGRESS = "AUTOMATION_RUN_IN_PROGRESS";
 
     /// <summary>
     /// The run took longer than {{minutes}} minutes and was stopped. Try a faster model or a shorter prompt.
@@ -287,7 +292,7 @@ public static class ErrorCodes
     public const string DEVICE_LIMIT = "DEVICE_LIMIT";
 
     /// <summary>
-    /// A device's key can't do this. Use a key from API Access.
+    /// A device's key can't do this. Use a key from Settings › API keys.
     /// </summary>
     public const string DEVICE_NOT_ALLOWED = "DEVICE_NOT_ALLOWED";
 
@@ -350,6 +355,16 @@ public static class ErrorCodes
     /// This profile keeps work on this computer, so it doesn't use the external server. Choose a model on this computer or another profile.
     /// </summary>
     public const string EXTERNAL_OFFLINE_PROFILE = "EXTERNAL_OFFLINE_PROFILE";
+
+    /// <summary>
+    /// Part of the setup couldn't start: {{detail}}
+    /// </summary>
+    public const string FEATURE_SETUP_FAILED = "FEATURE_SETUP_FAILED";
+
+    /// <summary>
+    /// Toskar doesn't know that feature.
+    /// </summary>
+    public const string FEATURE_UNKNOWN = "FEATURE_UNKNOWN";
 
     /// <summary>
     /// That file isn't here anymore.
@@ -537,7 +552,7 @@ public static class ErrorCodes
     public const string KEYS_FAILED = "KEYS_FAILED";
 
     /// <summary>
-    /// This key is for chat only, so it can't do this. Use another key from API Access.
+    /// This key is for chat only, so it can't do this. Use another key from Settings › API keys.
     /// </summary>
     public const string KEY_CHAT_ONLY = "KEY_CHAT_ONLY";
 
@@ -812,6 +827,16 @@ public static class ErrorCodes
     public const string OFFLINE = "OFFLINE";
 
     /// <summary>
+    /// Toskar can't listen on port {{port}}.
+    /// </summary>
+    public const string OLLAMA_PORT_FAILED = "OLLAMA_PORT_FAILED";
+
+    /// <summary>
+    /// Another program, probably Ollama, is using port {{port}}. Quit it, then try again.
+    /// </summary>
+    public const string OLLAMA_PORT_IN_USE = "OLLAMA_PORT_IN_USE";
+
+    /// <summary>
     /// Websites cannot use Toskar without an API key.
     /// </summary>
     public const string ORIGIN_NOT_ALLOWED = "ORIGIN_NOT_ALLOWED";
@@ -920,6 +945,26 @@ public static class ErrorCodes
     /// {{detail}}
     /// </summary>
     public const string PERSONALIZATION_FAILED = "PERSONALIZATION_FAILED";
+
+    /// <summary>
+    /// There can be at most {{limit}} voice personas.
+    /// </summary>
+    public const string PERSONA_LIMIT = "PERSONA_LIMIT";
+
+    /// <summary>
+    /// A persona's name is 1 to 40 characters.
+    /// </summary>
+    public const string PERSONA_NAME_INVALID = "PERSONA_NAME_INVALID";
+
+    /// <summary>
+    /// That voice persona isn't here anymore.
+    /// </summary>
+    public const string PERSONA_NOT_FOUND = "PERSONA_NOT_FOUND";
+
+    /// <summary>
+    /// A persona reads from half to twice as fast.
+    /// </summary>
+    public const string PERSONA_SPEED_INVALID = "PERSONA_SPEED_INVALID";
 
     /// <summary>
     /// That person isn't here.

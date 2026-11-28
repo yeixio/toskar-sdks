@@ -470,7 +470,7 @@ Milliseconds to wait for an answer to start. Default 60000; 0 waits as long as i
 ### CONTRACT\_VERSION
 
 ```ts
-const CONTRACT_VERSION: "1.117" = '1.117';
+const CONTRACT_VERSION: "1.135" = '1.135';
 ```
 
 The client contract this SDK was built for.
@@ -575,6 +575,14 @@ readonly AUTOMATION_PAUSED: "AUTOMATION_PAUSED" = 'AUTOMATION_PAUSED';
 ```
 
 This automation is paused.
+
+##### AUTOMATION\_RUN\_IN\_PROGRESS
+
+```ts
+readonly AUTOMATION_RUN_IN_PROGRESS: "AUTOMATION_RUN_IN_PROGRESS" = 'AUTOMATION_RUN_IN_PROGRESS';
+```
+
+This run is still going. Remove it once it finishes.
 
 ##### AUTOMATION\_RUNNING
 
@@ -918,7 +926,7 @@ You have {{limit}} connected devices, the most you can. Disconnect one first.
 readonly DEVICE_NOT_ALLOWED: "DEVICE_NOT_ALLOWED" = 'DEVICE_NOT_ALLOWED';
 ```
 
-A device's key can't do this. Use a key from API Access.
+A device's key can't do this. Use a key from Settings › API keys.
 
 ##### DEVICE\_NOT\_FOUND
 
@@ -1023,6 +1031,22 @@ readonly EXTERNAL_OFFLINE_PROFILE: "EXTERNAL_OFFLINE_PROFILE" = 'EXTERNAL_OFFLIN
 ```
 
 This profile keeps work on this computer, so it doesn't use the external server. Choose a model on this computer or another profile.
+
+##### FEATURE\_SETUP\_FAILED
+
+```ts
+readonly FEATURE_SETUP_FAILED: "FEATURE_SETUP_FAILED" = 'FEATURE_SETUP_FAILED';
+```
+
+Part of the setup couldn't start: {{detail}}
+
+##### FEATURE\_UNKNOWN
+
+```ts
+readonly FEATURE_UNKNOWN: "FEATURE_UNKNOWN" = 'FEATURE_UNKNOWN';
+```
+
+Toskar doesn't know that feature.
 
 ##### FILE\_NOT\_FOUND
 
@@ -1318,7 +1342,7 @@ The computer at that address isn't the one the join command was made on. Nothing
 readonly KEY_CHAT_ONLY: "KEY_CHAT_ONLY" = 'KEY_CHAT_ONLY';
 ```
 
-This key is for chat only, so it can't do this. Use another key from API Access.
+This key is for chat only, so it can't do this. Use another key from Settings › API keys.
 
 ##### KEY\_NOT\_FOUND
 
@@ -1760,6 +1784,22 @@ readonly OFFLINE: "OFFLINE" = 'OFFLINE';
 
 This computer isn't connected to the internet. Check the connection, then try again.
 
+##### OLLAMA\_PORT\_FAILED
+
+```ts
+readonly OLLAMA_PORT_FAILED: "OLLAMA_PORT_FAILED" = 'OLLAMA_PORT_FAILED';
+```
+
+Toskar can't listen on port {{port}}.
+
+##### OLLAMA\_PORT\_IN\_USE
+
+```ts
+readonly OLLAMA_PORT_IN_USE: "OLLAMA_PORT_IN_USE" = 'OLLAMA_PORT_IN_USE';
+```
+
+Another program, probably Ollama, is using port {{port}}. Quit it, then try again.
+
 ##### ORIGIN\_NOT\_ALLOWED
 
 ```ts
@@ -1935,6 +1975,38 @@ readonly PERSON_NOT_FOUND: "PERSON_NOT_FOUND" = 'PERSON_NOT_FOUND';
 ```
 
 That person isn't here.
+
+##### PERSONA\_LIMIT
+
+```ts
+readonly PERSONA_LIMIT: "PERSONA_LIMIT" = 'PERSONA_LIMIT';
+```
+
+There can be at most {{limit}} voice personas.
+
+##### PERSONA\_NAME\_INVALID
+
+```ts
+readonly PERSONA_NAME_INVALID: "PERSONA_NAME_INVALID" = 'PERSONA_NAME_INVALID';
+```
+
+A persona's name is 1 to 40 characters.
+
+##### PERSONA\_NOT\_FOUND
+
+```ts
+readonly PERSONA_NOT_FOUND: "PERSONA_NOT_FOUND" = 'PERSONA_NOT_FOUND';
+```
+
+That voice persona isn't here anymore.
+
+##### PERSONA\_SPEED\_INVALID
+
+```ts
+readonly PERSONA_SPEED_INVALID: "PERSONA_SPEED_INVALID" = 'PERSONA_SPEED_INVALID';
+```
+
+A persona reads from half to twice as fast.
 
 ##### PERSONALIZATION\_FAILED
 
