@@ -11,6 +11,87 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use time::OffsetDateTime;
 
+/// A feature and whether it works here now (#1355)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct Feature {
+    /// Known values: `voice`, `door`, `pictures`, `clips`, `see`, `meaning`, `automationTools`, `train`; others may be added.
+    pub id: String,
+    pub ready: bool,
+    #[serde(default)]
+    pub needs: Vec<FeatureNeed>,
+    /// What setting up its missing needs downloads
+    pub setup_bytes: i64,
+    pub installing: bool,
+}
+
+/// One thing a feature needs, and what would set it up
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct FeatureNeed {
+    /// Known values: `chat`, `tools`, `vision`, `embedding`, `voice`, `images`, `video`, `trainer`, `camera`; others may be added.
+    pub need: String,
+    pub ready: bool,
+    /// How setup installs it; absent when nothing here can Known values: `model`, `voice`, `images`, `video`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub install: Option<String>,
+    /// The model it installs
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub option: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_bytes: Option<i64>,
+    /// The paired computer it is set up on
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installing: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub percent: Option<i64>,
+    /// Why it can't be set up here, when this computer says
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
+/// What clearing an automation's history removed
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ClearedRuns {
+    /// Finished runs removed
+    pub runs: i64,
+    /// Camera pictures removed with them
+    pub files: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct VoicePersona {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// A language code
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<f64>,
+    /// Whether its voice can read here now; only in answers
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reads: Option<bool>,
+    /// The voice that reads in its place when reads is false
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reads_with: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct VoicePersonas {
+    #[serde(default)]
+    pub personas: Vec<VoicePersona>,
+    /// The persona you picked
+    pub picked: String,
+}
+
 /// The Voice settings (#1304, contract 1.112)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct VoiceSettings {
@@ -2607,6 +2688,9 @@ pub struct ModelsFit {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct QualityResults {
     pub live: bool,
+    /// The quality_results setting is off, so nothing was read (#1415, contract 1.124)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub off: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
     /// How the results are measured
@@ -4357,6 +4441,9 @@ pub struct ChatRequest {
     /// The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_zone: Option<String>,
+    /// Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_location: Option<ChatRequestDeviceLocation>,
     /// Answer from this message in the chat, as a new version of the point after it (#447)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
@@ -4654,6 +4741,18 @@ pub struct SetMyPreferencesRequest {
     pub assistant_language_mode: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assistant_language: Option<String>,
+    /// Answers may offer a better-fitting model to install (#707)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub suggest_models: Option<bool>,
+    /// Voice chat plays a soft chime while a spoken answer takes a while (#1334, contract 1.121); on by default
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking_sound: Option<bool>,
+    /// The character you see in voice chat, whose mouth moves with the spoken answer (#1369, contract 1.130); ratatoskr until you choose, and none for the plain circle (contract 1.135). "" from older apps means none Known values: ``, `none`, `ratatoskr`, `pebble`, `lumen`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice_avatar: Option<String>,
+    /// Your finished automations notify you, with a push to your own phones and, for the Owner, a desktop notice (#1391, contract 1.128); until you choose, the Owner's choice. On by default
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notify_task_finish: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4946,6 +5045,9 @@ pub struct SpeechSayRequest {
     pub voice: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    /// How fast to read, such as to preview a voice persona; omitted or 0 is the caller's persona's speed, or normal (#1319, contract 1.129)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -5119,6 +5221,39 @@ pub struct UseVideoBuildRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct PickVoicePersonaRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct OpenaiSpeechRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    pub input: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<String>,
+    /// Known values: `wav`, `pcm`, `mp3`, `opus`, `aac`, `flac`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct OpenaiTranscriptionsRequest {
+    #[serde(default)]
+    pub file: Vec<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    /// Known values: `json`, `text`, `verbose_json`, `srt`, `vtt`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct OpenaiChatCompletionsRequest {
     /// auto, profile:&lt;id&gt;, sai:&lt;slug&gt;, a model id, raw:&lt;model id&gt; to drive a model on this computer directly, with the request's own tools (#843, contract 1.71), or swarm:&lt;profile&gt; (#1135, contract 1.88): a request with tools is spread to the least busy of the profile's swarm models and computers and forwarded as raw, and one without runs a full swarm, its progress as reasoning_content and its coordinator chat as toskar.conversation_id
     pub model: String,
@@ -5162,6 +5297,20 @@ pub struct OpenaiChatCompletionsRequest {
     pub toskar: Option<AssistantOptions>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub yggdrasil: Option<AssistantOptions>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct OpenaiEmbeddingsRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// A string or a list of strings
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub input: Value,
+    /// Known values: `float`, `base64`; others may be added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encoding_format: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dimensions: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -5544,7 +5693,7 @@ pub struct AutomationInputTrigger {
 pub struct AutomationInputCameras {
     /// Known values: `homeassistant`, `reolink`; others may be added.
     pub connector: String,
-    /// The camera as that service names it, such as Home Assistant's camera.driveway
+    /// The camera as that service names it, such as Home Assistant's camera.driveway, or Reolink's camera, and camera@4 for the one on its hub's channel 4 (#1333)
     pub device: String,
 }
 
@@ -5553,7 +5702,7 @@ pub struct AutomationInputCameras {
 pub struct AutomationInputSay {
     /// Known values: `reolink`; others may be added.
     pub connector: String,
-    /// Always camera: one Reolink connection is one camera
+    /// camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
     pub device: String,
     /// With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5566,6 +5715,9 @@ pub struct AutomationInputSay {
     /// Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub listen: Option<bool>,
+    /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_thinking_sound: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -5620,7 +5772,7 @@ pub struct AutomationCameras {
 pub struct AutomationSay {
     /// Known values: `reolink`; others may be added.
     pub connector: String,
-    /// Always camera: one Reolink connection is one camera
+    /// camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
     pub device: String,
     /// With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5633,6 +5785,9 @@ pub struct AutomationSay {
     /// Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub listen: Option<bool>,
+    /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_thinking_sound: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -5993,7 +6148,7 @@ pub struct AutomationDetailCameras {
 pub struct AutomationDetailSay {
     /// Known values: `reolink`; others may be added.
     pub connector: String,
-    /// Always camera: one Reolink connection is one camera
+    /// camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
     pub device: String,
     /// With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6006,6 +6161,9 @@ pub struct AutomationDetailSay {
     /// Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub listen: Option<bool>,
+    /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_thinking_sound: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -6060,6 +6218,9 @@ pub struct AutomationRequestSay {
     pub voice: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub listen: Option<bool>,
+    /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_thinking_sound: Option<bool>,
 }
 
 /// One value a service needs to connect, such as a token.
@@ -6646,6 +6807,18 @@ pub struct OpenAIErrorError {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub param: Option<String>,
     pub code: String,
+}
+
+/// Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ChatRequestDeviceLocation {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latitude: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub longitude: Option<f64>,
+    /// How far off it may be
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accuracy_m: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

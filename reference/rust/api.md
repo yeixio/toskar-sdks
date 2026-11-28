@@ -248,6 +248,18 @@ Recommend whether material is for training, knowledge, or both
 pub async fn classify_material(&self, body: &models::ClassifyMaterialRequest) -> Result<models::ClassifiedMaterial>
 ```
 
+### clear_automation_runs(id, files)
+
+Clear an automation's history
+
+Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+
+- `files`: Also delete the camera pictures the automation's runs took
+
+```rust
+pub async fn clear_automation_runs(&self, id: &str, files: Option<bool>) -> Result<models::ClearedRuns>
+```
+
 ### clear_cache(name)
 
 Clear one cache
@@ -400,6 +412,16 @@ Run a prompt as a task
 pub async fn create_task(&self, body: &models::CreateTaskRequest) -> Result<models::Task>
 ```
 
+### create_voice_persona(body)
+
+Make a voice persona (#1319)
+
+voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+
+```rust
+pub async fn create_voice_persona(&self, body: &models::VoicePersona) -> Result<models::VoicePersonas>
+```
+
 ### decide_tool(body)
 
 Answer a tool approval request
@@ -440,6 +462,16 @@ Delete an automation
 
 ```rust
 pub async fn delete_automation(&self, id: &str) -> Result<()>
+```
+
+### delete_automation_run(id, run_id)
+
+Delete one finished run
+
+A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+
+```rust
+pub async fn delete_automation_run(&self, id: &str, run_id: &str) -> Result<()>
 ```
 
 ### delete_comfy_workflow(name)
@@ -585,6 +617,16 @@ Deletes the record, and the branches a task swarm kept in its folder. Its chats 
 
 ```rust
 pub async fn delete_swarm(&self, id: &str) -> Result<()>
+```
+
+### delete_voice_persona(id)
+
+Delete a voice persona (#1319)
+
+Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+
+```rust
+pub async fn delete_voice_persona(&self, id: &str) -> Result<models::VoicePersonas>
 ```
 
 ### deploy_revision(id, rev)
@@ -1492,6 +1534,16 @@ Training examples and their statistics
 pub async fn list_examples(&self, id: &str) -> Result<models::TrainingExamples>
 ```
 
+### list_features()
+
+Each feature and what it still needs (#1355)
+
+One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+
+```rust
+pub async fn list_features(&self) -> Result<Vec<models::Feature>>
+```
+
 ### list_join_tokens()
 
 Join tokens, active and from the last week, without their secrets
@@ -1896,6 +1948,136 @@ Checks the state against this browser's cookie, swaps the code for an ID token a
 pub async fn oidc_callback(&self, state: Option<&str>, code: Option<&str>) -> Result<()>
 ```
 
+### ollama_chat()
+
+Ollama-compatible chat
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:&lt;model&gt;. A model name's :latest is ignored.
+
+```rust
+pub async fn ollama_chat(&self) -> Result<Vec<u8>>
+```
+
+### ollama_copy()
+
+Ollama model management
+
+Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+
+```rust
+pub async fn ollama_copy(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_create()
+
+Ollama model management
+
+Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+
+```rust
+pub async fn ollama_create(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_delete()
+
+Ollama model management
+
+Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+
+```rust
+pub async fn ollama_delete(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_embed()
+
+Ollama-compatible embeddings
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+
+```rust
+pub async fn ollama_embed(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_embeddings()
+
+Ollama-compatible embeddings, older form
+
+Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+
+```rust
+pub async fn ollama_embeddings(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_generate()
+
+Ollama-compatible completion
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+
+```rust
+pub async fn ollama_generate(&self) -> Result<Vec<u8>>
+```
+
+### ollama_ps()
+
+Ollama-compatible running models
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+
+```rust
+pub async fn ollama_ps(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_pull()
+
+Ollama model management
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+
+```rust
+pub async fn ollama_pull(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_push()
+
+Ollama model management
+
+Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+
+```rust
+pub async fn ollama_push(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_show()
+
+Ollama-compatible model details
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+
+```rust
+pub async fn ollama_show(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_tags()
+
+Ollama-compatible model list
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+
+```rust
+pub async fn ollama_tags(&self) -> Result<Map<String, Value>>
+```
+
+### ollama_version()
+
+Ollama API version
+
+Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+
+```rust
+pub async fn ollama_version(&self) -> Result<Map<String, Value>>
+```
+
 ### openai_chat_completions(body)
 
 OpenAI-compatible chat completions
@@ -1904,6 +2086,16 @@ temperature and max_tokens apply to the calls that write the answer (#70). The t
 
 ```rust
 pub async fn openai_chat_completions(&self, body: &models::OpenaiChatCompletionsRequest) -> Result<models::OpenAIChatCompletion>
+```
+
+### openai_embeddings(body)
+
+OpenAI Embeddings
+
+Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+
+```rust
+pub async fn openai_embeddings(&self, body: &models::OpenaiEmbeddingsRequest) -> Result<()>
 ```
 
 ### openai_list_models()
@@ -1924,6 +2116,26 @@ OpenAI's Responses format, driving a chat model on this computer directly with t
 
 ```rust
 pub async fn openai_responses(&self, body: &models::OpenaiResponsesRequest) -> Result<()>
+```
+
+### openai_speech(body)
+
+OpenAI audio speech
+
+Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+
+```rust
+pub async fn openai_speech(&self, body: &models::OpenaiSpeechRequest) -> Result<Vec<u8>>
+```
+
+### openai_transcriptions(body)
+
+OpenAI audio transcriptions
+
+Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+
+```rust
+pub async fn openai_transcriptions(&self, body: String) -> Result<()>
 ```
 
 ### outbound_pairing(code)
@@ -2033,6 +2245,16 @@ A new one-time link for a person; a reset link once they have a sign-in
 
 ```rust
 pub async fn person_link(&self, id: &str) -> Result<models::InviteLink>
+```
+
+### pick_voice_persona(body)
+
+Pick the voice persona you're read aloud in (#1319)
+
+Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+
+```rust
+pub async fn pick_voice_persona(&self, body: &models::PickVoicePersonaRequest) -> Result<models::VoicePersonas>
 ```
 
 ### portal_visitor_link(id, vid)
@@ -2359,7 +2581,7 @@ pub async fn search_knowledge(&self, body: &models::SearchKnowledgeRequest) -> R
 
 Send a problem report to Toskar (#588)
 
-Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
 
 ```rust
 pub async fn send_report(&self) -> Result<()>
@@ -2447,7 +2669,7 @@ pub async fn set_model_speculation(&self, id: &str, body: &models::SetModelSpecu
 
 Save your own languages (#206)
 
-The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
 
 ```rust
 pub async fn set_my_preferences(&self, body: &models::SetMyPreferencesRequest) -> Result<Map<String, Value>>
@@ -2543,6 +2765,16 @@ Turn a tool on or off
 
 ```rust
 pub async fn set_tool_enabled(&self, id: &str, body: &models::SetToolEnabledRequest) -> Result<models::ToolEnabled>
+```
+
+### set_up_feature(id)
+
+Set up everything a feature still needs (#1355)
+
+Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+
+```rust
+pub async fn set_up_feature(&self, id: &str) -> Result<models::Feature>
 ```
 
 ### show_message_version(id, mid)
@@ -2931,6 +3163,16 @@ Update settings
 pub async fn update_settings(&self, body: &Map<String, Value>) -> Result<Map<String, Value>>
 ```
 
+### update_voice_persona(id, body)
+
+Change a voice persona (#1319)
+
+Admins only (contract 1.129).
+
+```rust
+pub async fn update_voice_persona(&self, id: &str, body: &models::VoicePersona) -> Result<models::VoicePersonas>
+```
+
 ### upload_artifact(body)
 
 Upload a file to attach to a chat (up to 25 MB)
@@ -2957,6 +3199,16 @@ Images and video share the program, so this switches both. The GPU build is Meta
 
 ```rust
 pub async fn use_video_build(&self, body: &models::UseVideoBuildRequest) -> Result<models::ImageSetup>
+```
+
+### voice_personas()
+
+The voice personas, and the one you picked (#1319)
+
+Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+
+```rust
+pub async fn voice_personas(&self) -> Result<models::VoicePersonas>
 ```
 
 ### voice_realtime()

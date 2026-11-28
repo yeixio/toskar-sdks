@@ -805,7 +805,7 @@ export interface paths {
         head?: never;
         /**
          * Save your own languages (#206)
-         * @description The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+         * @description The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
          */
         patch: operations["setMyPreferences"];
         trace?: never;
@@ -2067,7 +2067,7 @@ export interface paths {
         put?: never;
         /**
          * Send a problem report to Toskar (#588)
-         * @description Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+         * @description Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
          */
         post: operations["sendReport"];
         delete?: never;
@@ -2136,6 +2136,266 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ollama-compatible model list
+         * @description Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+         */
+        get: operations["ollamaTags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ollama-compatible chat
+         * @description Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+         */
+        post: operations["ollamaChat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ollama-compatible completion
+         * @description Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+         */
+        post: operations["ollamaGenerate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ollama-compatible model details
+         * @description Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+         */
+        post: operations["ollamaShow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ollama-compatible running models
+         * @description Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+         */
+        get: operations["ollamaPs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ollama API version
+         * @description Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+         */
+        get: operations["ollamaVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/embed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ollama-compatible embeddings
+         * @description Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+         */
+        post: operations["ollamaEmbed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pull": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ollama model management
+         * @description Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+         */
+        post: operations["ollamaPull"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/embeddings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ollama-compatible embeddings, older form
+         * @description Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+         */
+        post: operations["ollamaEmbeddings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ollama model management
+         * @description Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+         */
+        post: operations["ollamaPush"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ollama model management
+         * @description Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+         */
+        post: operations["ollamaCreate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ollama model management
+         * @description Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+         */
+        post: operations["ollamaCopy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Ollama model management
+         * @description Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+         */
+        delete: operations["ollamaDelete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/messages": {
         parameters: {
             query?: never;
@@ -2190,6 +2450,66 @@ export interface paths {
          * @description OpenAI's Responses format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.73). model is a model id, with or without raw:. instructions, input (a string, or messages with input_text, input_image, and output_text parts, function_call, and function_call_output items; reasoning items are left out), function tools, tool_choice, max_output_tokens, temperature, top_p, and parallel_tool_calls are converted to the model's Chat Completions and back. Toskar keeps no responses, so previous_response_id is refused: send the whole conversation, as with store set to false. With stream, the answer comes as the response.* events, each with a sequence_number. Needs raw access, as raw:<model> does. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a reasoning item of its progress.
          */
         post: operations["openaiResponses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/embeddings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * OpenAI Embeddings
+         * @description Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+         */
+        post: operations["openaiEmbeddings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audio/transcriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * OpenAI audio transcriptions
+         * @description Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+         */
+        post: operations["openaiTranscriptions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audio/speech": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * OpenAI audio speech
+         * @description Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+         */
+        post: operations["openaiSpeech"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3188,6 +3508,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/voice/personas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The voice personas, and the one you picked (#1319)
+         * @description Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+         */
+        get: operations["voicePersonas"];
+        put?: never;
+        /**
+         * Make a voice persona (#1319)
+         * @description voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+         */
+        post: operations["createVoicePersona"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/voice/personas/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change a voice persona (#1319)
+         * @description Admins only (contract 1.129).
+         */
+        put: operations["updateVoicePersona"];
+        post?: never;
+        /**
+         * Delete a voice persona (#1319)
+         * @description Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+         */
+        delete: operations["deleteVoicePersona"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/voice/persona": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Pick the voice persona you're read aloud in (#1319)
+         * @description Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+         */
+        put: operations["pickVoicePersona"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/voice/realtime": {
         parameters: {
             query?: never;
@@ -3262,6 +3650,46 @@ export interface paths {
          */
         put: operations["setSpeechVoice"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Each feature and what it still needs (#1355)
+         * @description One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+         */
+        get: operations["listFeatures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/features/{id}/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set up everything a feature still needs (#1355)
+         * @description Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+         */
+        post: operations["setUpFeature"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4385,7 +4813,31 @@ export interface paths {
         get: operations["listAutomationRuns"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Clear an automation's history
+         * @description Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+         */
+        delete: operations["clearAutomationRuns"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/{id}/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete one finished run
+         * @description A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+         */
+        delete: operations["deleteAutomationRun"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4814,6 +5266,67 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description A feature and whether it works here now (#1355) */
+        Feature: {
+            /** @description Known values: `voice`, `door`, `pictures`, `clips`, `see`, `meaning`, `automationTools`, `train`; others may be added. */
+            id: string;
+            ready: boolean;
+            needs: components["schemas"]["FeatureNeed"][];
+            /**
+             * Format: int64
+             * @description What setting up its missing needs downloads
+             */
+            setup_bytes: number;
+            installing: boolean;
+        };
+        /** @description One thing a feature needs, and what would set it up */
+        FeatureNeed: {
+            /** @description Known values: `chat`, `tools`, `vision`, `embedding`, `voice`, `images`, `video`, `trainer`, `camera`; others may be added. */
+            need: string;
+            ready: boolean;
+            /** @description How setup installs it; absent when nothing here can Known values: `model`, `voice`, `images`, `video`; others may be added. */
+            install?: string;
+            /** @description The model it installs */
+            option?: string;
+            name?: string;
+            /** Format: int64 */
+            size_bytes?: number;
+            /** @description The paired computer it is set up on */
+            node_id?: string;
+            node_name?: string;
+            installing?: boolean;
+            percent?: number;
+            /** @description Why it can't be set up here, when this computer says */
+            detail?: string;
+        };
+        /** @description An Ollama API answer, in the shape Ollama gives for the endpoint (#1356) */
+        OllamaAnswer: {
+            [key: string]: unknown;
+        };
+        /** @description What clearing an automation's history removed */
+        ClearedRuns: {
+            /** @description Finished runs removed */
+            runs: number;
+            /** @description Camera pictures removed with them */
+            files: number;
+        };
+        VoicePersona: {
+            id?: string;
+            name?: string;
+            /** @description A language code */
+            language?: string;
+            voice?: string;
+            speed?: number;
+            /** @description Whether its voice can read here now; only in answers */
+            reads?: boolean;
+            /** @description The voice that reads in its place when reads is false */
+            reads_with?: string;
+        };
+        VoicePersonas: {
+            personas: components["schemas"]["VoicePersona"][];
+            /** @description The persona you picked */
+            picked: string;
+        };
         /** @description The Voice settings (#1304, contract 1.112) */
         VoiceSettings: {
             kitten: {
@@ -5841,14 +6354,14 @@ export interface components {
             cameras?: {
                 /** @description Known values: `homeassistant`, `reolink`; others may be added. */
                 connector: string;
-                /** @description The camera as that service names it, such as Home Assistant's camera.driveway */
+                /** @description The camera as that service names it, such as Home Assistant's camera.driveway, or Reolink's camera, and camera@4 for the one on its hub's channel 4 (#1333) */
                 device: string;
             }[];
             /** @description Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking. */
             say?: {
                 /** @description Known values: `reolink`; others may be added. */
                 connector: string;
-                /** @description Always camera: one Reolink connection is one camera */
+                /** @description camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133) */
                 device: string;
                 /** @description With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies. */
                 quiet_from?: string;
@@ -5857,6 +6370,8 @@ export interface components {
                 voice?: string;
                 /** @description Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114) */
                 listen?: boolean;
+                /** @description Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too. */
+                no_thinking_sound?: boolean;
             };
             /** @description Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them. */
             actions?: {
@@ -5918,7 +6433,7 @@ export interface components {
             say?: {
                 /** @description Known values: `reolink`; others may be added. */
                 connector: string;
-                /** @description Always camera: one Reolink connection is one camera */
+                /** @description camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133) */
                 device: string;
                 /** @description With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies. */
                 quiet_from?: string;
@@ -5927,6 +6442,8 @@ export interface components {
                 voice?: string;
                 /** @description Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114) */
                 listen?: boolean;
+                /** @description Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too. */
+                no_thinking_sound?: boolean;
             };
             /** @description Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them. */
             actions?: {
@@ -6850,6 +7367,8 @@ export interface components {
         };
         QualityResults: {
             live: boolean;
+            /** @description The quality_results setting is off, so nothing was read (#1415, contract 1.124) */
+            off?: boolean;
             note?: string;
             /** @description How the results are measured */
             method?: string;
@@ -7203,7 +7722,7 @@ export interface components {
             say?: {
                 /** @description Known values: `reolink`; others may be added. */
                 connector: string;
-                /** @description Always camera: one Reolink connection is one camera */
+                /** @description camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133) */
                 device: string;
                 /** @description With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies. */
                 quiet_from?: string;
@@ -7212,6 +7731,8 @@ export interface components {
                 voice?: string;
                 /** @description Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114) */
                 listen?: boolean;
+                /** @description Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too. */
+                no_thinking_sound?: boolean;
             };
             /** @description Calls the automation may make on its own (#586), such as Home Assistant's light.turn_on on light.porch. A call that matches one runs without asking, even in a run a trigger started; other calls that change things are skipped. Each argument listed must equal the call's, ignoring case; a Home Assistant action names its service and entity_id. At most 20. On update, an empty list removes them. */
             actions?: {
@@ -7304,6 +7825,8 @@ export interface components {
                 quiet_to?: string;
                 voice?: string;
                 listen?: boolean;
+                /** @description Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too. */
+                no_thinking_sound?: boolean;
             };
         };
         /** @description The durable record for one occurrence of an automation. */
@@ -10009,6 +10532,14 @@ export interface operations {
                     /** @description Known values: `auto`, `app`, `language`; others may be added. */
                     assistant_language_mode?: string;
                     assistant_language?: string;
+                    /** @description Answers may offer a better-fitting model to install (#707) */
+                    suggest_models?: boolean;
+                    /** @description Voice chat plays a soft chime while a spoken answer takes a while (#1334, contract 1.121); on by default */
+                    thinking_sound?: boolean;
+                    /** @description The character you see in voice chat, whose mouth moves with the spoken answer (#1369, contract 1.130); ratatoskr until you choose, and none for the plain circle (contract 1.135). "" from older apps means none Known values: ``, `none`, `ratatoskr`, `pebble`, `lumen`; others may be added. */
+                    voice_avatar?: string;
+                    /** @description Your finished automations notify you, with a push to your own phones and, for the Owner, a desktop notice (#1391, contract 1.128); until you choose, the Owner's choice. On by default */
+                    notify_task_finish?: boolean;
                 };
             };
         };
@@ -10566,7 +11097,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK. For Admins and the Owner, network_access (#711, contract 1.42) counts who could use Toskar from another computer: people (who sign in with a username and password, or still have a link to choose them), devices (connected with a code), stale_devices (how many of those are likely left over: never used a day after pairing, or unused for 90 days; #1266, contract 1.109), keys (API keys for apps and scripts), and sign_in_service (a trusted proxy or OpenID Connect provider). lan_api_enabled can be turned on when any of them is there. For a key of someone below Admin, such as a Member's phone, data_dir, models_dir, runtimes_dir, logs_dir, api_host, node_id, remote_access_address and remote_access_relay are empty (#1264). */
+            /** @description OK. For Admins and the Owner, network_access (#711, contract 1.42) counts who could use Toskar from another computer: people (who sign in with a username and password, or still have a link to choose them), devices (connected with a code), stale_devices (how many of those are likely left over: never used a day after pairing, or unused for 90 days; #1266, contract 1.109), keys (API keys for apps and scripts), and sign_in_service (a trusted proxy or OpenID Connect provider). lan_api_enabled can be turned on when any of them is there. For a key of someone below Admin, such as a Member's phone, data_dir, models_dir, runtimes_dir, logs_dir, api_host, node_id, remote_access_address and remote_access_relay are empty (#1264). ollama_port_enabled (#1396, contract 1.127) also serves Ollama's API on port 11434, on this computer only, set with PATCH; ollama_port_listening says whether it is, and ollama_port_error why not (in_use when another program has the port; PATCH then answers OLLAMA_PORT_IN_USE and the setting stays off). */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -12460,6 +12991,266 @@ export interface operations {
             };
         };
     };
+    ollamaTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaChat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-ndjson": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaGenerate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-ndjson": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaShow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaPs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaEmbed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaPull: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaEmbeddings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaPush: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaCreate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaCopy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
+    ollamaDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ollama's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OllamaAnswer"];
+                };
+            };
+        };
+    };
     anthropicMessages: {
         parameters: {
             query?: never;
@@ -12602,6 +13393,145 @@ export interface operations {
             };
             /** @description MODEL_NOT_FOUND, a model not installed on this computer */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    openaiEmbeddings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    model?: string;
+                    /** @description A string or a list of strings */
+                    input: unknown;
+                    /** @description Known values: `float`, `base64`; others may be added. */
+                    encoding_format?: string;
+                    dimensions?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description A list: data of {object: embedding, index, embedding}, model, and usage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid_request_error, such as token arrays, an empty input, or other dimensions */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description EMBEDDINGS_UNAVAILABLE, with how to set up an embedding model when none is installed */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    openaiTranscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    model?: string;
+                    language?: string;
+                    /** @description Known values: `json`, `text`, `verbose_json`, `srt`, `vtt`; others may be added. */
+                    response_format?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description {text}, or the text, verbose JSON, or subtitles asked for */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid_request_error, such as no file */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The file is larger than 25 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description SPEECH_UNAVAILABLE, with how to set speech up */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    openaiSpeech: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    model?: string;
+                    input: string;
+                    voice?: string;
+                    /** @description Known values: `wav`, `pcm`, `mp3`, `opus`, `aac`, `flac`; others may be added. */
+                    response_format?: string;
+                    speed?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The audio, audio/wav or audio/pcm */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/wav": unknown;
+                    "audio/pcm": unknown;
+                };
+            };
+            /** @description invalid_request_error, such as no input or input that is too long */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description SPEECH_UNAVAILABLE, with how to set speech up */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14326,6 +15256,13 @@ export interface operations {
                     thinking?: string;
                     /** @description The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown */
                     time_zone?: string;
+                    /** @description Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored. */
+                    device_location?: {
+                        latitude?: number;
+                        longitude?: number;
+                        /** @description How far off it may be */
+                        accuracy_m?: number;
+                    };
                     /** @description Answer from this message in the chat, as a new version of the point after it (#447) */
                     parent_id?: string;
                     /** @description Ask this answer's question again, as a new version of the answer; message may be empty */
@@ -14638,6 +15575,178 @@ export interface operations {
             };
         };
     };
+    voicePersonas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The personas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoicePersonas"];
+                };
+            };
+        };
+    };
+    createVoicePersona: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoicePersona"];
+            };
+        };
+        responses: {
+            /** @description The personas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoicePersonas"];
+                };
+            };
+            /** @description PERSONA_NAME_INVALID, PERSONA_SPEED_INVALID, PERSONA_LIMIT, or INVALID_VOICE */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description ROLE_REQUIRED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateVoicePersona: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoicePersona"];
+            };
+        };
+        responses: {
+            /** @description The personas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoicePersonas"];
+                };
+            };
+            /** @description PERSONA_NAME_INVALID, PERSONA_SPEED_INVALID, PERSONA_LIMIT, or INVALID_VOICE */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERSONA_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteVoicePersona: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The personas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoicePersonas"];
+                };
+            };
+            /** @description PERSONA_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    pickVoicePersona: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    id?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The personas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoicePersonas"];
+                };
+            };
+            /** @description PERSONA_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     voiceRealtime: {
         parameters: {
             query?: never;
@@ -14687,6 +15796,8 @@ export interface operations {
                     text: string;
                     voice?: string;
                     language?: string;
+                    /** @description How fast to read, such as to preview a voice persona; omitted or 0 is the caller's persona's speed, or normal (#1319, contract 1.129) */
+                    speed?: number;
                 };
             };
         };
@@ -14779,6 +15890,66 @@ export interface operations {
             };
             /** @description BAD_REQUEST or INVALID_VOICE */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listFeatures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The features, in the order Settings lists them */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feature"][];
+                };
+            };
+        };
+    };
+    setUpFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The feature, with what started installing */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feature"];
+                };
+            };
+            /** @description FEATURE_UNKNOWN */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description FEATURE_SETUP_FAILED, when a part couldn't start; the rest keeps going */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17811,6 +18982,79 @@ export interface operations {
             };
             /** @description No such automation or run */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    clearAutomationRuns: {
+        parameters: {
+            query?: {
+                /** @description Also delete the camera pictures the automation's runs took */
+                files?: boolean;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description How many runs and files were removed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClearedRuns"];
+                };
+            };
+            /** @description No such automation */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteAutomationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such automation or run */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The run hasn't finished */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

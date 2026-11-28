@@ -340,7 +340,7 @@ public protocol APIProtocol: Sendable {
     func disconnectThisDevice(_ input: Operations.DisconnectThisDevice.Input) async throws -> Operations.DisconnectThisDevice.Output
     /// Save your own languages (#206)
     ///
-    /// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+    /// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
     ///
     /// - Remark: HTTP `PATCH /api/v1/me/preferences`.
     /// - Remark: Generated from `#/paths//api/v1/me/preferences/patch(setMyPreferences)`.
@@ -839,7 +839,7 @@ public protocol APIProtocol: Sendable {
     func getReport(_ input: Operations.GetReport.Input) async throws -> Operations.GetReport.Output
     /// Send a problem report to Toskar (#588)
     ///
-    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
     ///
     /// - Remark: HTTP `POST /api/v1/diagnostics/report`.
     /// - Remark: Generated from `#/paths//api/v1/diagnostics/report/post(sendReport)`.
@@ -865,6 +865,97 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /v1/models`.
     /// - Remark: Generated from `#/paths//v1/models/get(openaiListModels)`.
     func openaiListModels(_ input: Operations.OpenaiListModels.Input) async throws -> Operations.OpenaiListModels.Output
+    /// Ollama-compatible model list
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+    ///
+    /// - Remark: HTTP `GET /api/tags`.
+    /// - Remark: Generated from `#/paths//api/tags/get(ollamaTags)`.
+    func ollamaTags(_ input: Operations.OllamaTags.Input) async throws -> Operations.OllamaTags.Output
+    /// Ollama-compatible chat
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+    ///
+    /// - Remark: HTTP `POST /api/chat`.
+    /// - Remark: Generated from `#/paths//api/chat/post(ollamaChat)`.
+    func ollamaChat(_ input: Operations.OllamaChat.Input) async throws -> Operations.OllamaChat.Output
+    /// Ollama-compatible completion
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+    ///
+    /// - Remark: HTTP `POST /api/generate`.
+    /// - Remark: Generated from `#/paths//api/generate/post(ollamaGenerate)`.
+    func ollamaGenerate(_ input: Operations.OllamaGenerate.Input) async throws -> Operations.OllamaGenerate.Output
+    /// Ollama-compatible model details
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+    ///
+    /// - Remark: HTTP `POST /api/show`.
+    /// - Remark: Generated from `#/paths//api/show/post(ollamaShow)`.
+    func ollamaShow(_ input: Operations.OllamaShow.Input) async throws -> Operations.OllamaShow.Output
+    /// Ollama-compatible running models
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+    ///
+    /// - Remark: HTTP `GET /api/ps`.
+    /// - Remark: Generated from `#/paths//api/ps/get(ollamaPs)`.
+    func ollamaPs(_ input: Operations.OllamaPs.Input) async throws -> Operations.OllamaPs.Output
+    /// Ollama API version
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+    ///
+    /// - Remark: HTTP `GET /api/version`.
+    /// - Remark: Generated from `#/paths//api/version/get(ollamaVersion)`.
+    func ollamaVersion(_ input: Operations.OllamaVersion.Input) async throws -> Operations.OllamaVersion.Output
+    /// Ollama-compatible embeddings
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+    ///
+    /// - Remark: HTTP `POST /api/embed`.
+    /// - Remark: Generated from `#/paths//api/embed/post(ollamaEmbed)`.
+    func ollamaEmbed(_ input: Operations.OllamaEmbed.Input) async throws -> Operations.OllamaEmbed.Output
+    /// Ollama model management
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/pull`.
+    /// - Remark: Generated from `#/paths//api/pull/post(ollamaPull)`.
+    func ollamaPull(_ input: Operations.OllamaPull.Input) async throws -> Operations.OllamaPull.Output
+    /// Ollama-compatible embeddings, older form
+    ///
+    /// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+    ///
+    /// - Remark: HTTP `POST /api/embeddings`.
+    /// - Remark: Generated from `#/paths//api/embeddings/post(ollamaEmbeddings)`.
+    func ollamaEmbeddings(_ input: Operations.OllamaEmbeddings.Input) async throws -> Operations.OllamaEmbeddings.Output
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/push`.
+    /// - Remark: Generated from `#/paths//api/push/post(ollamaPush)`.
+    func ollamaPush(_ input: Operations.OllamaPush.Input) async throws -> Operations.OllamaPush.Output
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/create`.
+    /// - Remark: Generated from `#/paths//api/create/post(ollamaCreate)`.
+    func ollamaCreate(_ input: Operations.OllamaCreate.Input) async throws -> Operations.OllamaCreate.Output
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/copy`.
+    /// - Remark: Generated from `#/paths//api/copy/post(ollamaCopy)`.
+    func ollamaCopy(_ input: Operations.OllamaCopy.Input) async throws -> Operations.OllamaCopy.Output
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `DELETE /api/delete`.
+    /// - Remark: Generated from `#/paths//api/delete/delete(ollamaDelete)`.
+    func ollamaDelete(_ input: Operations.OllamaDelete.Input) async throws -> Operations.OllamaDelete.Output
     /// Anthropic-compatible messages, for coding agents
     ///
     /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
@@ -886,6 +977,27 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /v1/responses`.
     /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)`.
     func openaiResponses(_ input: Operations.OpenaiResponses.Input) async throws -> Operations.OpenaiResponses.Output
+    /// OpenAI Embeddings
+    ///
+    /// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+    ///
+    /// - Remark: HTTP `POST /v1/embeddings`.
+    /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)`.
+    func openaiEmbeddings(_ input: Operations.OpenaiEmbeddings.Input) async throws -> Operations.OpenaiEmbeddings.Output
+    /// OpenAI audio transcriptions
+    ///
+    /// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+    ///
+    /// - Remark: HTTP `POST /v1/audio/transcriptions`.
+    /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)`.
+    func openaiTranscriptions(_ input: Operations.OpenaiTranscriptions.Input) async throws -> Operations.OpenaiTranscriptions.Output
+    /// OpenAI audio speech
+    ///
+    /// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+    ///
+    /// - Remark: HTTP `POST /v1/audio/speech`.
+    /// - Remark: Generated from `#/paths//v1/audio/speech/post(openaiSpeech)`.
+    func openaiSpeech(_ input: Operations.OpenaiSpeech.Input) async throws -> Operations.OpenaiSpeech.Output
     /// OpenAI-compatible chat completions
     ///
     /// temperature and max_tokens apply to the calls that write the answer (#70). The toskar object asks for memory, knowledge, tools, effort, and placement, within what the API key allows. yggdrasil, its name from before the rename, works too; toskar wins when both are sent. Responses carry the answer's extension fields under both names.
@@ -1255,6 +1367,41 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /api/v1/speech`.
     /// - Remark: Generated from `#/paths//api/v1/speech/post(readAloud)`.
     func readAloud(_ input: Operations.ReadAloud.Input) async throws -> Operations.ReadAloud.Output
+    /// The voice personas, and the one you picked (#1319)
+    ///
+    /// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+    ///
+    /// - Remark: HTTP `GET /api/v1/voice/personas`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/get(voicePersonas)`.
+    func voicePersonas(_ input: Operations.VoicePersonas.Input) async throws -> Operations.VoicePersonas.Output
+    /// Make a voice persona (#1319)
+    ///
+    /// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `POST /api/v1/voice/personas`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/post(createVoicePersona)`.
+    func createVoicePersona(_ input: Operations.CreateVoicePersona.Input) async throws -> Operations.CreateVoicePersona.Output
+    /// Change a voice persona (#1319)
+    ///
+    /// Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/voice/personas/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/put(updateVoicePersona)`.
+    func updateVoicePersona(_ input: Operations.UpdateVoicePersona.Input) async throws -> Operations.UpdateVoicePersona.Output
+    /// Delete a voice persona (#1319)
+    ///
+    /// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/voice/personas/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/delete(deleteVoicePersona)`.
+    func deleteVoicePersona(_ input: Operations.DeleteVoicePersona.Input) async throws -> Operations.DeleteVoicePersona.Output
+    /// Pick the voice persona you're read aloud in (#1319)
+    ///
+    /// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/voice/persona`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/persona/put(pickVoicePersona)`.
+    func pickVoicePersona(_ input: Operations.PickVoicePersona.Input) async throws -> Operations.PickVoicePersona.Output
     /// Live voice mode, over a WebSocket (#795)
     ///
     /// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
@@ -1283,6 +1430,20 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `PUT /api/v1/speech/voices/{language}`.
     /// - Remark: Generated from `#/paths//api/v1/speech/voices/{language}/put(setSpeechVoice)`.
     func setSpeechVoice(_ input: Operations.SetSpeechVoice.Input) async throws -> Operations.SetSpeechVoice.Output
+    /// Each feature and what it still needs (#1355)
+    ///
+    /// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+    ///
+    /// - Remark: HTTP `GET /api/v1/features`.
+    /// - Remark: Generated from `#/paths//api/v1/features/get(listFeatures)`.
+    func listFeatures(_ input: Operations.ListFeatures.Input) async throws -> Operations.ListFeatures.Output
+    /// Set up everything a feature still needs (#1355)
+    ///
+    /// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+    ///
+    /// - Remark: HTTP `POST /api/v1/features/{id}/setup`.
+    /// - Remark: Generated from `#/paths//api/v1/features/{id}/setup/post(setUpFeature)`.
+    func setUpFeature(_ input: Operations.SetUpFeature.Input) async throws -> Operations.SetUpFeature.Output
     /// Install Kitten TTS 2 mini (#1304)
     ///
     /// Starts installing Kitten TTS 2 mini (Apache-2.0) in the background: its program, then its voices. GET /api/v1/speech/voices shows how it's going. Admins only (contract 1.112).
@@ -1756,6 +1917,20 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /api/v1/automations/{id}/runs`.
     /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/get(listAutomationRuns)`.
     func listAutomationRuns(_ input: Operations.ListAutomationRuns.Input) async throws -> Operations.ListAutomationRuns.Output
+    /// Clear an automation's history
+    ///
+    /// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/automations/{id}/runs`.
+    /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/delete(clearAutomationRuns)`.
+    func clearAutomationRuns(_ input: Operations.ClearAutomationRuns.Input) async throws -> Operations.ClearAutomationRuns.Output
+    /// Delete one finished run
+    ///
+    /// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/automations/{id}/runs/{run_id}`.
+    /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/{run_id}/delete(deleteAutomationRun)`.
+    func deleteAutomationRun(_ input: Operations.DeleteAutomationRun.Input) async throws -> Operations.DeleteAutomationRun.Output
     /// Make a webhook trigger's link
     ///
     /// Returns a new token, the only time it's shown; only its hash is kept. The old link stops working.
@@ -2560,7 +2735,7 @@ extension APIProtocol {
     }
     /// Save your own languages (#206)
     ///
-    /// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+    /// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
     ///
     /// - Remark: HTTP `PATCH /api/v1/me/preferences`.
     /// - Remark: Generated from `#/paths//api/v1/me/preferences/patch(setMyPreferences)`.
@@ -3415,7 +3590,7 @@ extension APIProtocol {
     }
     /// Send a problem report to Toskar (#588)
     ///
-    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
     ///
     /// - Remark: HTTP `POST /api/v1/diagnostics/report`.
     /// - Remark: Generated from `#/paths//api/v1/diagnostics/report/post(sendReport)`.
@@ -3461,6 +3636,123 @@ extension APIProtocol {
     public func openaiListModels(headers: Operations.OpenaiListModels.Input.Headers = .init()) async throws -> Operations.OpenaiListModels.Output {
         try await openaiListModels(Operations.OpenaiListModels.Input(headers: headers))
     }
+    /// Ollama-compatible model list
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+    ///
+    /// - Remark: HTTP `GET /api/tags`.
+    /// - Remark: Generated from `#/paths//api/tags/get(ollamaTags)`.
+    public func ollamaTags(headers: Operations.OllamaTags.Input.Headers = .init()) async throws -> Operations.OllamaTags.Output {
+        try await ollamaTags(Operations.OllamaTags.Input(headers: headers))
+    }
+    /// Ollama-compatible chat
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+    ///
+    /// - Remark: HTTP `POST /api/chat`.
+    /// - Remark: Generated from `#/paths//api/chat/post(ollamaChat)`.
+    public func ollamaChat(headers: Operations.OllamaChat.Input.Headers = .init()) async throws -> Operations.OllamaChat.Output {
+        try await ollamaChat(Operations.OllamaChat.Input(headers: headers))
+    }
+    /// Ollama-compatible completion
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+    ///
+    /// - Remark: HTTP `POST /api/generate`.
+    /// - Remark: Generated from `#/paths//api/generate/post(ollamaGenerate)`.
+    public func ollamaGenerate(headers: Operations.OllamaGenerate.Input.Headers = .init()) async throws -> Operations.OllamaGenerate.Output {
+        try await ollamaGenerate(Operations.OllamaGenerate.Input(headers: headers))
+    }
+    /// Ollama-compatible model details
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+    ///
+    /// - Remark: HTTP `POST /api/show`.
+    /// - Remark: Generated from `#/paths//api/show/post(ollamaShow)`.
+    public func ollamaShow(headers: Operations.OllamaShow.Input.Headers = .init()) async throws -> Operations.OllamaShow.Output {
+        try await ollamaShow(Operations.OllamaShow.Input(headers: headers))
+    }
+    /// Ollama-compatible running models
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+    ///
+    /// - Remark: HTTP `GET /api/ps`.
+    /// - Remark: Generated from `#/paths//api/ps/get(ollamaPs)`.
+    public func ollamaPs(headers: Operations.OllamaPs.Input.Headers = .init()) async throws -> Operations.OllamaPs.Output {
+        try await ollamaPs(Operations.OllamaPs.Input(headers: headers))
+    }
+    /// Ollama API version
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+    ///
+    /// - Remark: HTTP `GET /api/version`.
+    /// - Remark: Generated from `#/paths//api/version/get(ollamaVersion)`.
+    public func ollamaVersion(headers: Operations.OllamaVersion.Input.Headers = .init()) async throws -> Operations.OllamaVersion.Output {
+        try await ollamaVersion(Operations.OllamaVersion.Input(headers: headers))
+    }
+    /// Ollama-compatible embeddings
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+    ///
+    /// - Remark: HTTP `POST /api/embed`.
+    /// - Remark: Generated from `#/paths//api/embed/post(ollamaEmbed)`.
+    public func ollamaEmbed(headers: Operations.OllamaEmbed.Input.Headers = .init()) async throws -> Operations.OllamaEmbed.Output {
+        try await ollamaEmbed(Operations.OllamaEmbed.Input(headers: headers))
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/pull`.
+    /// - Remark: Generated from `#/paths//api/pull/post(ollamaPull)`.
+    public func ollamaPull(headers: Operations.OllamaPull.Input.Headers = .init()) async throws -> Operations.OllamaPull.Output {
+        try await ollamaPull(Operations.OllamaPull.Input(headers: headers))
+    }
+    /// Ollama-compatible embeddings, older form
+    ///
+    /// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+    ///
+    /// - Remark: HTTP `POST /api/embeddings`.
+    /// - Remark: Generated from `#/paths//api/embeddings/post(ollamaEmbeddings)`.
+    public func ollamaEmbeddings(headers: Operations.OllamaEmbeddings.Input.Headers = .init()) async throws -> Operations.OllamaEmbeddings.Output {
+        try await ollamaEmbeddings(Operations.OllamaEmbeddings.Input(headers: headers))
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/push`.
+    /// - Remark: Generated from `#/paths//api/push/post(ollamaPush)`.
+    public func ollamaPush(headers: Operations.OllamaPush.Input.Headers = .init()) async throws -> Operations.OllamaPush.Output {
+        try await ollamaPush(Operations.OllamaPush.Input(headers: headers))
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/create`.
+    /// - Remark: Generated from `#/paths//api/create/post(ollamaCreate)`.
+    public func ollamaCreate(headers: Operations.OllamaCreate.Input.Headers = .init()) async throws -> Operations.OllamaCreate.Output {
+        try await ollamaCreate(Operations.OllamaCreate.Input(headers: headers))
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/copy`.
+    /// - Remark: Generated from `#/paths//api/copy/post(ollamaCopy)`.
+    public func ollamaCopy(headers: Operations.OllamaCopy.Input.Headers = .init()) async throws -> Operations.OllamaCopy.Output {
+        try await ollamaCopy(Operations.OllamaCopy.Input(headers: headers))
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `DELETE /api/delete`.
+    /// - Remark: Generated from `#/paths//api/delete/delete(ollamaDelete)`.
+    public func ollamaDelete(headers: Operations.OllamaDelete.Input.Headers = .init()) async throws -> Operations.OllamaDelete.Output {
+        try await ollamaDelete(Operations.OllamaDelete.Input(headers: headers))
+    }
     /// Anthropic-compatible messages, for coding agents
     ///
     /// Anthropic's Messages format, driving a chat model on this computer directly with the request's own tools, as raw:<model> does on /v1/chat/completions (#843, contract 1.72). model is a model id, with or without raw:. Text, image, tool_use, and tool_result blocks, tools with input_schema, tool_choice (auto, any, tool, none), stop_sequences, and sampling are converted to the model's Chat Completions and back. With stream, the answer comes as Anthropic's events (message_start, content_block_start, content_block_delta with text_delta or input_json_delta, content_block_stop, message_delta, message_stop). The key may also come as x-api-key, and needs raw access, as raw:<model> does. Errors use Anthropic's shape, {"type":"error","error":{"type","message"}}. model swarm:<profile> (#1135, contract 1.88) spreads a request with tools to the least busy of the profile's swarm models and computers, as raw, and runs a full swarm for one without, answering with the coordinator's answer after a thinking block of its progress.
@@ -3487,6 +3779,39 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//v1/responses/post(openaiResponses)`.
     public func openaiResponses(body: Operations.OpenaiResponses.Input.Body) async throws -> Operations.OpenaiResponses.Output {
         try await openaiResponses(Operations.OpenaiResponses.Input(body: body))
+    }
+    /// OpenAI Embeddings
+    ///
+    /// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+    ///
+    /// - Remark: HTTP `POST /v1/embeddings`.
+    /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)`.
+    public func openaiEmbeddings(body: Operations.OpenaiEmbeddings.Input.Body) async throws -> Operations.OpenaiEmbeddings.Output {
+        try await openaiEmbeddings(Operations.OpenaiEmbeddings.Input(body: body))
+    }
+    /// OpenAI audio transcriptions
+    ///
+    /// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+    ///
+    /// - Remark: HTTP `POST /v1/audio/transcriptions`.
+    /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)`.
+    public func openaiTranscriptions(body: Operations.OpenaiTranscriptions.Input.Body) async throws -> Operations.OpenaiTranscriptions.Output {
+        try await openaiTranscriptions(Operations.OpenaiTranscriptions.Input(body: body))
+    }
+    /// OpenAI audio speech
+    ///
+    /// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+    ///
+    /// - Remark: HTTP `POST /v1/audio/speech`.
+    /// - Remark: Generated from `#/paths//v1/audio/speech/post(openaiSpeech)`.
+    public func openaiSpeech(
+        headers: Operations.OpenaiSpeech.Input.Headers = .init(),
+        body: Operations.OpenaiSpeech.Input.Body
+    ) async throws -> Operations.OpenaiSpeech.Output {
+        try await openaiSpeech(Operations.OpenaiSpeech.Input(
+            headers: headers,
+            body: body
+        ))
     }
     /// OpenAI-compatible chat completions
     ///
@@ -4287,6 +4612,77 @@ extension APIProtocol {
             body: body
         ))
     }
+    /// The voice personas, and the one you picked (#1319)
+    ///
+    /// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+    ///
+    /// - Remark: HTTP `GET /api/v1/voice/personas`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/get(voicePersonas)`.
+    public func voicePersonas(headers: Operations.VoicePersonas.Input.Headers = .init()) async throws -> Operations.VoicePersonas.Output {
+        try await voicePersonas(Operations.VoicePersonas.Input(headers: headers))
+    }
+    /// Make a voice persona (#1319)
+    ///
+    /// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `POST /api/v1/voice/personas`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/post(createVoicePersona)`.
+    public func createVoicePersona(
+        headers: Operations.CreateVoicePersona.Input.Headers = .init(),
+        body: Operations.CreateVoicePersona.Input.Body
+    ) async throws -> Operations.CreateVoicePersona.Output {
+        try await createVoicePersona(Operations.CreateVoicePersona.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Change a voice persona (#1319)
+    ///
+    /// Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/voice/personas/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/put(updateVoicePersona)`.
+    public func updateVoicePersona(
+        path: Operations.UpdateVoicePersona.Input.Path,
+        headers: Operations.UpdateVoicePersona.Input.Headers = .init(),
+        body: Operations.UpdateVoicePersona.Input.Body
+    ) async throws -> Operations.UpdateVoicePersona.Output {
+        try await updateVoicePersona(Operations.UpdateVoicePersona.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Delete a voice persona (#1319)
+    ///
+    /// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/voice/personas/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/delete(deleteVoicePersona)`.
+    public func deleteVoicePersona(
+        path: Operations.DeleteVoicePersona.Input.Path,
+        headers: Operations.DeleteVoicePersona.Input.Headers = .init()
+    ) async throws -> Operations.DeleteVoicePersona.Output {
+        try await deleteVoicePersona(Operations.DeleteVoicePersona.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Pick the voice persona you're read aloud in (#1319)
+    ///
+    /// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/voice/persona`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/persona/put(pickVoicePersona)`.
+    public func pickVoicePersona(
+        headers: Operations.PickVoicePersona.Input.Headers = .init(),
+        body: Operations.PickVoicePersona.Input.Body
+    ) async throws -> Operations.PickVoicePersona.Output {
+        try await pickVoicePersona(Operations.PickVoicePersona.Input(
+            headers: headers,
+            body: body
+        ))
+    }
     /// Live voice mode, over a WebSocket (#795)
     ///
     /// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
@@ -4335,6 +4731,30 @@ extension APIProtocol {
             path: path,
             headers: headers,
             body: body
+        ))
+    }
+    /// Each feature and what it still needs (#1355)
+    ///
+    /// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+    ///
+    /// - Remark: HTTP `GET /api/v1/features`.
+    /// - Remark: Generated from `#/paths//api/v1/features/get(listFeatures)`.
+    public func listFeatures(headers: Operations.ListFeatures.Input.Headers = .init()) async throws -> Operations.ListFeatures.Output {
+        try await listFeatures(Operations.ListFeatures.Input(headers: headers))
+    }
+    /// Set up everything a feature still needs (#1355)
+    ///
+    /// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+    ///
+    /// - Remark: HTTP `POST /api/v1/features/{id}/setup`.
+    /// - Remark: Generated from `#/paths//api/v1/features/{id}/setup/post(setUpFeature)`.
+    public func setUpFeature(
+        path: Operations.SetUpFeature.Input.Path,
+        headers: Operations.SetUpFeature.Input.Headers = .init()
+    ) async throws -> Operations.SetUpFeature.Output {
+        try await setUpFeature(Operations.SetUpFeature.Input(
+            path: path,
+            headers: headers
         ))
     }
     /// Install Kitten TTS 2 mini (#1304)
@@ -5442,6 +5862,38 @@ extension APIProtocol {
             headers: headers
         ))
     }
+    /// Clear an automation's history
+    ///
+    /// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/automations/{id}/runs`.
+    /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/delete(clearAutomationRuns)`.
+    public func clearAutomationRuns(
+        path: Operations.ClearAutomationRuns.Input.Path,
+        query: Operations.ClearAutomationRuns.Input.Query = .init(),
+        headers: Operations.ClearAutomationRuns.Input.Headers = .init()
+    ) async throws -> Operations.ClearAutomationRuns.Output {
+        try await clearAutomationRuns(Operations.ClearAutomationRuns.Input(
+            path: path,
+            query: query,
+            headers: headers
+        ))
+    }
+    /// Delete one finished run
+    ///
+    /// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/automations/{id}/runs/{run_id}`.
+    /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/{run_id}/delete(deleteAutomationRun)`.
+    public func deleteAutomationRun(
+        path: Operations.DeleteAutomationRun.Input.Path,
+        headers: Operations.DeleteAutomationRun.Input.Headers = .init()
+    ) async throws -> Operations.DeleteAutomationRun.Output {
+        try await deleteAutomationRun(Operations.DeleteAutomationRun.Input(
+            path: path,
+            headers: headers
+        ))
+    }
     /// Make a webhook trigger's link
     ///
     /// Returns a new token, the only time it's shown; only its hash is kept. The old link stops working.
@@ -5816,6 +6268,275 @@ public enum Servers {
 public enum Components {
     /// Types generated from the `#/components/schemas` section of the OpenAPI document.
     public enum Schemas {
+        /// A feature and whether it works here now (#1355)
+        ///
+        /// - Remark: Generated from `#/components/schemas/Feature`.
+        public struct Feature: Codable, Hashable, Sendable {
+            /// Known values: `voice`, `door`, `pictures`, `clips`, `see`, `meaning`, `automationTools`, `train`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/Feature/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/Feature/ready`.
+            public var ready: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/Feature/needs`.
+            public var needs: [Components.Schemas.FeatureNeed]
+            /// What setting up its missing needs downloads
+            ///
+            /// - Remark: Generated from `#/components/schemas/Feature/setup_bytes`.
+            public var setupBytes: Swift.Int64
+            /// - Remark: Generated from `#/components/schemas/Feature/installing`.
+            public var installing: Swift.Bool
+            /// Creates a new `Feature`.
+            ///
+            /// - Parameters:
+            ///   - id: Known values: `voice`, `door`, `pictures`, `clips`, `see`, `meaning`, `automationTools`, `train`; others may be added.
+            ///   - ready:
+            ///   - needs:
+            ///   - setupBytes: What setting up its missing needs downloads
+            ///   - installing:
+            public init(
+                id: Swift.String,
+                ready: Swift.Bool,
+                needs: [Components.Schemas.FeatureNeed],
+                setupBytes: Swift.Int64,
+                installing: Swift.Bool
+            ) {
+                self.id = id
+                self.ready = ready
+                self.needs = needs
+                self.setupBytes = setupBytes
+                self.installing = installing
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case ready
+                case needs
+                case setupBytes = "setup_bytes"
+                case installing
+            }
+        }
+        /// One thing a feature needs, and what would set it up
+        ///
+        /// - Remark: Generated from `#/components/schemas/FeatureNeed`.
+        public struct FeatureNeed: Codable, Hashable, Sendable {
+            /// Known values: `chat`, `tools`, `vision`, `embedding`, `voice`, `images`, `video`, `trainer`, `camera`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/need`.
+            public var need: Swift.String
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/ready`.
+            public var ready: Swift.Bool
+            /// How setup installs it; absent when nothing here can Known values: `model`, `voice`, `images`, `video`; others may be added.
+            ///
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/install`.
+            public var install: Swift.String?
+            /// The model it installs
+            ///
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/option`.
+            public var option: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/name`.
+            public var name: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/size_bytes`.
+            public var sizeBytes: Swift.Int64?
+            /// The paired computer it is set up on
+            ///
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/node_id`.
+            public var nodeId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/node_name`.
+            public var nodeName: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/installing`.
+            public var installing: Swift.Bool?
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/percent`.
+            public var percent: Swift.Int?
+            /// Why it can't be set up here, when this computer says
+            ///
+            /// - Remark: Generated from `#/components/schemas/FeatureNeed/detail`.
+            public var detail: Swift.String?
+            /// Creates a new `FeatureNeed`.
+            ///
+            /// - Parameters:
+            ///   - need: Known values: `chat`, `tools`, `vision`, `embedding`, `voice`, `images`, `video`, `trainer`, `camera`; others may be added.
+            ///   - ready:
+            ///   - install: How setup installs it; absent when nothing here can Known values: `model`, `voice`, `images`, `video`; others may be added.
+            ///   - option: The model it installs
+            ///   - name:
+            ///   - sizeBytes:
+            ///   - nodeId: The paired computer it is set up on
+            ///   - nodeName:
+            ///   - installing:
+            ///   - percent:
+            ///   - detail: Why it can't be set up here, when this computer says
+            public init(
+                need: Swift.String,
+                ready: Swift.Bool,
+                install: Swift.String? = nil,
+                option: Swift.String? = nil,
+                name: Swift.String? = nil,
+                sizeBytes: Swift.Int64? = nil,
+                nodeId: Swift.String? = nil,
+                nodeName: Swift.String? = nil,
+                installing: Swift.Bool? = nil,
+                percent: Swift.Int? = nil,
+                detail: Swift.String? = nil
+            ) {
+                self.need = need
+                self.ready = ready
+                self.install = install
+                self.option = option
+                self.name = name
+                self.sizeBytes = sizeBytes
+                self.nodeId = nodeId
+                self.nodeName = nodeName
+                self.installing = installing
+                self.percent = percent
+                self.detail = detail
+            }
+            public enum CodingKeys: String, CodingKey {
+                case need
+                case ready
+                case install
+                case option
+                case name
+                case sizeBytes = "size_bytes"
+                case nodeId = "node_id"
+                case nodeName = "node_name"
+                case installing
+                case percent
+                case detail
+            }
+        }
+        /// An Ollama API answer, in the shape Ollama gives for the endpoint (#1356)
+        ///
+        /// - Remark: Generated from `#/components/schemas/OllamaAnswer`.
+        public struct OllamaAnswer: Codable, Hashable, Sendable {
+            /// A container of undocumented properties.
+            public var additionalProperties: OpenAPIRuntime.OpenAPIObjectContainer
+            /// Creates a new `OllamaAnswer`.
+            ///
+            /// - Parameters:
+            ///   - additionalProperties: A container of undocumented properties.
+            public init(additionalProperties: OpenAPIRuntime.OpenAPIObjectContainer = .init()) {
+                self.additionalProperties = additionalProperties
+            }
+            public init(from decoder: any Decoder) throws {
+                additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+            }
+            public func encode(to encoder: any Encoder) throws {
+                try encoder.encodeAdditionalProperties(additionalProperties)
+            }
+        }
+        /// What clearing an automation's history removed
+        ///
+        /// - Remark: Generated from `#/components/schemas/ClearedRuns`.
+        public struct ClearedRuns: Codable, Hashable, Sendable {
+            /// Finished runs removed
+            ///
+            /// - Remark: Generated from `#/components/schemas/ClearedRuns/runs`.
+            public var runs: Swift.Int
+            /// Camera pictures removed with them
+            ///
+            /// - Remark: Generated from `#/components/schemas/ClearedRuns/files`.
+            public var files: Swift.Int
+            /// Creates a new `ClearedRuns`.
+            ///
+            /// - Parameters:
+            ///   - runs: Finished runs removed
+            ///   - files: Camera pictures removed with them
+            public init(
+                runs: Swift.Int,
+                files: Swift.Int
+            ) {
+                self.runs = runs
+                self.files = files
+            }
+            public enum CodingKeys: String, CodingKey {
+                case runs
+                case files
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/VoicePersona`.
+        public struct VoicePersona: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/VoicePersona/id`.
+            public var id: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/VoicePersona/name`.
+            public var name: Swift.String?
+            /// A language code
+            ///
+            /// - Remark: Generated from `#/components/schemas/VoicePersona/language`.
+            public var language: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/VoicePersona/voice`.
+            public var voice: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/VoicePersona/speed`.
+            public var speed: Swift.Double?
+            /// Whether its voice can read here now; only in answers
+            ///
+            /// - Remark: Generated from `#/components/schemas/VoicePersona/reads`.
+            public var reads: Swift.Bool?
+            /// The voice that reads in its place when reads is false
+            ///
+            /// - Remark: Generated from `#/components/schemas/VoicePersona/reads_with`.
+            public var readsWith: Swift.String?
+            /// Creates a new `VoicePersona`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - name:
+            ///   - language: A language code
+            ///   - voice:
+            ///   - speed:
+            ///   - reads: Whether its voice can read here now; only in answers
+            ///   - readsWith: The voice that reads in its place when reads is false
+            public init(
+                id: Swift.String? = nil,
+                name: Swift.String? = nil,
+                language: Swift.String? = nil,
+                voice: Swift.String? = nil,
+                speed: Swift.Double? = nil,
+                reads: Swift.Bool? = nil,
+                readsWith: Swift.String? = nil
+            ) {
+                self.id = id
+                self.name = name
+                self.language = language
+                self.voice = voice
+                self.speed = speed
+                self.reads = reads
+                self.readsWith = readsWith
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case name
+                case language
+                case voice
+                case speed
+                case reads
+                case readsWith = "reads_with"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/VoicePersonas`.
+        public struct VoicePersonas: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/VoicePersonas/personas`.
+            public var personas: [Components.Schemas.VoicePersona]
+            /// The persona you picked
+            ///
+            /// - Remark: Generated from `#/components/schemas/VoicePersonas/picked`.
+            public var picked: Swift.String
+            /// Creates a new `VoicePersonas`.
+            ///
+            /// - Parameters:
+            ///   - personas:
+            ///   - picked: The persona you picked
+            public init(
+                personas: [Components.Schemas.VoicePersona],
+                picked: Swift.String
+            ) {
+                self.personas = personas
+                self.picked = picked
+            }
+            public enum CodingKeys: String, CodingKey {
+                case personas
+                case picked
+            }
+        }
         /// The Voice settings (#1304, contract 1.112)
         ///
         /// - Remark: Generated from `#/components/schemas/VoiceSettings`.
@@ -10930,7 +11651,7 @@ public enum Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/AutomationInput/CamerasPayload/connector`.
                 public var connector: Swift.String
-                /// The camera as that service names it, such as Home Assistant's camera.driveway
+                /// The camera as that service names it, such as Home Assistant's camera.driveway, or Reolink's camera, and camera@4 for the one on its hub's channel 4 (#1333)
                 ///
                 /// - Remark: Generated from `#/components/schemas/AutomationInput/CamerasPayload/device`.
                 public var device: Swift.String
@@ -10938,7 +11659,7 @@ public enum Components {
                 ///
                 /// - Parameters:
                 ///   - connector: Known values: `homeassistant`, `reolink`; others may be added.
-                ///   - device: The camera as that service names it, such as Home Assistant's camera.driveway
+                ///   - device: The camera as that service names it, such as Home Assistant's camera.driveway, or Reolink's camera, and camera@4 for the one on its hub's channel 4 (#1333)
                 public init(
                     connector: Swift.String,
                     device: Swift.String
@@ -10967,7 +11688,7 @@ public enum Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/AutomationInput/say/connector`.
                 public var connector: Swift.String
-                /// Always camera: one Reolink connection is one camera
+                /// camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
                 ///
                 /// - Remark: Generated from `#/components/schemas/AutomationInput/say/device`.
                 public var device: Swift.String
@@ -10985,22 +11706,28 @@ public enum Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/AutomationInput/say/listen`.
                 public var listen: Swift.Bool?
+                /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationInput/say/no_thinking_sound`.
+                public var noThinkingSound: Swift.Bool?
                 /// Creates a new `SayPayload`.
                 ///
                 /// - Parameters:
                 ///   - connector: Known values: `reolink`; others may be added.
-                ///   - device: Always camera: one Reolink connection is one camera
+                ///   - device: camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
                 ///   - quietFrom: With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
                 ///   - quietTo:
                 ///   - voice: The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
                 ///   - listen: Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+                ///   - noThinkingSound: Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
                 public init(
                     connector: Swift.String,
                     device: Swift.String,
                     quietFrom: Swift.String? = nil,
                     quietTo: Swift.String? = nil,
                     voice: Swift.String? = nil,
-                    listen: Swift.Bool? = nil
+                    listen: Swift.Bool? = nil,
+                    noThinkingSound: Swift.Bool? = nil
                 ) {
                     self.connector = connector
                     self.device = device
@@ -11008,6 +11735,7 @@ public enum Components {
                     self.quietTo = quietTo
                     self.voice = voice
                     self.listen = listen
+                    self.noThinkingSound = noThinkingSound
                 }
                 public enum CodingKeys: String, CodingKey {
                     case connector
@@ -11016,6 +11744,7 @@ public enum Components {
                     case quietTo = "quiet_to"
                     case voice
                     case listen
+                    case noThinkingSound = "no_thinking_sound"
                 }
             }
             /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
@@ -11320,7 +12049,7 @@ public enum Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/Automation/say/connector`.
                 public var connector: Swift.String
-                /// Always camera: one Reolink connection is one camera
+                /// camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
                 ///
                 /// - Remark: Generated from `#/components/schemas/Automation/say/device`.
                 public var device: Swift.String
@@ -11338,22 +12067,28 @@ public enum Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/Automation/say/listen`.
                 public var listen: Swift.Bool?
+                /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+                ///
+                /// - Remark: Generated from `#/components/schemas/Automation/say/no_thinking_sound`.
+                public var noThinkingSound: Swift.Bool?
                 /// Creates a new `SayPayload`.
                 ///
                 /// - Parameters:
                 ///   - connector: Known values: `reolink`; others may be added.
-                ///   - device: Always camera: one Reolink connection is one camera
+                ///   - device: camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
                 ///   - quietFrom: With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
                 ///   - quietTo:
                 ///   - voice: The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
                 ///   - listen: Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+                ///   - noThinkingSound: Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
                 public init(
                     connector: Swift.String,
                     device: Swift.String,
                     quietFrom: Swift.String? = nil,
                     quietTo: Swift.String? = nil,
                     voice: Swift.String? = nil,
-                    listen: Swift.Bool? = nil
+                    listen: Swift.Bool? = nil,
+                    noThinkingSound: Swift.Bool? = nil
                 ) {
                     self.connector = connector
                     self.device = device
@@ -11361,6 +12096,7 @@ public enum Components {
                     self.quietTo = quietTo
                     self.voice = voice
                     self.listen = listen
+                    self.noThinkingSound = noThinkingSound
                 }
                 public enum CodingKeys: String, CodingKey {
                     case connector
@@ -11369,6 +12105,7 @@ public enum Components {
                     case quietTo = "quiet_to"
                     case voice
                     case listen
+                    case noThinkingSound = "no_thinking_sound"
                 }
             }
             /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
@@ -15910,6 +16647,10 @@ public enum Components {
         public struct QualityResults: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/QualityResults/live`.
             public var live: Swift.Bool
+            /// The quality_results setting is off, so nothing was read (#1415, contract 1.124)
+            ///
+            /// - Remark: Generated from `#/components/schemas/QualityResults/off`.
+            public var off: Swift.Bool?
             /// - Remark: Generated from `#/components/schemas/QualityResults/note`.
             public var note: Swift.String?
             /// How the results are measured
@@ -15942,18 +16683,21 @@ public enum Components {
             ///
             /// - Parameters:
             ///   - live:
+            ///   - off: The quality_results setting is off, so nothing was read (#1415, contract 1.124)
             ///   - note:
             ///   - method: How the results are measured
             ///   - suites:
             ///   - results:
             public init(
                 live: Swift.Bool,
+                off: Swift.Bool? = nil,
                 note: Swift.String? = nil,
                 method: Swift.String? = nil,
                 suites: Components.Schemas.QualityResults.SuitesPayload? = nil,
                 results: [Components.Schemas.QualityResult]
             ) {
                 self.live = live
+                self.off = off
                 self.note = note
                 self.method = method
                 self.suites = suites
@@ -15961,6 +16705,7 @@ public enum Components {
             }
             public enum CodingKeys: String, CodingKey {
                 case live
+                case off
                 case note
                 case method
                 case suites
@@ -17592,7 +18337,7 @@ public enum Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/connector`.
                 public var connector: Swift.String
-                /// Always camera: one Reolink connection is one camera
+                /// camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
                 ///
                 /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/device`.
                 public var device: Swift.String
@@ -17610,22 +18355,28 @@ public enum Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/listen`.
                 public var listen: Swift.Bool?
+                /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationDetail/say/no_thinking_sound`.
+                public var noThinkingSound: Swift.Bool?
                 /// Creates a new `SayPayload`.
                 ///
                 /// - Parameters:
                 ///   - connector: Known values: `reolink`; others may be added.
-                ///   - device: Always camera: one Reolink connection is one camera
+                ///   - device: camera, the connection's own camera, or camera@4 for the camera on its hub's channel 4 (#1333, contract 1.133)
                 ///   - quietFrom: With quiet_to, such as 22:00 and 07:00: the hours, in the automation's time zone, when nothing is said. The run still notifies.
                 ///   - quietTo:
                 ///   - voice: The voice it speaks in, such as kitten:en:eleanor (#1304, contract 1.112); empty is the one chosen for the language in the Voice settings. One no longer here leaves it to that.
                 ///   - listen: Talks with the visitor: greets them with a fixed greeting in the automation's language as soon as the run starts, without looking at the picture first, then hears them through the camera's microphone with reolink-cli and ffmpeg, answers up to 6 times, and the run's result is the visit summed up, then what was said (#667, contract 1.114)
+                ///   - noThinkingSound: Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
                 public init(
                     connector: Swift.String,
                     device: Swift.String,
                     quietFrom: Swift.String? = nil,
                     quietTo: Swift.String? = nil,
                     voice: Swift.String? = nil,
-                    listen: Swift.Bool? = nil
+                    listen: Swift.Bool? = nil,
+                    noThinkingSound: Swift.Bool? = nil
                 ) {
                     self.connector = connector
                     self.device = device
@@ -17633,6 +18384,7 @@ public enum Components {
                     self.quietTo = quietTo
                     self.voice = voice
                     self.listen = listen
+                    self.noThinkingSound = noThinkingSound
                 }
                 public enum CodingKeys: String, CodingKey {
                     case connector
@@ -17641,6 +18393,7 @@ public enum Components {
                     case quietTo = "quiet_to"
                     case voice
                     case listen
+                    case noThinkingSound = "no_thinking_sound"
                 }
             }
             /// Speaks each run's answer through a camera's speaker (#667, contract 1.110), such as a Reolink doorbell's, read by this computer's voice. The run is told its answer is spoken and answers NOTHING when nobody is there, and then nothing is said. Only an Admin or the Owner sets it. On update, one with no connector stops speaking.
@@ -18114,6 +18867,10 @@ public enum Components {
                 public var voice: Swift.String?
                 /// - Remark: Generated from `#/components/schemas/AutomationRequest/say/listen`.
                 public var listen: Swift.Bool?
+                /// Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
+                ///
+                /// - Remark: Generated from `#/components/schemas/AutomationRequest/say/no_thinking_sound`.
+                public var noThinkingSound: Swift.Bool?
                 /// Creates a new `SayPayload`.
                 ///
                 /// - Parameters:
@@ -18123,13 +18880,15 @@ public enum Components {
                 ///   - quietTo:
                 ///   - voice:
                 ///   - listen:
+                ///   - noThinkingSound: Leaves out the soft chime the door plays while a visitor waits more than a moment for an answer (#1334, contract 1.121). Off by default, so the chime plays; quiet hours mute it too.
                 public init(
                     connector: Swift.String,
                     device: Swift.String,
                     quietFrom: Swift.String? = nil,
                     quietTo: Swift.String? = nil,
                     voice: Swift.String? = nil,
-                    listen: Swift.Bool? = nil
+                    listen: Swift.Bool? = nil,
+                    noThinkingSound: Swift.Bool? = nil
                 ) {
                     self.connector = connector
                     self.device = device
@@ -18137,6 +18896,7 @@ public enum Components {
                     self.quietTo = quietTo
                     self.voice = voice
                     self.listen = listen
+                    self.noThinkingSound = noThinkingSound
                 }
                 public enum CodingKeys: String, CodingKey {
                     case connector
@@ -18145,6 +18905,7 @@ public enum Components {
                     case quietTo = "quiet_to"
                     case voice
                     case listen
+                    case noThinkingSound = "no_thinking_sound"
                 }
             }
             /// Speaking at the door, for a request to greet or answer the visitor (#1341): connector reolink and device camera, and listen to talk with them
@@ -31675,7 +32436,7 @@ public enum Operations {
     }
     /// Save your own languages (#206)
     ///
-    /// The request's person's App language and assistant language, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
+    /// The request's person's App language, assistant language, model suggestions, thinking sound, and notices for their finished automations, whatever their role. The Owner's are the install's, which others start from until they choose. Answers with the person's settings.
     ///
     /// - Remark: HTTP `PATCH /api/v1/me/preferences`.
     /// - Remark: Generated from `#/paths//api/v1/me/preferences/patch(setMyPreferences)`.
@@ -31706,25 +32467,57 @@ public enum Operations {
                     public var assistantLanguageMode: Swift.String?
                     /// - Remark: Generated from `#/paths/api/v1/me/preferences/PATCH/requestBody/json/assistant_language`.
                     public var assistantLanguage: Swift.String?
+                    /// Answers may offer a better-fitting model to install (#707)
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/me/preferences/PATCH/requestBody/json/suggest_models`.
+                    public var suggestModels: Swift.Bool?
+                    /// Voice chat plays a soft chime while a spoken answer takes a while (#1334, contract 1.121); on by default
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/me/preferences/PATCH/requestBody/json/thinking_sound`.
+                    public var thinkingSound: Swift.Bool?
+                    /// The character you see in voice chat, whose mouth moves with the spoken answer (#1369, contract 1.130); ratatoskr until you choose, and none for the plain circle (contract 1.135). "" from older apps means none Known values: ``, `none`, `ratatoskr`, `pebble`, `lumen`; others may be added.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/me/preferences/PATCH/requestBody/json/voice_avatar`.
+                    public var voiceAvatar: Swift.String?
+                    /// Your finished automations notify you, with a push to your own phones and, for the Owner, a desktop notice (#1391, contract 1.128); until you choose, the Owner's choice. On by default
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/me/preferences/PATCH/requestBody/json/notify_task_finish`.
+                    public var notifyTaskFinish: Swift.Bool?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
                     ///   - uiLocale:
                     ///   - assistantLanguageMode: Known values: `auto`, `app`, `language`; others may be added.
                     ///   - assistantLanguage:
+                    ///   - suggestModels: Answers may offer a better-fitting model to install (#707)
+                    ///   - thinkingSound: Voice chat plays a soft chime while a spoken answer takes a while (#1334, contract 1.121); on by default
+                    ///   - voiceAvatar: The character you see in voice chat, whose mouth moves with the spoken answer (#1369, contract 1.130); ratatoskr until you choose, and none for the plain circle (contract 1.135). "" from older apps means none Known values: ``, `none`, `ratatoskr`, `pebble`, `lumen`; others may be added.
+                    ///   - notifyTaskFinish: Your finished automations notify you, with a push to your own phones and, for the Owner, a desktop notice (#1391, contract 1.128); until you choose, the Owner's choice. On by default
                     public init(
                         uiLocale: Swift.String? = nil,
                         assistantLanguageMode: Swift.String? = nil,
-                        assistantLanguage: Swift.String? = nil
+                        assistantLanguage: Swift.String? = nil,
+                        suggestModels: Swift.Bool? = nil,
+                        thinkingSound: Swift.Bool? = nil,
+                        voiceAvatar: Swift.String? = nil,
+                        notifyTaskFinish: Swift.Bool? = nil
                     ) {
                         self.uiLocale = uiLocale
                         self.assistantLanguageMode = assistantLanguageMode
                         self.assistantLanguage = assistantLanguage
+                        self.suggestModels = suggestModels
+                        self.thinkingSound = thinkingSound
+                        self.voiceAvatar = voiceAvatar
+                        self.notifyTaskFinish = notifyTaskFinish
                     }
                     public enum CodingKeys: String, CodingKey {
                         case uiLocale = "ui_locale"
                         case assistantLanguageMode = "assistant_language_mode"
                         case assistantLanguage = "assistant_language"
+                        case suggestModels = "suggest_models"
+                        case thinkingSound = "thinking_sound"
+                        case voiceAvatar = "voice_avatar"
+                        case notifyTaskFinish = "notify_task_finish"
                     }
                     public init(from decoder: any Decoder) throws {
                         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -31740,10 +32533,30 @@ public enum Operations {
                             Swift.String.self,
                             forKey: .assistantLanguage
                         )
+                        self.suggestModels = try container.decodeIfPresent(
+                            Swift.Bool.self,
+                            forKey: .suggestModels
+                        )
+                        self.thinkingSound = try container.decodeIfPresent(
+                            Swift.Bool.self,
+                            forKey: .thinkingSound
+                        )
+                        self.voiceAvatar = try container.decodeIfPresent(
+                            Swift.String.self,
+                            forKey: .voiceAvatar
+                        )
+                        self.notifyTaskFinish = try container.decodeIfPresent(
+                            Swift.Bool.self,
+                            forKey: .notifyTaskFinish
+                        )
                         try decoder.ensureNoAdditionalProperties(knownKeys: [
                             "ui_locale",
                             "assistant_language_mode",
-                            "assistant_language"
+                            "assistant_language",
+                            "suggest_models",
+                            "thinking_sound",
+                            "voice_avatar",
+                            "notify_task_finish"
                         ])
                     }
                 }
@@ -34462,7 +35275,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// OK. For Admins and the Owner, network_access (#711, contract 1.42) counts who could use Toskar from another computer: people (who sign in with a username and password, or still have a link to choose them), devices (connected with a code), stale_devices (how many of those are likely left over: never used a day after pairing, or unused for 90 days; #1266, contract 1.109), keys (API keys for apps and scripts), and sign_in_service (a trusted proxy or OpenID Connect provider). lan_api_enabled can be turned on when any of them is there. For a key of someone below Admin, such as a Member's phone, data_dir, models_dir, runtimes_dir, logs_dir, api_host, node_id, remote_access_address and remote_access_relay are empty (#1264).
+            /// OK. For Admins and the Owner, network_access (#711, contract 1.42) counts who could use Toskar from another computer: people (who sign in with a username and password, or still have a link to choose them), devices (connected with a code), stale_devices (how many of those are likely left over: never used a day after pairing, or unused for 90 days; #1266, contract 1.109), keys (API keys for apps and scripts), and sign_in_service (a trusted proxy or OpenID Connect provider). lan_api_enabled can be turned on when any of them is there. For a key of someone below Admin, such as a Member's phone, data_dir, models_dir, runtimes_dir, logs_dir, api_host, node_id, remote_access_address and remote_access_relay are empty (#1264). ollama_port_enabled (#1396, contract 1.127) also serves Ollama's API on port 11434, on this computer only, set with PATCH; ollama_port_listening says whether it is, and ollama_port_error why not (in_use when another program has the port; PATCH then answers OLLAMA_PORT_IN_USE and the setting stays off).
             ///
             /// - Remark: Generated from `#/paths//api/v1/settings/get(getSettings)/responses/200`.
             ///
@@ -42608,7 +43421,7 @@ public enum Operations {
     }
     /// Send a problem report to Toskar (#588)
     ///
-    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF when an Admin turned problem_reports off; 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
+    /// Body {product (core, the default, or apps), app, where, code, error, note, email, details}. Core scrubs the error and note as it scrubs its own report, adds that report when details is true, and sends it to Toskar's report service (https://toskar.ai/api/report, or TOSKAR_REPORT_URL), which files it as an issue in a private repository, grouped with others for the same error and version. A reply address goes to the Toskar team by email, never into the issue. Answers {status: created or added, number}. Each one is listed in What left this computer as problem_report. Members and paired devices may send. 400 REPORT_INVALID; 403 REPORTS_OFF while problem_reports is off (the default); 429 REPORT_RATE_LIMITED; 502 REPORTS_UNAVAILABLE when the service can't be reached or isn't set up, for the client to send by email instead (contract 1.40).
     ///
     /// - Remark: HTTP `POST /api/v1/diagnostics/report`.
     /// - Remark: Generated from `#/paths//api/v1/diagnostics/report/post(sendReport)`.
@@ -43133,6 +43946,1462 @@ public enum Operations {
             /// - Throws: An error if `self` is not `.ok`.
             /// - SeeAlso: `.ok`.
             public var ok: Operations.OpenaiListModels.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama-compatible model list
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Lists auto, each profile, and what else the key may ask for, as /v1/models does.
+    ///
+    /// - Remark: HTTP `GET /api/tags`.
+    /// - Remark: Generated from `#/paths//api/tags/get(ollamaTags)`.
+    public enum OllamaTags {
+        public static let id: Swift.String = "ollamaTags"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/tags/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaTags.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaTags.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaTags.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaTags.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/tags/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/tags/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaTags.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaTags.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/tags/get(ollamaTags)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaTags.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaTags.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama-compatible chat
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Answered through /v1/chat/completions, so Auto and profiles behave the same. Streams a JSON object per line unless stream is false. Images, format (json or a JSON schema), think, and options (temperature, top_p, top_k, min_p, seed, num_predict, stop) are passed on; an app's tools reach the model on raw:<model>. A model name's :latest is ignored.
+    ///
+    /// - Remark: HTTP `POST /api/chat`.
+    /// - Remark: Generated from `#/paths//api/chat/post(ollamaChat)`.
+    public enum OllamaChat {
+        public static let id: Swift.String = "ollamaChat"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/chat/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaChat.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaChat.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaChat.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaChat.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/chat/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/chat/POST/responses/200/content/application\/x-ndjson`.
+                    case applicationXNdjson(OpenAPIRuntime.HTTPBody)
+                    /// The associated value of the enum case if `self` is `.applicationXNdjson`.
+                    ///
+                    /// - Throws: An error if `self` is not `.applicationXNdjson`.
+                    /// - SeeAlso: `.applicationXNdjson`.
+                    public var applicationXNdjson: OpenAPIRuntime.HTTPBody {
+                        get throws {
+                            switch self {
+                            case let .applicationXNdjson(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaChat.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaChat.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/chat/post(ollamaChat)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaChat.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaChat.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case applicationXNdjson
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/x-ndjson":
+                    self = .applicationXNdjson
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .applicationXNdjson:
+                    return "application/x-ndjson"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .applicationXNdjson
+                ]
+            }
+        }
+    }
+    /// Ollama-compatible completion
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. A prompt with an optional system prompt and images, answered as /api/chat answers; an empty prompt answers done_reason load.
+    ///
+    /// - Remark: HTTP `POST /api/generate`.
+    /// - Remark: Generated from `#/paths//api/generate/post(ollamaGenerate)`.
+    public enum OllamaGenerate {
+        public static let id: Swift.String = "ollamaGenerate"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/generate/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaGenerate.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaGenerate.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaGenerate.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaGenerate.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/generate/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/generate/POST/responses/200/content/application\/x-ndjson`.
+                    case applicationXNdjson(OpenAPIRuntime.HTTPBody)
+                    /// The associated value of the enum case if `self` is `.applicationXNdjson`.
+                    ///
+                    /// - Throws: An error if `self` is not `.applicationXNdjson`.
+                    /// - SeeAlso: `.applicationXNdjson`.
+                    public var applicationXNdjson: OpenAPIRuntime.HTTPBody {
+                        get throws {
+                            switch self {
+                            case let .applicationXNdjson(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaGenerate.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaGenerate.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/generate/post(ollamaGenerate)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaGenerate.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaGenerate.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case applicationXNdjson
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/x-ndjson":
+                    self = .applicationXNdjson
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .applicationXNdjson:
+                    return "application/x-ndjson"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .applicationXNdjson
+                ]
+            }
+        }
+    }
+    /// Ollama-compatible model details
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Capabilities are completion and vision for auto and profiles, and completion and tools for raw: and swarm: models; an unknown model answers 404.
+    ///
+    /// - Remark: HTTP `POST /api/show`.
+    /// - Remark: Generated from `#/paths//api/show/post(ollamaShow)`.
+    public enum OllamaShow {
+        public static let id: Swift.String = "ollamaShow"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/show/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaShow.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaShow.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaShow.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaShow.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/show/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/show/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaShow.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaShow.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/show/post(ollamaShow)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaShow.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaShow.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama-compatible running models
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Toskar starts and stops models itself, so the list is empty.
+    ///
+    /// - Remark: HTTP `GET /api/ps`.
+    /// - Remark: Generated from `#/paths//api/ps/get(ollamaPs)`.
+    public enum OllamaPs {
+        public static let id: Swift.String = "ollamaPs"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/ps/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaPs.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaPs.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaPs.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaPs.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/ps/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/ps/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaPs.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaPs.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/ps/get(ollamaPs)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaPs.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaPs.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama API version
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. The Ollama API version these endpoints follow.
+    ///
+    /// - Remark: HTTP `GET /api/version`.
+    /// - Remark: Generated from `#/paths//api/version/get(ollamaVersion)`.
+    public enum OllamaVersion {
+        public static let id: Swift.String = "ollamaVersion"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/version/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaVersion.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaVersion.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaVersion.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaVersion.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/version/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/version/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaVersion.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaVersion.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/version/get(ollamaVersion)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaVersion.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaVersion.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama-compatible embeddings
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. Embeds input (a string or strings) with the embedding model knowledge uses; /api/embeddings takes the older prompt and answers {embedding}. With none installed it answers 400.
+    ///
+    /// - Remark: HTTP `POST /api/embed`.
+    /// - Remark: Generated from `#/paths//api/embed/post(ollamaEmbed)`.
+    public enum OllamaEmbed {
+        public static let id: Swift.String = "ollamaEmbed"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/embed/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaEmbed.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaEmbed.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaEmbed.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaEmbed.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/embed/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/embed/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaEmbed.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaEmbed.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/embed/post(ollamaEmbed)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaEmbed.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaEmbed.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API, for apps that offer only Ollama (#1356, contract 1.120). Keys and permissions are as on /v1/chat/completions, and errors are Ollama's {"error": message}. pull, push, create, copy, and delete answer 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/pull`.
+    /// - Remark: Generated from `#/paths//api/pull/post(ollamaPull)`.
+    public enum OllamaPull {
+        public static let id: Swift.String = "ollamaPull"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/pull/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaPull.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaPull.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaPull.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaPull.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/pull/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/pull/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaPull.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaPull.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/pull/post(ollamaPull)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaPull.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaPull.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama-compatible embeddings, older form
+    ///
+    /// Ollama's API (#1356, contract 1.120). One prompt, answered as {embedding}, with the embedding model /api/embed uses.
+    ///
+    /// - Remark: HTTP `POST /api/embeddings`.
+    /// - Remark: Generated from `#/paths//api/embeddings/post(ollamaEmbeddings)`.
+    public enum OllamaEmbeddings {
+        public static let id: Swift.String = "ollamaEmbeddings"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/embeddings/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaEmbeddings.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaEmbeddings.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaEmbeddings.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaEmbeddings.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/embeddings/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/embeddings/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaEmbeddings.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaEmbeddings.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/embeddings/post(ollamaEmbeddings)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaEmbeddings.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaEmbeddings.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/push`.
+    /// - Remark: Generated from `#/paths//api/push/post(ollamaPush)`.
+    public enum OllamaPush {
+        public static let id: Swift.String = "ollamaPush"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/push/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaPush.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaPush.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaPush.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaPush.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/push/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/push/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaPush.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaPush.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/push/post(ollamaPush)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaPush.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaPush.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/create`.
+    /// - Remark: Generated from `#/paths//api/create/post(ollamaCreate)`.
+    public enum OllamaCreate {
+        public static let id: Swift.String = "ollamaCreate"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/create/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaCreate.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaCreate.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaCreate.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaCreate.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/create/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/create/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaCreate.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaCreate.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/create/post(ollamaCreate)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaCreate.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaCreate.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `POST /api/copy`.
+    /// - Remark: Generated from `#/paths//api/copy/post(ollamaCopy)`.
+    public enum OllamaCopy {
+        public static let id: Swift.String = "ollamaCopy"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/copy/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaCopy.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaCopy.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaCopy.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaCopy.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/copy/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/copy/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaCopy.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaCopy.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/copy/post(ollamaCopy)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaCopy.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaCopy.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Ollama model management
+    ///
+    /// Ollama's API (#1356, contract 1.120). Answers 403: Toskar manages its models on its Models page.
+    ///
+    /// - Remark: HTTP `DELETE /api/delete`.
+    /// - Remark: Generated from `#/paths//api/delete/delete(ollamaDelete)`.
+    public enum OllamaDelete {
+        public static let id: Swift.String = "ollamaDelete"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/delete/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaDelete.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OllamaDelete.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OllamaDelete.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.OllamaDelete.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/delete/DELETE/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/delete/DELETE/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OllamaAnswer)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OllamaAnswer {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OllamaDelete.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OllamaDelete.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Ollama's answer
+            ///
+            /// - Remark: Generated from `#/paths//api/delete/delete(ollamaDelete)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OllamaDelete.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OllamaDelete.Output.Ok {
                 get throws {
                     switch self {
                     case let .ok(response):
@@ -43846,6 +46115,668 @@ public enum Operations {
             ///
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+    }
+    /// OpenAI Embeddings
+    ///
+    /// Embeds input with the installed embedding model, the one knowledge search uses (#1357, contract 1.125), whatever model the request names. input is a string or a list of up to 2048 strings; token arrays are refused. encoding_format is float (the default) or base64 (little-endian float32s). dimensions, when given, must be the model's own. usage counts about four characters a token.
+    ///
+    /// - Remark: HTTP `POST /v1/embeddings`.
+    /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)`.
+    public enum OpenaiEmbeddings {
+        public static let id: Swift.String = "openaiEmbeddings"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/embeddings/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/embeddings/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/v1/embeddings/POST/requestBody/json/model`.
+                    public var model: Swift.String?
+                    /// A string or a list of strings
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/embeddings/POST/requestBody/json/input`.
+                    public var input: OpenAPIRuntime.OpenAPIValueContainer
+                    /// Known values: `float`, `base64`; others may be added.
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/embeddings/POST/requestBody/json/encoding_format`.
+                    public var encodingFormat: Swift.String?
+                    /// - Remark: Generated from `#/paths/v1/embeddings/POST/requestBody/json/dimensions`.
+                    public var dimensions: Swift.Int?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - model:
+                    ///   - input: A string or a list of strings
+                    ///   - encodingFormat: Known values: `float`, `base64`; others may be added.
+                    ///   - dimensions:
+                    public init(
+                        model: Swift.String? = nil,
+                        input: OpenAPIRuntime.OpenAPIValueContainer,
+                        encodingFormat: Swift.String? = nil,
+                        dimensions: Swift.Int? = nil
+                    ) {
+                        self.model = model
+                        self.input = input
+                        self.encodingFormat = encodingFormat
+                        self.dimensions = dimensions
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case model
+                        case input
+                        case encodingFormat = "encoding_format"
+                        case dimensions
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/embeddings/POST/requestBody/content/application\/json`.
+                case json(Operations.OpenaiEmbeddings.Input.Body.JsonPayload)
+            }
+            public var body: Operations.OpenaiEmbeddings.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - body:
+            public init(body: Operations.OpenaiEmbeddings.Input.Body) {
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// Creates a new `Ok`.
+                public init() {}
+            }
+            /// A list: data of {object: embedding, index, embedding}, model, and usage
+            ///
+            /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OpenaiEmbeddings.Output.Ok)
+            /// A list: data of {object: embedding, index, embedding}, model, and usage
+            ///
+            /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            public static var ok: Self {
+                .ok(.init())
+            }
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OpenaiEmbeddings.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// invalid_request_error, such as token arrays, an empty input, or other dimensions
+            ///
+            /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.OpenaiEmbeddings.Output.BadRequest)
+            /// invalid_request_error, such as token arrays, an empty input, or other dimensions
+            ///
+            /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.OpenaiEmbeddings.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct ServiceUnavailable: Sendable, Hashable {
+                /// Creates a new `ServiceUnavailable`.
+                public init() {}
+            }
+            /// EMBEDDINGS_UNAVAILABLE, with how to set up an embedding model when none is installed
+            ///
+            /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            case serviceUnavailable(Operations.OpenaiEmbeddings.Output.ServiceUnavailable)
+            /// EMBEDDINGS_UNAVAILABLE, with how to set up an embedding model when none is installed
+            ///
+            /// - Remark: Generated from `#/paths//v1/embeddings/post(openaiEmbeddings)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            public static var serviceUnavailable: Self {
+                .serviceUnavailable(.init())
+            }
+            /// The associated value of the enum case if `self` is `.serviceUnavailable`.
+            ///
+            /// - Throws: An error if `self` is not `.serviceUnavailable`.
+            /// - SeeAlso: `.serviceUnavailable`.
+            public var serviceUnavailable: Operations.OpenaiEmbeddings.Output.ServiceUnavailable {
+                get throws {
+                    switch self {
+                    case let .serviceUnavailable(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "serviceUnavailable",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+    }
+    /// OpenAI audio transcriptions
+    ///
+    /// Turns a recording into text with Whisper on this computer, at the quality voice mode hears with (#1357, contract 1.125), whatever model the request names. Multipart: file (at most 25 MB, any format ffmpeg reads), language (a hint such as en; empty detects it), and response_format, which is json (the default), text, verbose_json (with language, duration, and segments), srt, or vtt.
+    ///
+    /// - Remark: HTTP `POST /v1/audio/transcriptions`.
+    /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)`.
+    public enum OpenaiTranscriptions {
+        public static let id: Swift.String = "openaiTranscriptions"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/audio/transcriptions/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/audio/transcriptions/POST/requestBody/multipartForm`.
+                @frozen public enum MultipartFormPayload: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/audio/transcriptions/POST/requestBody/multipartForm/file`.
+                    public struct FilePayload: Sendable, Hashable {
+                        public var body: OpenAPIRuntime.HTTPBody
+                        /// Creates a new `FilePayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - body:
+                        public init(body: OpenAPIRuntime.HTTPBody) {
+                            self.body = body
+                        }
+                    }
+                    case file(OpenAPIRuntime.MultipartPart<Operations.OpenaiTranscriptions.Input.Body.MultipartFormPayload.FilePayload>)
+                    /// - Remark: Generated from `#/paths/v1/audio/transcriptions/POST/requestBody/multipartForm/model`.
+                    public struct ModelPayload: Sendable, Hashable {
+                        public var body: OpenAPIRuntime.HTTPBody
+                        /// Creates a new `ModelPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - body:
+                        public init(body: OpenAPIRuntime.HTTPBody) {
+                            self.body = body
+                        }
+                    }
+                    case model(OpenAPIRuntime.MultipartPart<Operations.OpenaiTranscriptions.Input.Body.MultipartFormPayload.ModelPayload>)
+                    /// - Remark: Generated from `#/paths/v1/audio/transcriptions/POST/requestBody/multipartForm/language`.
+                    public struct LanguagePayload: Sendable, Hashable {
+                        public var body: OpenAPIRuntime.HTTPBody
+                        /// Creates a new `LanguagePayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - body:
+                        public init(body: OpenAPIRuntime.HTTPBody) {
+                            self.body = body
+                        }
+                    }
+                    case language(OpenAPIRuntime.MultipartPart<Operations.OpenaiTranscriptions.Input.Body.MultipartFormPayload.LanguagePayload>)
+                    /// - Remark: Generated from `#/paths/v1/audio/transcriptions/POST/requestBody/multipartForm/response_format`.
+                    public struct ResponseFormatPayload: Sendable, Hashable {
+                        public var body: OpenAPIRuntime.HTTPBody
+                        /// Creates a new `ResponseFormatPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - body:
+                        public init(body: OpenAPIRuntime.HTTPBody) {
+                            self.body = body
+                        }
+                    }
+                    case responseFormat(OpenAPIRuntime.MultipartPart<Operations.OpenaiTranscriptions.Input.Body.MultipartFormPayload.ResponseFormatPayload>)
+                    case undocumented(OpenAPIRuntime.MultipartRawPart)
+                }
+                /// - Remark: Generated from `#/paths/v1/audio/transcriptions/POST/requestBody/content/multipart\/form-data`.
+                case multipartForm(OpenAPIRuntime.MultipartBody<Operations.OpenaiTranscriptions.Input.Body.MultipartFormPayload>)
+            }
+            public var body: Operations.OpenaiTranscriptions.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - body:
+            public init(body: Operations.OpenaiTranscriptions.Input.Body) {
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// Creates a new `Ok`.
+                public init() {}
+            }
+            /// {text}, or the text, verbose JSON, or subtitles asked for
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OpenaiTranscriptions.Output.Ok)
+            /// {text}, or the text, verbose JSON, or subtitles asked for
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            public static var ok: Self {
+                .ok(.init())
+            }
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OpenaiTranscriptions.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// invalid_request_error, such as no file
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.OpenaiTranscriptions.Output.BadRequest)
+            /// invalid_request_error, such as no file
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.OpenaiTranscriptions.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct ContentTooLarge: Sendable, Hashable {
+                /// Creates a new `ContentTooLarge`.
+                public init() {}
+            }
+            /// The file is larger than 25 MB
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)/responses/413`.
+            ///
+            /// HTTP response code: `413 contentTooLarge`.
+            case contentTooLarge(Operations.OpenaiTranscriptions.Output.ContentTooLarge)
+            /// The file is larger than 25 MB
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)/responses/413`.
+            ///
+            /// HTTP response code: `413 contentTooLarge`.
+            public static var contentTooLarge: Self {
+                .contentTooLarge(.init())
+            }
+            /// The associated value of the enum case if `self` is `.contentTooLarge`.
+            ///
+            /// - Throws: An error if `self` is not `.contentTooLarge`.
+            /// - SeeAlso: `.contentTooLarge`.
+            public var contentTooLarge: Operations.OpenaiTranscriptions.Output.ContentTooLarge {
+                get throws {
+                    switch self {
+                    case let .contentTooLarge(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "contentTooLarge",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct ServiceUnavailable: Sendable, Hashable {
+                /// Creates a new `ServiceUnavailable`.
+                public init() {}
+            }
+            /// SPEECH_UNAVAILABLE, with how to set speech up
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            case serviceUnavailable(Operations.OpenaiTranscriptions.Output.ServiceUnavailable)
+            /// SPEECH_UNAVAILABLE, with how to set speech up
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/transcriptions/post(openaiTranscriptions)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            public static var serviceUnavailable: Self {
+                .serviceUnavailable(.init())
+            }
+            /// The associated value of the enum case if `self` is `.serviceUnavailable`.
+            ///
+            /// - Throws: An error if `self` is not `.serviceUnavailable`.
+            /// - SeeAlso: `.serviceUnavailable`.
+            public var serviceUnavailable: Operations.OpenaiTranscriptions.Output.ServiceUnavailable {
+                get throws {
+                    switch self {
+                    case let .serviceUnavailable(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "serviceUnavailable",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+    }
+    /// OpenAI audio speech
+    ///
+    /// Reads input (at most 4096 characters) aloud in the voice live voice speaks with (#1357, contract 1.125), a sentence at a time, whatever model the request names. voice is a Kokoro, Piper, or Kitten voice; OpenAI's names, such as alloy, mean the language's own voice. response_format pcm answers raw 24 kHz 16-bit little-endian PCM; every other format, mp3 included, answers WAV, with Content-Type audio/wav.
+    ///
+    /// - Remark: HTTP `POST /v1/audio/speech`.
+    /// - Remark: Generated from `#/paths//v1/audio/speech/post(openaiSpeech)`.
+    public enum OpenaiSpeech {
+        public static let id: Swift.String = "openaiSpeech"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/audio/speech/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OpenaiSpeech.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.OpenaiSpeech.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.OpenaiSpeech.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/audio/speech/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/audio/speech/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/v1/audio/speech/POST/requestBody/json/model`.
+                    public var model: Swift.String?
+                    /// - Remark: Generated from `#/paths/v1/audio/speech/POST/requestBody/json/input`.
+                    public var input: Swift.String
+                    /// - Remark: Generated from `#/paths/v1/audio/speech/POST/requestBody/json/voice`.
+                    public var voice: Swift.String?
+                    /// Known values: `wav`, `pcm`, `mp3`, `opus`, `aac`, `flac`; others may be added.
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/audio/speech/POST/requestBody/json/response_format`.
+                    public var responseFormat: Swift.String?
+                    /// - Remark: Generated from `#/paths/v1/audio/speech/POST/requestBody/json/speed`.
+                    public var speed: Swift.Double?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - model:
+                    ///   - input:
+                    ///   - voice:
+                    ///   - responseFormat: Known values: `wav`, `pcm`, `mp3`, `opus`, `aac`, `flac`; others may be added.
+                    ///   - speed:
+                    public init(
+                        model: Swift.String? = nil,
+                        input: Swift.String,
+                        voice: Swift.String? = nil,
+                        responseFormat: Swift.String? = nil,
+                        speed: Swift.Double? = nil
+                    ) {
+                        self.model = model
+                        self.input = input
+                        self.voice = voice
+                        self.responseFormat = responseFormat
+                        self.speed = speed
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case model
+                        case input
+                        case voice
+                        case responseFormat = "response_format"
+                        case speed
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/audio/speech/POST/requestBody/content/application\/json`.
+                case json(Operations.OpenaiSpeech.Input.Body.JsonPayload)
+            }
+            public var body: Operations.OpenaiSpeech.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.OpenaiSpeech.Input.Headers = .init(),
+                body: Operations.OpenaiSpeech.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/audio/speech/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/audio/speech/POST/responses/200/content/audio\/wav`.
+                    case audioWav(OpenAPIRuntime.HTTPBody)
+                    /// The associated value of the enum case if `self` is `.audioWav`.
+                    ///
+                    /// - Throws: An error if `self` is not `.audioWav`.
+                    /// - SeeAlso: `.audioWav`.
+                    public var audioWav: OpenAPIRuntime.HTTPBody {
+                        get throws {
+                            switch self {
+                            case let .audioWav(body):
+                                return body
+                            default:
+                                try throwUnexpectedResponseBody(
+                                    expectedContent: "audio/wav",
+                                    body: self
+                                )
+                            }
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/v1/audio/speech/POST/responses/200/content/audio\/pcm`.
+                    case audioPcm(OpenAPIRuntime.HTTPBody)
+                    /// The associated value of the enum case if `self` is `.audioPcm`.
+                    ///
+                    /// - Throws: An error if `self` is not `.audioPcm`.
+                    /// - SeeAlso: `.audioPcm`.
+                    public var audioPcm: OpenAPIRuntime.HTTPBody {
+                        get throws {
+                            switch self {
+                            case let .audioPcm(body):
+                                return body
+                            default:
+                                try throwUnexpectedResponseBody(
+                                    expectedContent: "audio/pcm",
+                                    body: self
+                                )
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.OpenaiSpeech.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.OpenaiSpeech.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The audio, audio/wav or audio/pcm
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/speech/post(openaiSpeech)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.OpenaiSpeech.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.OpenaiSpeech.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                public init() {}
+            }
+            /// invalid_request_error, such as no input or input that is too long
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/speech/post(openaiSpeech)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.OpenaiSpeech.Output.BadRequest)
+            /// invalid_request_error, such as no input or input that is too long
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/speech/post(openaiSpeech)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            public static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.OpenaiSpeech.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct ServiceUnavailable: Sendable, Hashable {
+                /// Creates a new `ServiceUnavailable`.
+                public init() {}
+            }
+            /// SPEECH_UNAVAILABLE, with how to set speech up
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/speech/post(openaiSpeech)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            case serviceUnavailable(Operations.OpenaiSpeech.Output.ServiceUnavailable)
+            /// SPEECH_UNAVAILABLE, with how to set speech up
+            ///
+            /// - Remark: Generated from `#/paths//v1/audio/speech/post(openaiSpeech)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            public static var serviceUnavailable: Self {
+                .serviceUnavailable(.init())
+            }
+            /// The associated value of the enum case if `self` is `.serviceUnavailable`.
+            ///
+            /// - Throws: An error if `self` is not `.serviceUnavailable`.
+            /// - SeeAlso: `.serviceUnavailable`.
+            public var serviceUnavailable: Operations.OpenaiSpeech.Output.ServiceUnavailable {
+                get throws {
+                    switch self {
+                    case let .serviceUnavailable(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "serviceUnavailable",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case audioWav
+            case audioPcm
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "audio/wav":
+                    self = .audioWav
+                case "audio/pcm":
+                    self = .audioPcm
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .audioWav:
+                    return "audio/wav"
+                case .audioPcm:
+                    return "audio/pcm"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .audioWav,
+                    .audioPcm
+                ]
+            }
         }
     }
     /// OpenAI-compatible chat completions
@@ -53054,6 +55985,43 @@ public enum Operations {
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/time_zone`.
                     public var timeZone: Swift.String?
+                    /// Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/device_location`.
+                    public struct DeviceLocationPayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/device_location/latitude`.
+                        public var latitude: Swift.Double?
+                        /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/device_location/longitude`.
+                        public var longitude: Swift.Double?
+                        /// How far off it may be
+                        ///
+                        /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/device_location/accuracy_m`.
+                        public var accuracyM: Swift.Double?
+                        /// Creates a new `DeviceLocationPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - latitude:
+                        ///   - longitude:
+                        ///   - accuracyM: How far off it may be
+                        public init(
+                            latitude: Swift.Double? = nil,
+                            longitude: Swift.Double? = nil,
+                            accuracyM: Swift.Double? = nil
+                        ) {
+                            self.latitude = latitude
+                            self.longitude = longitude
+                            self.accuracyM = accuracyM
+                        }
+                        public enum CodingKeys: String, CodingKey {
+                            case latitude
+                            case longitude
+                            case accuracyM = "accuracy_m"
+                        }
+                    }
+                    /// Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/device_location`.
+                    public var deviceLocation: Operations.Chat.Input.Body.JsonPayload.DeviceLocationPayload?
                     /// Answer from this message in the chat, as a new version of the point after it (#447)
                     ///
                     /// - Remark: Generated from `#/paths/api/v1/chat/POST/requestBody/json/parent_id`.
@@ -53111,6 +56079,7 @@ public enum Operations {
                     ///   - minP:
                     ///   - thinking: off asks a reasoning model to answer without thinking first, as reasoning_effort none does on /v1/chat/completions; on asks a model that answers first by default, such as Qwen 3.5, to think (#593); empty leaves it as the model does (#840, contract 1.61) Known values: `on`, `off`; others may be added.
                     ///   - timeZone: The person's IANA time zone, such as America/Juneau, for the date and time the answer uses; this computer's when empty or unknown
+                    ///   - deviceLocation: Where the person's device is, sent when they turned on Use this device's location (#1310, contract 1.126). For a question that needs a location, it comes before the place in Personal settings, and the places tools start from it. It's used for this message only and isn't stored. 0,0, a position off Earth, or one vaguer than 50 km is ignored.
                     ///   - parentId: Answer from this message in the chat, as a new version of the point after it (#447)
                     ///   - retryOf: Ask this answer's question again, as a new version of the answer; message may be empty
                     ///   - editOf: Send message in place of this one, as a new version of it
@@ -53135,6 +56104,7 @@ public enum Operations {
                         minP: Swift.Double? = nil,
                         thinking: Swift.String? = nil,
                         timeZone: Swift.String? = nil,
+                        deviceLocation: Operations.Chat.Input.Body.JsonPayload.DeviceLocationPayload? = nil,
                         parentId: Swift.String? = nil,
                         retryOf: Swift.String? = nil,
                         editOf: Swift.String? = nil,
@@ -53159,6 +56129,7 @@ public enum Operations {
                         self.minP = minP
                         self.thinking = thinking
                         self.timeZone = timeZone
+                        self.deviceLocation = deviceLocation
                         self.parentId = parentId
                         self.retryOf = retryOf
                         self.editOf = editOf
@@ -53184,6 +56155,7 @@ public enum Operations {
                         case minP = "min_p"
                         case thinking
                         case timeZone = "time_zone"
+                        case deviceLocation = "device_location"
                         case parentId = "parent_id"
                         case retryOf = "retry_of"
                         case editOf = "edit_of"
@@ -54867,6 +57839,954 @@ public enum Operations {
             }
         }
     }
+    /// The voice personas, and the one you picked (#1319)
+    ///
+    /// Voices an Admin made from this computer's voices, each with a name, a language and a speed. A persona reads its own language in its voice and every language at its speed, in voice mode, POST /api/v1/speech/say, and at the door for an automation of yours. reads is false when its voice can't read here now, such as a Kitten voice after Kitten was removed; reads_with is then the voice that reads instead (contract 1.129).
+    ///
+    /// - Remark: HTTP `GET /api/v1/voice/personas`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/get(voicePersonas)`.
+    public enum VoicePersonas {
+        public static let id: Swift.String = "voicePersonas"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/voice/personas/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.VoicePersonas.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.VoicePersonas.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.VoicePersonas.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.VoicePersonas.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/personas/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.VoicePersonas)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.VoicePersonas {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.VoicePersonas.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.VoicePersonas.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The personas
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/personas/get(voicePersonas)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.VoicePersonas.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.VoicePersonas.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Make a voice persona (#1319)
+    ///
+    /// voice is one of language's voices from GET /api/v1/speech/voices; speed is 0.5 to 2, and 0 or omitted is 1. Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `POST /api/v1/voice/personas`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/post(createVoicePersona)`.
+    public enum CreateVoicePersona {
+        public static let id: Swift.String = "createVoicePersona"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/voice/personas/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateVoicePersona.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateVoicePersona.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.CreateVoicePersona.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/voice/personas/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/POST/requestBody/content/application\/json`.
+                case json(Components.Schemas.VoicePersona)
+            }
+            public var body: Operations.CreateVoicePersona.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.CreateVoicePersona.Input.Headers = .init(),
+                body: Operations.CreateVoicePersona.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/personas/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.VoicePersonas)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.VoicePersonas {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.CreateVoicePersona.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.CreateVoicePersona.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The personas
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/personas/post(createVoicePersona)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.CreateVoicePersona.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.CreateVoicePersona.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/personas/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.CreateVoicePersona.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.CreateVoicePersona.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// PERSONA_NAME_INVALID, PERSONA_SPEED_INVALID, PERSONA_LIMIT, or INVALID_VOICE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/personas/post(createVoicePersona)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.CreateVoicePersona.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.CreateVoicePersona.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/POST/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/personas/POST/responses/403/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.CreateVoicePersona.Output.Forbidden.Body
+                /// Creates a new `Forbidden`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.CreateVoicePersona.Output.Forbidden.Body) {
+                    self.body = body
+                }
+            }
+            /// ROLE_REQUIRED
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/personas/post(createVoicePersona)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Operations.CreateVoicePersona.Output.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Operations.CreateVoicePersona.Output.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Change a voice persona (#1319)
+    ///
+    /// Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/voice/personas/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/put(updateVoicePersona)`.
+    public enum UpdateVoicePersona {
+        public static let id: Swift.String = "updateVoicePersona"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.UpdateVoicePersona.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.UpdateVoicePersona.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.UpdateVoicePersona.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.UpdateVoicePersona.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/requestBody/content/application\/json`.
+                case json(Components.Schemas.VoicePersona)
+            }
+            public var body: Operations.UpdateVoicePersona.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.UpdateVoicePersona.Input.Path,
+                headers: Operations.UpdateVoicePersona.Input.Headers = .init(),
+                body: Operations.UpdateVoicePersona.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/responses/200/content/application\/json`.
+                    case json(Components.Schemas.VoicePersonas)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.VoicePersonas {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.UpdateVoicePersona.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.UpdateVoicePersona.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The personas
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/put(updateVoicePersona)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.UpdateVoicePersona.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.UpdateVoicePersona.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/responses/400/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.UpdateVoicePersona.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.UpdateVoicePersona.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// PERSONA_NAME_INVALID, PERSONA_SPEED_INVALID, PERSONA_LIMIT, or INVALID_VOICE
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/put(updateVoicePersona)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.UpdateVoicePersona.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.UpdateVoicePersona.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/PUT/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.UpdateVoicePersona.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.UpdateVoicePersona.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PERSONA_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/put(updateVoicePersona)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.UpdateVoicePersona.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.UpdateVoicePersona.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Delete a voice persona (#1319)
+    ///
+    /// Whoever picked it goes back to each language's own voice. Admins only (contract 1.129).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/voice/personas/{id}`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/delete(deleteVoicePersona)`.
+    public enum DeleteVoicePersona {
+        public static let id: Swift.String = "deleteVoicePersona"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/DELETE/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/DELETE/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.DeleteVoicePersona.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DeleteVoicePersona.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DeleteVoicePersona.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.DeleteVoicePersona.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.DeleteVoicePersona.Input.Path,
+                headers: Operations.DeleteVoicePersona.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/DELETE/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/DELETE/responses/200/content/application\/json`.
+                    case json(Components.Schemas.VoicePersonas)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.VoicePersonas {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DeleteVoicePersona.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DeleteVoicePersona.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The personas
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/delete(deleteVoicePersona)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.DeleteVoicePersona.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.DeleteVoicePersona.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/DELETE/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/personas/{id}/DELETE/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DeleteVoicePersona.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DeleteVoicePersona.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PERSONA_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/personas/{id}/delete(deleteVoicePersona)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.DeleteVoicePersona.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.DeleteVoicePersona.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Pick the voice persona you're read aloud in (#1319)
+    ///
+    /// Your own choice, whatever your role; an empty id goes back to each language's own voice (contract 1.129).
+    ///
+    /// - Remark: HTTP `PUT /api/v1/voice/persona`.
+    /// - Remark: Generated from `#/paths//api/v1/voice/persona/put(pickVoicePersona)`.
+    public enum PickVoicePersona {
+        public static let id: Swift.String = "pickVoicePersona"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/voice/persona/PUT/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PickVoicePersona.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PickVoicePersona.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.PickVoicePersona.Input.Headers
+            /// - Remark: Generated from `#/paths/api/v1/voice/persona/PUT/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/persona/PUT/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/persona/PUT/requestBody/json/id`.
+                    public var id: Swift.String?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - id:
+                    public init(id: Swift.String? = nil) {
+                        self.id = id
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case id
+                    }
+                }
+                /// - Remark: Generated from `#/paths/api/v1/voice/persona/PUT/requestBody/content/application\/json`.
+                case json(Operations.PickVoicePersona.Input.Body.JsonPayload)
+            }
+            public var body: Operations.PickVoicePersona.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.PickVoicePersona.Input.Headers = .init(),
+                body: Operations.PickVoicePersona.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/persona/PUT/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/persona/PUT/responses/200/content/application\/json`.
+                    case json(Components.Schemas.VoicePersonas)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.VoicePersonas {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.PickVoicePersona.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.PickVoicePersona.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The personas
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/persona/put(pickVoicePersona)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.PickVoicePersona.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.PickVoicePersona.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/voice/persona/PUT/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/voice/persona/PUT/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.PickVoicePersona.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.PickVoicePersona.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// PERSONA_NOT_FOUND
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/voice/persona/put(pickVoicePersona)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.PickVoicePersona.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.PickVoicePersona.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// Live voice mode, over a WebSocket (#795)
     ///
     /// Upgrades to a WebSocket that speaks a subset of OpenAI's Realtime protocol, one JSON event per text message (docs/voice.md; subprotocol realtime). Audio is pcm16, mono, 24 kHz, base64 in input_audio_buffer.append and response.audio.delta. The server finds the end of each turn (server_vad), transcribes it with Whisper, answers it in a chat of the caller's, and speaks the answer with Piper a sentence at a time; talking over an answer stops it. response.done's metadata.toskar_latency has stt_ms, llm_first_token_ms, first_audio_ms, and end_to_end_ms. Visitors and paired devices may use it, with the voice capability (contract 1.100). 426 WEBSOCKET_REQUIRED without an upgrade; 503 SPEECH_UNAVAILABLE when speech isn't set up.
@@ -55096,25 +59016,33 @@ public enum Operations {
                     public var voice: Swift.String?
                     /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/requestBody/json/language`.
                     public var language: Swift.String?
+                    /// How fast to read, such as to preview a voice persona; omitted or 0 is the caller's persona's speed, or normal (#1319, contract 1.129)
+                    ///
+                    /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/requestBody/json/speed`.
+                    public var speed: Swift.Double?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
                     ///   - text:
                     ///   - voice:
                     ///   - language:
+                    ///   - speed: How fast to read, such as to preview a voice persona; omitted or 0 is the caller's persona's speed, or normal (#1319, contract 1.129)
                     public init(
                         text: Swift.String,
                         voice: Swift.String? = nil,
-                        language: Swift.String? = nil
+                        language: Swift.String? = nil,
+                        speed: Swift.Double? = nil
                     ) {
                         self.text = text
                         self.voice = voice
                         self.language = language
+                        self.speed = speed
                     }
                     public enum CodingKeys: String, CodingKey {
                         case text
                         case voice
                         case language
+                        case speed
                     }
                 }
                 /// - Remark: Generated from `#/paths/api/v1/speech/say/POST/requestBody/content/application\/json`.
@@ -55661,6 +59589,350 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Each feature and what it still needs (#1355)
+    ///
+    /// One-step setup's check: every feature (voice, the door, pictures, clips, seeing pictures, knowledge by meaning, automations that use tools, training), whether it works here now, and for each thing it needs what would set it up, or why nothing here can. Admins only (contract 1.119).
+    ///
+    /// - Remark: HTTP `GET /api/v1/features`.
+    /// - Remark: Generated from `#/paths//api/v1/features/get(listFeatures)`.
+    public enum ListFeatures {
+        public static let id: Swift.String = "listFeatures"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/features/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListFeatures.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListFeatures.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ListFeatures.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.ListFeatures.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/features/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/features/GET/responses/200/content/application\/json`.
+                    case json([Components.Schemas.Feature])
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: [Components.Schemas.Feature] {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListFeatures.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListFeatures.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The features, in the order Settings lists them
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/features/get(listFeatures)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListFeatures.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListFeatures.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Set up everything a feature still needs (#1355)
+    ///
+    /// Starts installing every missing need that this computer, or a paired one, can install: models, the voice, and picture or clip models. It returns at once; GET /api/v1/features shows how it's going. Admins only (contract 1.119).
+    ///
+    /// - Remark: HTTP `POST /api/v1/features/{id}/setup`.
+    /// - Remark: Generated from `#/paths//api/v1/features/{id}/setup/post(setUpFeature)`.
+    public enum SetUpFeature {
+        public static let id: Swift.String = "setUpFeature"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/features/{id}/setup/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/features/{id}/setup/POST/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.SetUpFeature.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/features/{id}/setup/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetUpFeature.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetUpFeature.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SetUpFeature.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.SetUpFeature.Input.Path,
+                headers: Operations.SetUpFeature.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Accepted: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/features/{id}/setup/POST/responses/202/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/features/{id}/setup/POST/responses/202/content/application\/json`.
+                    case json(Components.Schemas.Feature)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.Feature {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetUpFeature.Output.Accepted.Body
+                /// Creates a new `Accepted`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetUpFeature.Output.Accepted.Body) {
+                    self.body = body
+                }
+            }
+            /// The feature, with what started installing
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/features/{id}/setup/post(setUpFeature)/responses/202`.
+            ///
+            /// HTTP response code: `202 accepted`.
+            case accepted(Operations.SetUpFeature.Output.Accepted)
+            /// The associated value of the enum case if `self` is `.accepted`.
+            ///
+            /// - Throws: An error if `self` is not `.accepted`.
+            /// - SeeAlso: `.accepted`.
+            public var accepted: Operations.SetUpFeature.Output.Accepted {
+                get throws {
+                    switch self {
+                    case let .accepted(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "accepted",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/features/{id}/setup/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/features/{id}/setup/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetUpFeature.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetUpFeature.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// FEATURE_UNKNOWN
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/features/{id}/setup/post(setUpFeature)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.SetUpFeature.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.SetUpFeature.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/features/{id}/setup/POST/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/features/{id}/setup/POST/responses/409/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SetUpFeature.Output.Conflict.Body
+                /// Creates a new `Conflict`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SetUpFeature.Output.Conflict.Body) {
+                    self.body = body
+                }
+            }
+            /// FEATURE_SETUP_FAILED, when a part couldn't start; the rest keeps going
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/features/{id}/setup/post(setUpFeature)/responses/409`.
+            ///
+            /// HTTP response code: `409 conflict`.
+            case conflict(Operations.SetUpFeature.Output.Conflict)
+            /// The associated value of the enum case if `self` is `.conflict`.
+            ///
+            /// - Throws: An error if `self` is not `.conflict`.
+            /// - SeeAlso: `.conflict`.
+            public var conflict: Operations.SetUpFeature.Output.Conflict {
+                get throws {
+                    switch self {
+                    case let .conflict(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "conflict",
                             response: self
                         )
                     }
@@ -72442,6 +76714,428 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Clear an automation's history
+    ///
+    /// Removes the automation's finished runs (#1335, contract 1.118). Runs that may still be working stay. With files=true, the camera pictures its runs took go too. Chats a run was continued in stay. The automation's owner, or an Admin, may clear it.
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/automations/{id}/runs`.
+    /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/delete(clearAutomationRuns)`.
+    public enum ClearAutomationRuns {
+        public static let id: Swift.String = "clearAutomationRuns"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/DELETE/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/DELETE/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.ClearAutomationRuns.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/DELETE/query`.
+            public struct Query: Sendable, Hashable {
+                /// Also delete the camera pictures the automation's runs took
+                ///
+                /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/DELETE/query/files`.
+                public var files: Swift.Bool?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - files: Also delete the camera pictures the automation's runs took
+                public init(files: Swift.Bool? = nil) {
+                    self.files = files
+                }
+            }
+            public var query: Operations.ClearAutomationRuns.Input.Query
+            /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ClearAutomationRuns.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ClearAutomationRuns.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ClearAutomationRuns.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - query:
+            ///   - headers:
+            public init(
+                path: Operations.ClearAutomationRuns.Input.Path,
+                query: Operations.ClearAutomationRuns.Input.Query = .init(),
+                headers: Operations.ClearAutomationRuns.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/DELETE/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/DELETE/responses/200/content/application\/json`.
+                    case json(Components.Schemas.ClearedRuns)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ClearedRuns {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ClearAutomationRuns.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ClearAutomationRuns.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// How many runs and files were removed
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/delete(clearAutomationRuns)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ClearAutomationRuns.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ClearAutomationRuns.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/DELETE/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/DELETE/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ClearAutomationRuns.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ClearAutomationRuns.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// No such automation
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/delete(clearAutomationRuns)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.ClearAutomationRuns.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.ClearAutomationRuns.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Delete one finished run
+    ///
+    /// A run that may still be working answers 409 AUTOMATION_RUN_IN_PROGRESS (#1335, contract 1.118).
+    ///
+    /// - Remark: HTTP `DELETE /api/v1/automations/{id}/runs/{run_id}`.
+    /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/{run_id}/delete(deleteAutomationRun)`.
+    public enum DeleteAutomationRun {
+        public static let id: Swift.String = "deleteAutomationRun"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/{run_id}/DELETE/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/{run_id}/DELETE/path/id`.
+                public var id: Swift.String
+                /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/{run_id}/DELETE/path/run_id`.
+                public var runId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                ///   - runId:
+                public init(
+                    id: Swift.String,
+                    runId: Swift.String
+                ) {
+                    self.id = id
+                    self.runId = runId
+                }
+            }
+            public var path: Operations.DeleteAutomationRun.Input.Path
+            /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/{run_id}/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DeleteAutomationRun.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DeleteAutomationRun.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.DeleteAutomationRun.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.DeleteAutomationRun.Input.Path,
+                headers: Operations.DeleteAutomationRun.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct NoContent: Sendable, Hashable {
+                /// Creates a new `NoContent`.
+                public init() {}
+            }
+            /// Deleted
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/{run_id}/delete(deleteAutomationRun)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            case noContent(Operations.DeleteAutomationRun.Output.NoContent)
+            /// Deleted
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/{run_id}/delete(deleteAutomationRun)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            public static var noContent: Self {
+                .noContent(.init())
+            }
+            /// The associated value of the enum case if `self` is `.noContent`.
+            ///
+            /// - Throws: An error if `self` is not `.noContent`.
+            /// - SeeAlso: `.noContent`.
+            public var noContent: Operations.DeleteAutomationRun.Output.NoContent {
+                get throws {
+                    switch self {
+                    case let .noContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "noContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/{run_id}/DELETE/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/{run_id}/DELETE/responses/404/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DeleteAutomationRun.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DeleteAutomationRun.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// No such automation or run
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/{run_id}/delete(deleteAutomationRun)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.DeleteAutomationRun.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.DeleteAutomationRun.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/{run_id}/DELETE/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/api/v1/automations/{id}/runs/{run_id}/DELETE/responses/409/content/application\/json`.
+                    case json(Components.Schemas._Error)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas._Error {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DeleteAutomationRun.Output.Conflict.Body
+                /// Creates a new `Conflict`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DeleteAutomationRun.Output.Conflict.Body) {
+                    self.body = body
+                }
+            }
+            /// The run hasn't finished
+            ///
+            /// - Remark: Generated from `#/paths//api/v1/automations/{id}/runs/{run_id}/delete(deleteAutomationRun)/responses/409`.
+            ///
+            /// HTTP response code: `409 conflict`.
+            case conflict(Operations.DeleteAutomationRun.Output.Conflict)
+            /// The associated value of the enum case if `self` is `.conflict`.
+            ///
+            /// - Throws: An error if `self` is not `.conflict`.
+            /// - SeeAlso: `.conflict`.
+            public var conflict: Operations.DeleteAutomationRun.Output.Conflict {
+                get throws {
+                    switch self {
+                    case let .conflict(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "conflict",
                             response: self
                         )
                     }
